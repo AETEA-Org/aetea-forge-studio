@@ -12,7 +12,8 @@ import type {
   SSEMessage,
 } from "@/types/api";
 
-const EDGE_FUNCTION_URL = `https://sprbamfghyaimfuvpgmp.supabase.co/functions/v1/api-proxy`;
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/api-proxy`;
 
 // Helper to build URL with params
 function buildUrl(path: string, params?: Record<string, string>): string {
