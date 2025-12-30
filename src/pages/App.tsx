@@ -1,17 +1,16 @@
 import { useState, useRef } from "react";
-import { Upload, FileText, Loader2, Sparkles } from "lucide-react";
+import { Upload, FileText, Loader2, Sparkles, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { useAuth } from "@/hooks/useAuth";
+import { useCreateProject } from "@/hooks/useCreateProject";
 import { cn } from "@/lib/utils";
 
 export default function App() {
-  const { user } = useAuth();
   const [briefText, setBriefText] = useState("");
   const [files, setFiles] = useState<File[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [progress, setProgress] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const { createProject, isSubmitting, progress, error, reset } = useCreateProject();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -25,18 +24,7 @@ export default function App() {
   };
 
   const handleSubmit = async () => {
-    if (!briefText.trim() && files.length === 0) return;
-    
-    setIsSubmitting(true);
-    setProgress("Starting brief analysis...");
-    
-    // TODO: Implement API call with SSE streaming
-    // This will be implemented in Phase 3
-    
-    setTimeout(() => {
-      setProgress("");
-      setIsSubmitting(false);
-    }, 2000);
+    await createProject(briefText, files);
   };
 
   return (
@@ -120,7 +108,10 @@ export default function App() {
           <Textarea
             placeholder="Describe your campaign goals, target audience, deliverables, timeline, and any other relevant details..."
             value={briefText}
-            onChange={(e) => setBriefText(e.target.value)}
+            onChange={(e) => {
+              setBriefText(e.target.value);
+              if (error) reset();
+            }}
             className="min-h-[150px] bg-background/50 border-border/50 resize-none"
           />
 
@@ -129,6 +120,14 @@ export default function App() {
             <div className="flex items-center gap-2 text-sm text-primary">
               <Loader2 className="h-4 w-4 animate-spin" />
               <span>{progress}</span>
+            </div>
+          )}
+
+          {/* Error */}
+          {error && (
+            <div className="flex items-center gap-2 text-sm text-destructive">
+              <AlertCircle className="h-4 w-4" />
+              <span>{error}</span>
             </div>
           )}
 

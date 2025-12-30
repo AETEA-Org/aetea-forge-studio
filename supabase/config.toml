@@ -1,1 +1,4 @@
 project_id = "sprbamfghyaimfuvpgmp"
+
+[functions.api-proxy]
+verify_jwt = false
