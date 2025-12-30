@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Chrome } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,11 +16,11 @@ export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
+  const [username, setUsername] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   
-  const { user, loading, signIn, signUp } = useAuth();
+  const { user, loading, signIn, signUp, signInWithGoogle } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -79,7 +79,7 @@ export default function Auth() {
           });
         }
       } else {
-        const { error } = await signUp(email, password, fullName);
+        const { error } = await signUp(email, password, username);
         if (error) {
           if (error.message.includes("already registered")) {
             toast({
@@ -141,15 +141,44 @@ export default function Auth() {
           </div>
 
           <form onSubmit={handleSubmit} className="p-8 rounded-2xl glass space-y-5">
+            {/* Google Sign In */}
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full bg-background/50 border-border/50 hover:bg-background/80"
+              onClick={async () => {
+                const { error } = await signInWithGoogle();
+                if (error) {
+                  toast({
+                    title: "Google sign-in failed",
+                    description: error.message,
+                    variant: "destructive",
+                  });
+                }
+              }}
+            >
+              <Chrome className="h-4 w-4 mr-2" />
+              Continue with Google
+            </Button>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-border/50" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-transparent px-2 text-muted-foreground">Or continue with email</span>
+              </div>
+            </div>
+
             {!isLogin && (
               <div className="space-y-2">
-                <Label htmlFor="fullName">Full name</Label>
+                <Label htmlFor="username">Username</Label>
                 <Input
-                  id="fullName"
+                  id="username"
                   type="text"
-                  placeholder="Your name"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Choose a username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   className="bg-background/50 border-border/50"
                 />
               </div>
