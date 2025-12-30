@@ -88,7 +88,7 @@ export function CreateLaunchGrow() {
           {/* Content */}
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-start">
             <div>
-              <p className="text-2xl sm:text-3xl font-medium leading-relaxed mb-8">
+              <p className="text-2xl sm:text-3xl font-medium leading-relaxed mb-8 text-foreground">
                 {activePillar.tagline}
               </p>
               <ul className="space-y-4">
@@ -108,7 +108,7 @@ export function CreateLaunchGrow() {
                 <span className="text-xs uppercase tracking-[0.2em] text-foreground/60 mb-4 block">
                   Outcome
                 </span>
-                <p className="text-xl font-medium">
+                <p className="text-xl font-medium text-foreground">
                   {activePillar.outcome}
                 </p>
               </div>

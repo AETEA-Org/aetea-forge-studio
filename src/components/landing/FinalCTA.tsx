@@ -17,7 +17,7 @@ export function FinalCTA() {
             Ready to turn direction into deliverables?
           </h2>
           
-          <p className="text-xl text-muted-foreground mb-12">
+          <p className="text-xl text-foreground/70 mb-12">
             Start your first brief and see what AETEA can do for you.
           </p>
 
@@ -35,7 +35,7 @@ export function FinalCTA() {
               <Button 
                 size="lg" 
                 variant="ghost" 
-                className="text-muted-foreground hover:text-foreground hover:bg-transparent rounded-full px-8 h-14 text-base"
+                className="text-foreground/70 hover:text-foreground hover:bg-transparent rounded-full px-8 h-14 text-base"
               >
                 Book a Demo
               </Button>

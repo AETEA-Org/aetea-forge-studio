@@ -34,7 +34,7 @@ export function ServicesGrid() {
 
           <div className="grid md:grid-cols-2 gap-16 items-start">
             <div>
-              <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight leading-[1.1]">
+              <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight leading-[1.1] text-foreground">
                 Everything you need, in one place.
               </h2>
             </div>

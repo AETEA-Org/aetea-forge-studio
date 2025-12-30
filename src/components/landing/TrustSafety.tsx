@@ -16,13 +16,13 @@ export function TrustSafety() {
         <div className="max-w-3xl mx-auto text-center">
           <div className="flex items-center justify-center gap-3 mb-8">
             <div className="h-px w-12 bg-border" />
-            <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
+            <span className="text-xs uppercase tracking-[0.3em] text-foreground/60">
               Trust
             </span>
             <div className="h-px w-12 bg-border" />
           </div>
           
-          <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight mb-12">
+          <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight mb-12 text-foreground">
             Quality controls built in.
           </h2>
 
@@ -32,7 +32,7 @@ export function TrustSafety() {
                 <div className="w-5 h-5 rounded-full border border-primary/50 flex items-center justify-center">
                   <Check className="w-3 h-3 text-primary" />
                 </div>
-                <span className="text-lg">{point}</span>
+                <span className="text-lg text-foreground/80">{point}</span>
               </div>
             ))}
           </div>
