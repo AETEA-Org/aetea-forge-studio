@@ -26,7 +26,7 @@ export function ServicesGrid() {
         <div className="max-w-5xl mx-auto">
           {/* Section header */}
           <div className="flex items-center gap-3 mb-16">
-            <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
+            <span className="text-xs uppercase tracking-[0.3em] text-foreground/60">
               Services
             </span>
             <div className="h-px flex-1 bg-border" />
@@ -43,7 +43,7 @@ export function ServicesGrid() {
               {services.map((service) => (
                 <span
                   key={service}
-                  className="px-4 py-2 rounded-full text-sm border border-border text-muted-foreground hover:text-foreground hover:border-muted-foreground/50 transition-colors cursor-default"
+                  className="px-4 py-2 rounded-full text-sm border border-border text-foreground/65 hover:text-foreground hover:border-foreground/30 transition-colors cursor-default"
                 >
                   {service}
                 </span>
