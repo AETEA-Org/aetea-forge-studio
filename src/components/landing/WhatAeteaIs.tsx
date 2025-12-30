@@ -1,50 +1,37 @@
-import { Zap, Users, Target } from "lucide-react";
-
 export function WhatAeteaIs() {
   return (
-    <section id="what-aetea-is" className="py-24 md:py-32 bg-secondary/30">
-      <div className="container px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto text-center mb-16">
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight mb-6">
-            A creative OS/partner that thinks with you — and delivers with you.
+    <section id="what-aetea-is" className="py-32 md:py-40 relative overflow-hidden">
+      {/* Subtle gradient */}
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-card/50 to-transparent" />
+      
+      <div className="container relative px-6 lg:px-12">
+        <div className="max-w-4xl mx-auto">
+          {/* Section label */}
+          <div 
+            className="flex items-center gap-3 mb-12 opacity-0 animate-fade-in"
+            style={{ animationDelay: '0.1s' }}
+          >
+            <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
+              The Platform
+            </span>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+
+          {/* Main statement */}
+          <h2 className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] mb-10">
+            A creative OS that thinks with you —
+            <span className="text-muted-foreground"> and delivers with you.</span>
           </h2>
-          <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-            Most platforms just give you tools — you still do all the thinking and execution. 
-            Agencies give you output, but it's slow and expensive.
-          </p>
-        </div>
 
-        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-          <div className="bg-card rounded-xl p-8 border border-border hover:border-primary/30 transition-colors">
-            <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-6">
-              <Zap className="h-6 w-6 text-primary" />
-            </div>
-            <h3 className="text-xl font-semibold mb-3">Guided Workflow</h3>
-            <p className="text-muted-foreground">
-              AETEA guides you from brief to delivery with structured steps, 
-              not just a blank canvas.
+          {/* Supporting text */}
+          <div className="grid md:grid-cols-2 gap-8 md:gap-16">
+            <p className="text-lg text-muted-foreground leading-relaxed">
+              Most platforms just give you tools — you still do all the thinking and execution. 
+              Agencies give you output, but it's slow and expensive.
             </p>
-          </div>
-
-          <div className="bg-card rounded-xl p-8 border border-border hover:border-primary/30 transition-colors">
-            <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-6">
-              <Target className="h-6 w-6 text-primary" />
-            </div>
-            <h3 className="text-xl font-semibold mb-3">Real Deliverables</h3>
-            <p className="text-muted-foreground">
-              Get production-ready assets across brand, content, campaigns, 
-              and growth — not just ideas.
-            </p>
-          </div>
-
-          <div className="bg-card rounded-xl p-8 border border-border hover:border-primary/30 transition-colors">
-            <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-6">
-              <Users className="h-6 w-6 text-primary" />
-            </div>
-            <h3 className="text-xl font-semibold mb-3">Human + AI</h3>
-            <p className="text-muted-foreground">
-              AI accelerates execution while humans retain creative control 
-              at every decision point.
+            <p className="text-lg text-muted-foreground leading-relaxed">
+              AETEA combines guided workflow with real deliverables across brand, content, 
+              production, and growth. Think of it as your creative department in a box.
             </p>
           </div>
         </div>

@@ -1,36 +1,40 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, Calendar, Mail } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function FinalCTA() {
   return (
-    <section className="py-24 md:py-32">
-      <div className="container px-4 sm:px-6 lg:px-8">
+    <section className="py-32 md:py-40 relative grain">
+      {/* Gradient orbs */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-primary/10 rounded-full blur-[150px] animate-glow-pulse" />
+      
+      <div className="container relative px-6 lg:px-12">
         <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight mb-6">
+          <h2 className="font-display text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight mb-8">
             Ready to turn direction into deliverables?
           </h2>
-          <p className="text-lg text-muted-foreground mb-10">
+          
+          <p className="text-xl text-muted-foreground mb-12">
             Start your first brief and see what AETEA can do for you.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link to="/auth">
-              <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 h-12">
+              <Button 
+                size="lg" 
+                className="bg-foreground text-background hover:bg-foreground/90 rounded-full px-8 h-14 text-base group"
+              >
                 Start a Brief
-                <ArrowRight className="ml-2 h-4 w-4" />
+                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Button>
             </Link>
             <a href="mailto:hello@aetea.ai?subject=Demo%20Request">
-              <Button size="lg" variant="outline" className="border-border hover:bg-secondary px-8 h-12">
-                <Calendar className="mr-2 h-4 w-4" />
+              <Button 
+                size="lg" 
+                variant="ghost" 
+                className="text-muted-foreground hover:text-foreground hover:bg-transparent rounded-full px-8 h-14 text-base"
+              >
                 Book a Demo
-              </Button>
-            </a>
-            <a href="mailto:hello@aetea.ai?subject=Waitlist">
-              <Button size="lg" variant="ghost" className="px-8 h-12">
-                <Mail className="mr-2 h-4 w-4" />
-                Join the Waitlist
               </Button>
             </a>
           </div>
