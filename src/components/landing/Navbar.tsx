@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import logo from "@/assets/aetea-logo-blue-on-black.png";
+import logo from "@/assets/aetea-logo-white.png";
 
 const navLinks = [
   { label: "Product", href: "#what-aetea-is" },
@@ -12,23 +12,40 @@ const navLinks = [
 
 export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 glass-dark">
-      <nav className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between">
+    <header 
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+        scrolled ? "glass py-4" : "py-6"
+      }`}
+    >
+      <nav className="container mx-auto px-6 lg:px-12">
+        <div className="flex items-center justify-between">
           {/* Logo */}
-          <Link to="/" className="flex items-center">
-            <img src={logo} alt="AETEA" className="h-8 w-auto" />
+          <Link to="/" className="relative z-10">
+            <img 
+              src={logo} 
+              alt="AETEA" 
+              className="h-7 w-auto transition-opacity hover:opacity-80" 
+            />
           </Link>
 
           {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden md:flex items-center gap-10">
             {navLinks.map((link) => (
               <a
                 key={link.label}
                 href={link.href}
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-300"
               >
                 {link.label}
               </a>
@@ -36,14 +53,21 @@ export function Navbar() {
           </div>
 
           {/* Desktop CTAs */}
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-4">
             <Link to="/auth">
-              <Button variant="ghost" size="sm">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-muted-foreground hover:text-foreground hover:bg-transparent"
+              >
                 Sign in
               </Button>
             </Link>
             <Link to="/auth">
-              <Button size="sm" className="bg-primary hover:bg-primary/90">
+              <Button 
+                size="sm" 
+                className="bg-foreground text-background hover:bg-foreground/90 rounded-full px-5"
+              >
                 Start a Brief
               </Button>
             </Link>
@@ -61,26 +85,26 @@ export function Navbar() {
 
         {/* Mobile Menu */}
         {mobileOpen && (
-          <div className="md:hidden py-4 border-t border-border">
+          <div className="md:hidden absolute top-full left-0 right-0 glass p-6 mt-2 mx-4 rounded-2xl animate-fade-in">
             <div className="flex flex-col gap-4">
               {navLinks.map((link) => (
                 <a
                   key={link.label}
                   href={link.href}
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
                   onClick={() => setMobileOpen(false)}
                 >
                   {link.label}
                 </a>
               ))}
-              <div className="flex flex-col gap-2 pt-4 border-t border-border">
+              <div className="flex flex-col gap-3 pt-4 mt-2 border-t border-border">
                 <Link to="/auth" onClick={() => setMobileOpen(false)}>
-                  <Button variant="ghost" size="sm" className="w-full justify-start">
+                  <Button variant="ghost" size="sm" className="w-full justify-center">
                     Sign in
                   </Button>
                 </Link>
                 <Link to="/auth" onClick={() => setMobileOpen(false)}>
-                  <Button size="sm" className="w-full bg-primary hover:bg-primary/90">
+                  <Button size="sm" className="w-full bg-foreground text-background hover:bg-foreground/90 rounded-full">
                     Start a Brief
                   </Button>
                 </Link>

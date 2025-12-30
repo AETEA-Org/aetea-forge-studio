@@ -1,33 +1,40 @@
-import { CheckCircle2 } from "lucide-react";
+import { Check } from "lucide-react";
 
 const trustPoints = [
-  "AI-assisted, human-checked workflows for key outputs",
-  "Clear review points (direction → drafts → final)",
-  "Designed for consistency: voice, visuals, message alignment",
-  "Built to reduce version chaos and rework",
+  "AI-assisted, human-checked workflows",
+  "Clear review points at every stage",
+  "Voice, visual, and message consistency",
+  "Built to reduce chaos and rework",
 ];
 
 export function TrustSafety() {
   return (
-    <section className="py-24 md:py-32 bg-secondary/30">
-      <div className="container px-4 sm:px-6 lg:px-8">
+    <section className="py-32 md:py-40 relative overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-card/30 to-transparent" />
+      
+      <div className="container relative px-6 lg:px-12">
         <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight mb-6">
-            Trust & Safety
+          <div className="flex items-center justify-center gap-3 mb-8">
+            <div className="h-px w-12 bg-border" />
+            <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
+              Trust
+            </span>
+            <div className="h-px w-12 bg-border" />
+          </div>
+          
+          <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight mb-12">
+            Quality controls built in.
           </h2>
-          <p className="text-lg text-muted-foreground mb-10">
-            Quality controls built into every step.
-          </p>
 
-          <div className="bg-card rounded-2xl p-8 border border-border inline-block text-left">
-            <ul className="space-y-4">
-              {trustPoints.map((point, index) => (
-                <li key={index} className="flex items-start gap-3">
-                  <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                  <span className="text-foreground">{point}</span>
-                </li>
-              ))}
-            </ul>
+          <div className="inline-flex flex-col items-start text-left">
+            {trustPoints.map((point, i) => (
+              <div key={i} className="flex items-center gap-4 py-3">
+                <div className="w-5 h-5 rounded-full border border-primary/50 flex items-center justify-center">
+                  <Check className="w-3 h-3 text-primary" />
+                </div>
+                <span className="text-lg">{point}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>

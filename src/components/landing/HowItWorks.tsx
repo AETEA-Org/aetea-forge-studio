@@ -1,86 +1,73 @@
-import { FileText, Lightbulb, Package, RotateCcw } from "lucide-react";
-
 const steps = [
   {
-    icon: FileText,
     number: "01",
     title: "Start with a brief",
     description: "Define your goal, audience, offer, and constraints. Upload existing assets or start fresh.",
   },
   {
-    icon: Lightbulb,
     number: "02",
-    title: "Get direction + options",
+    title: "Get direction",
     description: "Receive angles, concepts, formats, and a clear plan tailored to your objectives.",
   },
   {
-    icon: Package,
     number: "03",
     title: "Create deliverables",
     description: "Production-ready assets across channels — designed, written, and formatted for launch.",
   },
   {
-    icon: RotateCcw,
     number: "04",
-    title: "Review → Launch → Learn",
+    title: "Launch & learn",
     description: "Built-in checkpoints for feedback, iteration loops, and continuous improvement.",
   },
 ];
 
 export function HowItWorks() {
   return (
-    <section id="how-it-works" className="py-24 md:py-32 bg-secondary/30">
-      <div className="container px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight mb-4">
-            How It Works
-          </h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            From brief to launch in four structured steps.
-          </p>
-        </div>
-
+    <section id="how-it-works" className="py-32 md:py-40 relative overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-card/30 to-transparent" />
+      
+      <div className="container relative px-6 lg:px-12">
         <div className="max-w-5xl mx-auto">
-          {/* Desktop: Horizontal timeline */}
-          <div className="hidden lg:grid lg:grid-cols-4 gap-8">
-            {steps.map((step, index) => (
-              <div key={step.number} className="relative">
-                {/* Connector line */}
-                {index < steps.length - 1 && (
-                  <div className="absolute top-8 left-[60%] w-full h-px bg-border" />
-                )}
-                
-                <div className="relative">
-                  <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-6">
-                    <step.icon className="h-7 w-7 text-primary" />
-                  </div>
-                  <span className="text-xs font-mono text-primary mb-2 block">{step.number}</span>
-                  <h3 className="text-lg font-semibold mb-2">{step.title}</h3>
-                  <p className="text-sm text-muted-foreground">{step.description}</p>
-                </div>
-              </div>
-            ))}
+          {/* Section header */}
+          <div className="text-center mb-20">
+            <div className="flex items-center justify-center gap-3 mb-8">
+              <div className="h-px w-12 bg-border" />
+              <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
+                Process
+              </span>
+              <div className="h-px w-12 bg-border" />
+            </div>
+            
+            <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight">
+              Brief to launch in four steps.
+            </h2>
           </div>
 
-          {/* Mobile/Tablet: Vertical timeline */}
-          <div className="lg:hidden space-y-8">
-            {steps.map((step, index) => (
-              <div key={step.number} className="flex gap-6">
-                <div className="relative flex flex-col items-center">
-                  <div className="w-14 h-14 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
-                    <step.icon className="h-6 w-6 text-primary" />
+          {/* Timeline */}
+          <div className="relative">
+            {/* Connecting line - desktop */}
+            <div className="hidden lg:block absolute top-12 left-0 right-0 h-px bg-border" />
+            
+            <div className="grid lg:grid-cols-4 gap-12 lg:gap-8">
+              {steps.map((step, i) => (
+                <div key={step.number} className="relative">
+                  {/* Number circle */}
+                  <div className="w-24 h-24 rounded-full border border-border flex items-center justify-center mb-8 relative bg-background">
+                    <span className="font-display text-2xl font-bold text-primary">{step.number}</span>
                   </div>
-                  {index < steps.length - 1 && (
-                    <div className="w-px h-full bg-border mt-4" />
+                  
+                  {/* Mobile connector */}
+                  {i < steps.length - 1 && (
+                    <div className="lg:hidden absolute left-12 top-24 w-px h-12 bg-border" />
                   )}
+
+                  <h3 className="text-xl font-semibold mb-3">{step.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {step.description}
+                  </p>
                 </div>
-                <div className="pb-8">
-                  <span className="text-xs font-mono text-primary mb-1 block">{step.number}</span>
-                  <h3 className="text-lg font-semibold mb-2">{step.title}</h3>
-                  <p className="text-sm text-muted-foreground">{step.description}</p>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </div>
