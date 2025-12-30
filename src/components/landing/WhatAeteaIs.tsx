@@ -15,16 +15,16 @@ export function WhatAeteaIs() {
             className="flex items-center gap-3 mb-12 opacity-0 animate-fade-in"
             style={{ animationDelay: '0.1s' }}
           >
-            <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
+            <span className="text-xs uppercase tracking-[0.3em] text-foreground/60">
               The Platform
             </span>
             <div className="h-px flex-1 bg-border" />
           </div>
 
           {/* Main statement */}
-          <h2 className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] mb-10">
+          <h2 className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] mb-10 text-foreground">
             A creative OS that thinks with you —
-            <span className="text-muted-foreground"> and delivers with you.</span>
+            <span className="text-foreground/60"> and delivers with you.</span>
           </h2>
 
           {/* Supporting text */}

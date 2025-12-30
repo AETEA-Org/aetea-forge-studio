@@ -51,18 +51,18 @@ export function CreateLaunchGrow() {
           <div className="text-center mb-20">
             <div className="flex items-center justify-center gap-3 mb-8">
               <div className="h-px w-12 bg-border" />
-              <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
+              <span className="text-xs uppercase tracking-[0.3em] text-foreground/60">
                 The Journey
               </span>
               <div className="h-px w-12 bg-border" />
             </div>
             
             <h2 className="font-display text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight">
-              <span className={activeTab === "create" ? "text-primary" : "text-muted-foreground/30 cursor-pointer transition-colors hover:text-muted-foreground/50"} onClick={() => setActiveTab("create")}>Create</span>
-              <span className="text-muted-foreground/20 mx-2">•</span>
-              <span className={activeTab === "launch" ? "text-primary" : "text-muted-foreground/30 cursor-pointer transition-colors hover:text-muted-foreground/50"} onClick={() => setActiveTab("launch")}>Launch</span>
-              <span className="text-muted-foreground/20 mx-2">•</span>
-              <span className={activeTab === "grow" ? "text-primary" : "text-muted-foreground/30 cursor-pointer transition-colors hover:text-muted-foreground/50"} onClick={() => setActiveTab("grow")}>Grow</span>
+              <span className={activeTab === "create" ? "text-primary" : "text-foreground/35 cursor-pointer transition-colors hover:text-foreground/60"} onClick={() => setActiveTab("create")}>Create</span>
+              <span className="text-foreground/25 mx-2">•</span>
+              <span className={activeTab === "launch" ? "text-primary" : "text-foreground/35 cursor-pointer transition-colors hover:text-foreground/60"} onClick={() => setActiveTab("launch")}>Launch</span>
+              <span className="text-foreground/25 mx-2">•</span>
+              <span className={activeTab === "grow" ? "text-primary" : "text-foreground/35 cursor-pointer transition-colors hover:text-foreground/60"} onClick={() => setActiveTab("grow")}>Grow</span>
             </h2>
           </div>
 
@@ -76,7 +76,7 @@ export function CreateLaunchGrow() {
                   className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-300 ${
                     activeTab === pillar.id
                       ? "bg-foreground text-background"
-                      : "text-muted-foreground hover:text-foreground"
+                      : "text-foreground/65 hover:text-foreground"
                   }`}
                 >
                   {pillar.title}
@@ -93,7 +93,7 @@ export function CreateLaunchGrow() {
               </p>
               <ul className="space-y-4">
                 {activePillar.capabilities.map((cap, i) => (
-                  <li key={i} className="flex items-start gap-4 text-muted-foreground">
+                  <li key={i} className="flex items-start gap-4 text-foreground/65">
                     <span className="w-6 h-6 rounded-full border border-border flex items-center justify-center flex-shrink-0 mt-0.5">
                       <span className="text-xs">{String(i + 1).padStart(2, "0")}</span>
                     </span>
@@ -103,9 +103,9 @@ export function CreateLaunchGrow() {
               </ul>
             </div>
 
-            <div className="lg:pt-8">
+              <div className="lg:pt-8">
               <div className="p-8 rounded-3xl glass glow-sm">
-                <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-4 block">
+                <span className="text-xs uppercase tracking-[0.2em] text-foreground/60 mb-4 block">
                   Outcome
                 </span>
                 <p className="text-xl font-medium">
