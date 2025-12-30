@@ -9,15 +9,15 @@ export function AIAlly() {
             {/* Text */}
             <div className="lg:col-span-3">
               <div className="flex items-center gap-3 mb-8">
-                <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
+                <span className="text-xs uppercase tracking-[0.3em] text-foreground/60">
                   Philosophy
                 </span>
                 <div className="h-px flex-1 bg-border" />
               </div>
               
-              <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight leading-[1.1] mb-8">
+              <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight leading-[1.1] mb-8 text-foreground">
                 AI as your ally,
-                <span className="text-foreground/50"> not your replacement.</span>
+                <span className="text-foreground/60"> not your replacement.</span>
               </h2>
               
               <p className="text-lg text-foreground/70 leading-relaxed mb-6">

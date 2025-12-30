@@ -29,13 +29,13 @@ export function WhoItsFor() {
           {/* Section header */}
           <div className="max-w-2xl mb-20">
             <div className="flex items-center gap-3 mb-8">
-              <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
+              <span className="text-xs uppercase tracking-[0.3em] text-foreground/60">
                 Who it's for
               </span>
               <div className="h-px flex-1 bg-border" />
             </div>
             
-            <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight leading-[1.1]">
+            <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight leading-[1.1] text-foreground">
               Built for creators who move fast.
             </h2>
           </div>
@@ -50,11 +50,11 @@ export function WhoItsFor() {
                 <span className="text-xs font-mono text-primary mb-6 block">
                   {String(i + 1).padStart(2, "0")}
                 </span>
-                <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-3 block">
+                <span className="text-xs uppercase tracking-[0.2em] text-foreground/60 mb-3 block">
                   {audience.label}
                 </span>
-                <h3 className="text-lg font-semibold mb-4">{audience.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
+                <h3 className="text-lg font-semibold mb-4 text-foreground">{audience.title}</h3>
+                <p className="text-sm text-foreground/65 leading-relaxed">
                   {audience.description}
                 </p>
               </div>

@@ -41,13 +41,13 @@ export function HowItWorks() {
           <div className="text-center mb-20">
             <div className="flex items-center justify-center gap-3 mb-8">
               <div className="h-px w-12 bg-gradient-to-r from-transparent to-border" />
-              <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
+              <span className="text-xs uppercase tracking-[0.3em] text-foreground/60">
                 Process
               </span>
               <div className="h-px w-12 bg-gradient-to-l from-transparent to-border" />
             </div>
             
-            <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight">
+            <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-foreground">
               Brief to launch in four steps.
             </h2>
           </div>
@@ -69,8 +69,8 @@ export function HowItWorks() {
                   <step.icon className="w-6 h-6 text-primary" />
                 </div>
 
-                <h3 className="font-display text-xl font-semibold mb-3">{step.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
+                <h3 className="font-display text-xl font-semibold mb-3 text-foreground">{step.title}</h3>
+                <p className="text-sm text-foreground/65 leading-relaxed">
                   {step.description}
                 </p>
                 
