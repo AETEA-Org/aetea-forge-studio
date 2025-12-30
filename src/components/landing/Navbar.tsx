@@ -35,7 +35,7 @@ export function Navbar() {
             <img 
               src={logo} 
               alt="AETEA" 
-              className="h-7 w-auto transition-opacity hover:opacity-80" 
+              className="h-10 w-auto transition-opacity hover:opacity-80" 
             />
           </Link>
 

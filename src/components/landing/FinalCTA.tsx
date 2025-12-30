@@ -4,9 +4,12 @@ import { Button } from "@/components/ui/button";
 
 export function FinalCTA() {
   return (
-    <section className="py-32 md:py-40 relative grain">
+    <section className="py-32 md:py-40 relative grain overflow-hidden">
+      {/* Pure black background */}
+      <div className="absolute inset-0 bg-black" />
+      
       {/* Gradient orbs */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-primary/10 rounded-full blur-[150px] animate-glow-pulse" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-primary/15 rounded-full blur-[180px] animate-glow-pulse" />
       
       <div className="container relative px-6 lg:px-12">
         <div className="max-w-3xl mx-auto text-center">
