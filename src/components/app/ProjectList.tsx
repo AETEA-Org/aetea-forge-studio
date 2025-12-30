@@ -1,10 +1,8 @@
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { FolderOpen, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
-
-// Placeholder - will be replaced with actual API data
-const mockProjects: { project_id: string; title: string; last_modified: string }[] = [];
+import { useProjects } from "@/hooks/useProjects";
 
 interface ProjectListProps {
   collapsed: boolean;
@@ -13,12 +11,14 @@ interface ProjectListProps {
 export function ProjectList({ collapsed }: ProjectListProps) {
   const navigate = useNavigate();
   const { projectId } = useParams();
-  const isLoading = false; // Will be replaced with actual loading state
+  const { data, isLoading, error } = useProjects();
+  
+  const projects = data?.projects || [];
 
   if (collapsed) {
     return (
       <div className="p-2 space-y-1">
-        {mockProjects.map((project) => (
+        {projects.map((project) => (
           <button
             key={project.project_id}
             onClick={() => navigate(`/app/project/${project.project_id}`)}
@@ -44,7 +44,15 @@ export function ProjectList({ collapsed }: ProjectListProps) {
     );
   }
 
-  if (mockProjects.length === 0) {
+  if (error) {
+    return (
+      <div className="p-4 text-center">
+        <p className="text-xs text-destructive">Failed to load projects</p>
+      </div>
+    );
+  }
+
+  if (projects.length === 0) {
     return (
       <div className="p-4 text-center">
         <p className="text-xs text-muted-foreground">No projects yet</p>
@@ -54,7 +62,7 @@ export function ProjectList({ collapsed }: ProjectListProps) {
 
   return (
     <div className="p-2 space-y-1">
-      {mockProjects.map((project) => (
+      {projects.map((project) => (
         <button
           key={project.project_id}
           onClick={() => navigate(`/app/project/${project.project_id}`)}
