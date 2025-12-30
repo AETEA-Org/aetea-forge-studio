@@ -11,9 +11,9 @@ export function FinalCTA() {
       {/* Gradient orbs */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-primary/15 rounded-full blur-[180px] animate-glow-pulse" />
       
-      <div className="container relative px-6 lg:px-12">
+      <div className="container relative z-10 px-6 lg:px-12">
         <div className="max-w-3xl mx-auto text-center">
-          <h2 className="font-display text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight mb-8">
+          <h2 className="font-display text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight mb-8 text-foreground drop-shadow-[0_2px_30px_hsl(var(--background))]">
             Ready to turn direction into deliverables?
           </h2>
           
