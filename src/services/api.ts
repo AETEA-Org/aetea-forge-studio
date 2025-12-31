@@ -52,14 +52,24 @@ export async function getProjectSection<T>(
   section: SectionName,
   userEmail: string
 ): Promise<SectionResponse<T>> {
+  console.log('API: Fetching section', { projectId, section, userEmail });
+  
   const response = await fetch(
     buildUrl(`/projects/${projectId}/section/${section}`, { user_id: userEmail })
   );
+  
+  console.log('API: Response status', response.status, response.ok);
+  
   if (!response.ok) {
     const error = await response.json();
+    console.error('API: Error response', error);
     throw new Error(error.detail || `Failed to fetch ${section}`);
   }
-  return response.json();
+  
+  const result = await response.json();
+  console.log('API: Section data received', { section, data: result });
+  
+  return result;
 }
 
 // Convenience methods for specific sections
@@ -161,4 +171,21 @@ export async function analyzeBrief(
       }
     }
   }
+}
+
+// Delete project
+export async function deleteProject(projectId: string, userEmail: string) {
+  const response = await fetch(
+    buildUrl(`/projects/${projectId}`, { user_id: userEmail }),
+    {
+      method: 'DELETE',
+    }
+  );
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to delete project');
+  }
+  
+  return response.json();
 }

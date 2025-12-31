@@ -18,13 +18,44 @@ export function BriefTab({ projectId }: BriefTabProps) {
     );
   }
 
-  if (error || !brief) {
+  if (error) {
+    console.error('Brief load error:', error);
     return (
       <div className="text-center py-12">
         <p className="text-destructive">Failed to load brief</p>
+        <p className="text-sm text-muted-foreground mt-2">
+          {error instanceof Error ? error.message : 'Unknown error'}
+        </p>
       </div>
     );
   }
+
+  if (!brief) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-muted-foreground">No brief data available</p>
+      </div>
+    );
+  }
+
+  // Validate critical data structure
+  if (!brief.campaign_goals || !brief.brand_information || !brief.project_brief) {
+    console.error('Invalid brief structure:', brief);
+    return (
+      <div className="text-center py-12">
+        <p className="text-destructive">Invalid brief data format</p>
+      </div>
+    );
+  }
+
+  // Safe accessors with defaults
+  const objectives = brief.campaign_goals?.campaign_objectives || [];
+  const targetMetrics = brief.campaign_goals?.target_metrics || [];
+  const voiceTags = brief.brand_information?.brand_voice_tags || [];
+  const colors = brief.brand_information?.colors || [];
+  const typographyList = brief.brand_information?.typography || [];
+  const deliverables = brief.project_brief?.deliverables || [];
+  const keyDates = brief.project_brief?.key_dates || [];
 
   return (
     <div className="space-y-6">
@@ -36,7 +67,7 @@ export function BriefTab({ projectId }: BriefTabProps) {
           <div>
             <p className="text-xs text-muted-foreground mb-2">Objectives</p>
             <ul className="space-y-2">
-              {brief.campaign_goals.campaign_objectives.map((obj, i) => (
+              {objectives.map((obj, i) => (
                 <li key={i} className="flex items-start gap-2 text-sm">
                   <span className="text-primary mt-1">•</span>
                   {obj}
@@ -57,7 +88,7 @@ export function BriefTab({ projectId }: BriefTabProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {brief.campaign_goals.target_metrics.map((metric, i) => (
+                  {targetMetrics.map((metric, i) => (
                     <tr key={i} className="border-b border-border/50">
                       <td className="py-2">{metric.metric}</td>
                       <td className="py-2 text-primary">{metric.target}</td>
@@ -92,7 +123,7 @@ export function BriefTab({ projectId }: BriefTabProps) {
             <div className="mb-4">
               <p className="text-xs text-muted-foreground mb-2">Voice Tags</p>
               <div className="flex flex-wrap gap-2">
-                {brief.brand_information.brand_voice_tags.map((tag, i) => (
+                {voiceTags.map((tag, i) => (
                   <span key={i} className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
                     {tag}
                   </span>
@@ -110,7 +141,7 @@ export function BriefTab({ projectId }: BriefTabProps) {
             <div className="mb-4">
               <p className="text-xs text-muted-foreground mb-2">Color Palette</p>
               <div className="flex flex-wrap gap-3">
-                {brief.brand_information.colors.map((color, i) => (
+                {colors.map((color, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <div 
                       className="w-8 h-8 rounded-lg border border-border"
@@ -128,7 +159,7 @@ export function BriefTab({ projectId }: BriefTabProps) {
             <div>
               <p className="text-xs text-muted-foreground mb-2">Typography</p>
               <div className="flex flex-wrap gap-2">
-                {brief.brand_information.typography.map((font, i) => (
+                {typographyList.map((font, i) => (
                   <span key={i} className="text-xs px-2 py-1 rounded bg-muted">
                     {font}
                   </span>
@@ -147,7 +178,7 @@ export function BriefTab({ projectId }: BriefTabProps) {
           <div>
             <p className="text-xs text-muted-foreground mb-2">Deliverables</p>
             <ul className="grid md:grid-cols-2 gap-2">
-              {brief.project_brief.deliverables.map((item, i) => (
+              {deliverables.map((item, i) => (
                 <li key={i} className="flex items-start gap-2 text-sm">
                   <span className="text-primary mt-1">•</span>
                   {item}
@@ -173,11 +204,11 @@ export function BriefTab({ projectId }: BriefTabProps) {
             </div>
           )}
 
-          {brief.project_brief.key_dates.length > 0 && (
+          {keyDates.length > 0 && (
             <div>
               <p className="text-xs text-muted-foreground mb-2">Key Dates</p>
               <div className="space-y-2">
-                {brief.project_brief.key_dates.map((item, i) => (
+                {keyDates.map((item, i) => (
                   <div key={i} className="flex items-center gap-3 text-sm">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                     <span className="font-medium">{item.label}</span>

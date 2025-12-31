@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
 };
 
 const AETEA_API_URL = 'https://m-abdur2024-aetea-ai.hf.space';
@@ -69,7 +70,7 @@ serve(async (req) => {
       });
     }
 
-    // Handle regular requests
+    // Handle regular requests (GET, POST, PUT, PATCH, DELETE, etc.)
     const fetchOptions: RequestInit = {
       method: req.method,
       headers: {
@@ -78,8 +79,9 @@ serve(async (req) => {
       },
     };
 
-    // Add body for non-GET requests
-    if (req.method !== 'GET' && req.method !== 'HEAD') {
+    // Add body for methods that typically have a body (POST, PUT, PATCH)
+    // Skip for GET, HEAD, DELETE
+    if (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') {
       const body = await req.text();
       if (body) {
         fetchOptions.body = body;
@@ -87,9 +89,42 @@ serve(async (req) => {
     }
 
     const response = await fetch(targetUrl.toString(), fetchOptions);
-    const data = await response.json();
 
     console.log(`Response status: ${response.status}`);
+
+    // Handle empty responses (common with 204 No Content)
+    const contentLength = response.headers.get('content-length');
+    if (response.status === 204 || contentLength === '0') {
+      return new Response(
+        JSON.stringify({ success: true, message: 'Operation completed successfully' }), 
+        {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    // Try to parse response - handle both JSON and text responses
+    let data;
+    try {
+      const text = await response.text();
+      
+      if (!text || text.trim() === '') {
+        data = { success: true, message: 'Operation completed successfully' };
+      } else {
+        try {
+          data = JSON.parse(text);
+        } catch {
+          // Not JSON, wrap the text
+          data = { message: text };
+        }
+      }
+    } catch (parseError) {
+      console.error('Error parsing response:', parseError);
+      data = response.ok 
+        ? { success: true, message: 'Operation completed successfully' } 
+        : { error: 'Failed to parse response' };
+    }
 
     return new Response(JSON.stringify(data), {
       status: response.status,

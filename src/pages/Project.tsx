@@ -20,6 +20,16 @@ export default function Project() {
   const { data: projectsData, isLoading: projectsLoading } = useProjects();
   const project = projectsData?.projects.find(p => p.project_id === projectId);
 
+  // DEBUG: Log project page state
+  console.log('Project Page DEBUG:', {
+    projectId,
+    projectsLoading,
+    hasProjectsData: !!projectsData,
+    projectsCount: projectsData?.projects?.length,
+    foundProject: !!project,
+    activeTab,
+  });
+
   // Reset to overview tab when project changes
   useEffect(() => {
     setActiveTab('overview');

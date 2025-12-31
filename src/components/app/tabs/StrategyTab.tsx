@@ -1,5 +1,6 @@
 import { Loader2, ArrowRight } from "lucide-react";
 import { useProjectStrategy } from "@/hooks/useProjectSection";
+import { Markdown } from "@/components/ui/markdown";
 import type { StrategyModel } from "@/types/api";
 
 interface StrategyTabProps {
@@ -18,13 +19,44 @@ export function StrategyTab({ projectId }: StrategyTabProps) {
     );
   }
 
-  if (error || !strategy) {
+  if (error) {
+    console.error('Strategy load error:', error);
     return (
       <div className="text-center py-12">
         <p className="text-destructive">Failed to load strategy</p>
+        <p className="text-sm text-muted-foreground mt-2">
+          {error instanceof Error ? error.message : 'Unknown error'}
+        </p>
       </div>
     );
   }
+
+  if (!strategy) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-muted-foreground">No strategy data available</p>
+      </div>
+    );
+  }
+
+  // Validate critical data structure
+  if (!strategy.doctrine || !strategy.campaign_pillars || !strategy.audience_mapping || !strategy.channel_strategy) {
+    console.error('Invalid strategy structure:', strategy);
+    return (
+      <div className="text-center py-12">
+        <p className="text-destructive">Invalid strategy data format</p>
+      </div>
+    );
+  }
+
+  // Safe accessors with defaults
+  const doctrine = strategy.doctrine || [];
+  const pillars = strategy.campaign_pillars || [];
+  const kpis = strategy.kpis || [];
+  const segments = strategy.audience_mapping?.segments || [];
+  const personas = strategy.audience_mapping?.personas || [];
+  const channels = strategy.channel_strategy?.channels || [];
+  const contentCalendar = strategy.channel_strategy?.content_calendar || [];
 
   return (
     <div className="space-y-6">
@@ -32,10 +64,10 @@ export function StrategyTab({ projectId }: StrategyTabProps) {
       <div className="glass rounded-xl p-6">
         <h2 className="font-semibold mb-4">Strategic Doctrine</h2>
         <ul className="space-y-2">
-          {strategy.doctrine.map((item, i) => (
+          {doctrine.map((item, i) => (
             <li key={i} className="flex items-start gap-2 text-sm">
-              <span className="text-primary mt-1">•</span>
-              {item}
+              <span className="text-primary mt-1 shrink-0">•</span>
+              <Markdown className="flex-1">{item}</Markdown>
             </li>
           ))}
         </ul>
@@ -45,13 +77,17 @@ export function StrategyTab({ projectId }: StrategyTabProps) {
       <div className="glass rounded-xl p-6">
         <h2 className="font-semibold mb-4">Campaign Pillars</h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {strategy.campaign_pillars.map((pillar, i) => (
+          {pillars.map((pillar, i) => (
             <div key={i} className="p-4 rounded-lg bg-muted/50 border border-border">
               <h3 className="font-medium text-primary mb-2">{pillar.title}</h3>
-              <p className="text-sm mb-3">{pillar.core_message}</p>
+              <Markdown className="text-sm mb-3">{pillar.core_message}</Markdown>
               <div className="space-y-2 text-xs text-muted-foreground">
-                <p><span className="font-medium">Value:</span> {pillar.value_proposition}</p>
-                <p><span className="font-medium">Position:</span> {pillar.positioning_note}</p>
+                <div>
+                  <span className="font-medium">Value:</span> <Markdown inline>{pillar.value_proposition}</Markdown>
+                </div>
+                <div>
+                  <span className="font-medium">Position:</span> <Markdown inline>{pillar.positioning_note}</Markdown>
+                </div>
               </div>
             </div>
           ))}
@@ -72,10 +108,12 @@ export function StrategyTab({ projectId }: StrategyTabProps) {
               </tr>
             </thead>
             <tbody>
-              {strategy.kpis.map((kpi, i) => (
+              {kpis.map((kpi, i) => (
                 <tr key={i} className="border-b border-border/50">
                   <td className="py-2 font-medium">{kpi.metric}</td>
-                  <td className="py-2 text-muted-foreground">{kpi.description}</td>
+                  <td className="py-2 text-muted-foreground">
+                    <Markdown className="text-sm">{kpi.description}</Markdown>
+                  </td>
                   <td className="py-2 text-primary">{kpi.target}</td>
                   <td className="py-2 text-muted-foreground">{kpi.timeframe}</td>
                 </tr>
@@ -93,9 +131,9 @@ export function StrategyTab({ projectId }: StrategyTabProps) {
         <div className="mb-6">
           <p className="text-xs text-muted-foreground mb-2">Segments</p>
           <div className="flex flex-wrap gap-2">
-            {strategy.audience_mapping.segments.map((segment, i) => (
+            {segments.map((segment, i) => (
               <span key={i} className="text-xs px-3 py-1 rounded-full bg-primary/10 text-primary">
-                {segment}
+                {typeof segment === 'string' ? segment : JSON.stringify(segment)}
               </span>
             ))}
           </div>
@@ -105,12 +143,14 @@ export function StrategyTab({ projectId }: StrategyTabProps) {
         <div className="mb-6">
           <p className="text-xs text-muted-foreground mb-3">Personas</p>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {strategy.audience_mapping.personas.map((persona, i) => (
+            {personas.map((persona, i) => (
               <div key={i} className="p-4 rounded-lg bg-muted/50">
                 <h4 className="font-medium mb-2">{persona.name}</h4>
-                <p className="text-sm text-muted-foreground mb-3">{persona.description}</p>
+                <Markdown className="text-sm text-muted-foreground mb-3">
+                  {typeof persona.description === 'string' ? persona.description : ''}
+                </Markdown>
                 <div className="flex flex-wrap gap-1">
-                  {persona.channels.map((channel, j) => (
+                  {persona.channels?.map((channel, j) => (
                     <span key={j} className="text-xs px-2 py-0.5 rounded bg-muted">
                       {channel}
                     </span>
@@ -148,12 +188,14 @@ export function StrategyTab({ projectId }: StrategyTabProps) {
         
         {/* Channels */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-          {strategy.channel_strategy.channels.map((channel, i) => (
+          {channels.map((channel, i) => (
             <div key={i} className="p-4 rounded-lg bg-muted/50">
               <div className="flex items-center justify-between mb-2">
                 <h4 className="font-medium">{channel.name}</h4>
                 {channel.budget_share && (
-                  <span className="text-xs text-primary">{channel.budget_share}%</span>
+                  <span className="text-xs text-primary">
+                    {Math.round(channel.budget_share * 100)}%
+                  </span>
                 )}
               </div>
               <p className="text-sm text-muted-foreground mb-2">{channel.role}</p>
@@ -169,7 +211,7 @@ export function StrategyTab({ projectId }: StrategyTabProps) {
         </div>
 
         {/* Content Calendar */}
-        {strategy.channel_strategy.content_calendar.length > 0 && (
+        {contentCalendar.length > 0 && (
           <div>
             <p className="text-xs text-muted-foreground mb-3">Content Calendar</p>
             <div className="overflow-x-auto">
@@ -183,7 +225,7 @@ export function StrategyTab({ projectId }: StrategyTabProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {strategy.channel_strategy.content_calendar.map((item, i) => (
+                  {contentCalendar.map((item, i) => (
                     <tr key={i} className="border-b border-border/50">
                       <td className="py-2">{item.date_or_phase}</td>
                       <td className="py-2">{item.channel}</td>

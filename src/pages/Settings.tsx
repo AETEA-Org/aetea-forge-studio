@@ -85,10 +85,12 @@ export default function Settings() {
                         <label className="text-sm text-muted-foreground">Email</label>
                         <p className="mt-1">{user?.email}</p>
                       </div>
-                      <div>
-                        <label className="text-sm text-muted-foreground">User ID</label>
-                        <p className="mt-1 text-sm font-mono text-muted-foreground">{user?.id}</p>
-                      </div>
+                      {user?.user_metadata?.username && (
+                        <div>
+                          <label className="text-sm text-muted-foreground">Username</label>
+                          <p className="mt-1">{user.user_metadata.username}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
 

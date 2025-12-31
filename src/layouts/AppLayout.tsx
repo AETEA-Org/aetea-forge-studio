@@ -16,7 +16,7 @@ export function AppLayout() {
       />
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto custom-scrollbar">
         <Outlet />
       </main>
 

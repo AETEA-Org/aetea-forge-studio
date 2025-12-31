@@ -1,8 +1,9 @@
 import { useState, useRef } from "react";
-import { Upload, FileText, Loader2, Sparkles, AlertCircle } from "lucide-react";
+import { Upload, FileText, Sparkles, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useCreateProject } from "@/hooks/useCreateProject";
+import { BriefAnalysisLoading } from "@/components/app/BriefAnalysisLoading";
 import { cn } from "@/lib/utils";
 
 export default function App() {
@@ -27,6 +28,12 @@ export default function App() {
     await createProject(briefText, files);
   };
 
+  // Show loading screen when submitting
+  if (isSubmitting) {
+    return <BriefAnalysisLoading progress={progress} />;
+  }
+
+  // Show form when NOT submitting
   return (
     <div className="min-h-full p-8">
       <div className="max-w-2xl mx-auto">
@@ -116,14 +123,6 @@ export default function App() {
           />
 
           {/* Progress */}
-          {progress && (
-            <div className="flex items-center gap-2 text-sm text-primary">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span>{progress}</span>
-            </div>
-          )}
-
-          {/* Error */}
           {error && (
             <div className="flex items-center gap-2 text-sm text-destructive">
               <AlertCircle className="h-4 w-4" />
@@ -138,17 +137,8 @@ export default function App() {
             className="w-full"
             size="lg"
           >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                Analyzing...
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-4 w-4 mr-2" />
-                Start Brief
-              </>
-            )}
+            <Sparkles className="h-4 w-4 mr-2" />
+            Start Brief
           </Button>
         </div>
       </div>
