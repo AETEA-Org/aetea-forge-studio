@@ -123,11 +123,11 @@ export function ResearchTab({ projectId }: ResearchTabProps) {
         
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
           {competitors.map((comp, i) => (
-            <div key={i} className="p-4 rounded-lg bg-muted/50">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="font-medium">{comp.name}</h3>
-                <span className="text-xs px-2 py-0.5 rounded bg-muted">{comp.competitor_type}</span>
-              </div>
+            <div key={i} className="p-4 rounded-lg bg-muted/50 border-l-2 border-primary">
+              <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium mb-3">
+                {comp.competitor_type}
+              </span>
+              <h3 className="font-medium text-lg mb-2">{comp.name}</h3>
               <Markdown className="text-sm text-muted-foreground mb-2">{comp.one_line_summary}</Markdown>
               <Markdown className="text-xs text-muted-foreground italic">{comp.perceived_positioning}</Markdown>
             </div>
