@@ -229,9 +229,6 @@ npm run type-check
    - Netlify
    - Cloudflare Pages
    - GitHub Pages
-
-See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions.
-
 ---
 
 ## 🐛 Troubleshooting

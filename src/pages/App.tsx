@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 export default function App() {
   const [briefText, setBriefText] = useState("");
   const [files, setFiles] = useState<File[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { createProject, isSubmitting, progress, error, reset } = useCreateProject();
@@ -22,6 +23,40 @@ export default function App() {
 
   const handleRemoveFile = (index: number) => {
     setFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    // Filter for accepted file types
+    const acceptedFiles = droppedFiles.filter(file => {
+      const extension = file.name.split('.').pop()?.toLowerCase();
+      return ['pdf', 'doc', 'docx', 'ppt', 'pptx'].includes(extension || '');
+    });
+
+    if (acceptedFiles.length > 0) {
+      setFiles((prev) => [...prev, ...acceptedFiles]);
+    }
   };
 
   const handleSubmit = async () => {
@@ -61,12 +96,21 @@ export default function App() {
             />
             <div
               onClick={() => fileInputRef.current?.click()}
+              onDragOver={handleDragOver}
+              onDragEnter={handleDragEnter}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
               className={cn(
-                "border-2 border-dashed border-border/50 rounded-xl p-8 text-center cursor-pointer",
-                "hover:border-primary/50 hover:bg-primary/5 transition-colors"
+                "border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors",
+                isDragging
+                  ? "border-primary bg-primary/10 scale-[1.02]"
+                  : "border-border/50 hover:border-primary/50 hover:bg-primary/5"
               )}
             >
-              <Upload className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
+              <Upload className={cn(
+                "h-8 w-8 mx-auto mb-3 transition-colors",
+                isDragging ? "text-primary" : "text-muted-foreground"
+              )} />
               <p className="text-sm font-medium mb-1">
                 Drop files here or click to upload
               </p>
