@@ -46,19 +46,49 @@ serve(async (req) => {
 
     console.log(`Proxying ${req.method} request to: ${targetUrl.toString()}`);
 
-    // Handle streaming for brief-analysis endpoint
-    if (path === '/ai/brief-analysis' && req.method === 'POST') {
-      const formData = await req.formData();
+    // Handle streaming endpoints (SSE - Server-Sent Events)
+    // IMPORTANT: Both /ai/brief-analysis and /ai/chat return SSE streams
+    if ((path === '/ai/brief-analysis' || path === '/ai/chat') && req.method === 'POST') {
+      let body;
+      let contentType;
+      
+      // Different endpoints use different content types
+      if (path === '/ai/brief-analysis') {
+        body = await req.formData();
+        contentType = undefined; // Let fetch set it for FormData
+      } else if (path === '/ai/chat') {
+        const jsonBody = await req.text();
+        body = jsonBody;
+        contentType = 'application/json';
+      }
+      
+      console.log(`Streaming request to ${path}`, body instanceof FormData ? 'FormData' : 'JSON');
       
       const response = await fetch(targetUrl.toString(), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${AETEA_API_TOKEN}`,
+          ...(contentType && { 'Content-Type': contentType }),
         },
-        body: formData,
+        body: body,
       });
 
-      // Stream the response back
+      console.log(`Streaming response status: ${response.status}`);
+
+      if (!response.ok) {
+        // If the response is an error, read and return it
+        const errorText = await response.text();
+        console.error(`Streaming error response: ${errorText}`);
+        return new Response(
+          JSON.stringify({ error: errorText || 'Request failed' }),
+          { 
+            status: response.status, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+
+      // Stream the response back with proper SSE headers
       return new Response(response.body, {
         status: response.status,
         headers: {
@@ -66,6 +96,7 @@ serve(async (req) => {
           'Content-Type': 'text/event-stream',
           'Cache-Control': 'no-cache',
           'Connection': 'keep-alive',
+          'X-Accel-Buffering': 'no', // Disable buffering for nginx
         },
       });
     }

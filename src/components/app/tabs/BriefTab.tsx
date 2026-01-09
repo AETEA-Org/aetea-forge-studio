@@ -1,12 +1,14 @@
 import { Loader2, Calendar } from "lucide-react";
 import { useProjectBrief } from "@/hooks/useProjectSection";
+import { ModificationOverlay } from "@/components/app/ModificationOverlay";
 import type { BriefModel } from "@/types/api";
 
 interface BriefTabProps {
   projectId: string;
+  isModifying?: boolean;
 }
 
-export function BriefTab({ projectId }: BriefTabProps) {
+export function BriefTab({ projectId, isModifying }: BriefTabProps) {
   const { data, isLoading, error } = useProjectBrief(projectId);
   const brief = data?.content as BriefModel | undefined;
 
@@ -58,7 +60,8 @@ export function BriefTab({ projectId }: BriefTabProps) {
   const keyDates = brief.project_brief?.key_dates || [];
 
   return (
-    <div className="space-y-6">
+    <div className="relative space-y-6">
+      <ModificationOverlay isActive={isModifying || false} />
       {/* Campaign Goals */}
       <div className="glass rounded-xl p-6">
         <h2 className="font-semibold mb-4">Campaign Goals</h2>

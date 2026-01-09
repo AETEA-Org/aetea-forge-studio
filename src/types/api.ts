@@ -222,3 +222,36 @@ export type SSEMessage = SSEProgressMessage | SSECompleteMessage | SSEErrorMessa
 
 // Section types
 export type SectionName = 'overview' | 'brief' | 'research' | 'strategy';
+
+// Chat types
+export interface AgentStreamMessage {
+  status: 'update' | 'content' | 'complete' | 'error';
+  content: string;
+  will_modify: boolean;
+}
+
+export interface ChatListItem {
+  chat_id: string;
+  title: string;
+  last_modified: string;
+}
+
+export interface ChatListResponse {
+  chats: ChatListItem[];
+}
+
+export interface ChatMessage {
+  message_id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+}
+
+export interface ChatMessagesResponse {
+  messages: ChatMessage[];
+}
+
+export interface DeleteChatResponse {
+  message: string;
+  chat_id: string;
+}

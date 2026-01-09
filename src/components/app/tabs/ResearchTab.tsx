@@ -1,13 +1,15 @@
 import { Loader2 } from "lucide-react";
 import { useProjectResearch } from "@/hooks/useProjectSection";
 import { Markdown } from "@/components/ui/markdown";
+import { ModificationOverlay } from "@/components/app/ModificationOverlay";
 import type { ResearchModel } from "@/types/api";
 
 interface ResearchTabProps {
   projectId: string;
+  isModifying?: boolean;
 }
 
-export function ResearchTab({ projectId }: ResearchTabProps) {
+export function ResearchTab({ projectId, isModifying }: ResearchTabProps) {
   const { data, isLoading, error } = useProjectResearch(projectId);
   const research = data?.content as ResearchModel | undefined;
 
@@ -60,7 +62,8 @@ export function ResearchTab({ projectId }: ResearchTabProps) {
   const threats = research.swot?.threats || [];
 
   return (
-    <div className="space-y-6">
+    <div className="relative space-y-6">
+      <ModificationOverlay isActive={isModifying || false} />
       {/* Market & Category */}
       <div className="glass rounded-xl p-6">
         <h2 className="font-semibold mb-4">Market & Category</h2>

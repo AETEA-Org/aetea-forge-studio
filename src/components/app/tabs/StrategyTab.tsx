@@ -1,13 +1,15 @@
 import { Loader2, ArrowRight } from "lucide-react";
 import { useProjectStrategy } from "@/hooks/useProjectSection";
 import { Markdown } from "@/components/ui/markdown";
+import { ModificationOverlay } from "@/components/app/ModificationOverlay";
 import type { StrategyModel } from "@/types/api";
 
 interface StrategyTabProps {
   projectId: string;
+  isModifying?: boolean;
 }
 
-export function StrategyTab({ projectId }: StrategyTabProps) {
+export function StrategyTab({ projectId, isModifying }: StrategyTabProps) {
   const { data, isLoading, error } = useProjectStrategy(projectId);
   const strategy = data?.content as StrategyModel | undefined;
 
@@ -59,7 +61,8 @@ export function StrategyTab({ projectId }: StrategyTabProps) {
   const contentCalendar = strategy.channel_strategy?.content_calendar || [];
 
   return (
-    <div className="space-y-6">
+    <div className="relative space-y-6">
+      <ModificationOverlay isActive={isModifying || false} />
       {/* Doctrine */}
       <div className="glass rounded-xl p-6">
         <h2 className="font-semibold mb-4">Strategic Doctrine</h2>

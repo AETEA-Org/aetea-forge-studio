@@ -10,6 +10,10 @@ import type {
   StrategyModel,
   SectionName,
   SSEMessage,
+  AgentStreamMessage,
+  ChatListResponse,
+  ChatMessagesResponse,
+  DeleteChatResponse,
 } from "@/types/api";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -185,6 +189,137 @@ export async function deleteProject(projectId: string, userEmail: string) {
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.detail || 'Failed to delete project');
+  }
+  
+  return response.json();
+}
+
+// Chat functions
+export async function sendChatMessage(
+  userEmail: string,
+  projectId: string,
+  chatId: string,
+  context: string,
+  message: string,
+  onUpdate?: (content: string, willModify: boolean) => void,
+  onContent?: (content: string, willModify: boolean) => void,
+  onComplete?: (content: string, willModify: boolean) => void,
+  onError?: (message: string) => void
+): Promise<void> {
+  const url = buildUrl('/ai/chat');
+  
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      user_id: userEmail,
+      project_id: projectId,
+      chat_id: chatId,
+      context: context,
+      message: message,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Chat message failed');
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) {
+    throw new Error('No response body');
+  }
+
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let accumulatedContent = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    
+    // Keep the last incomplete line in buffer
+    buffer = lines.pop() || '';
+
+    for (const line of lines) {
+      if (line.startsWith('data: ')) {
+        try {
+          const data: AgentStreamMessage = JSON.parse(line.slice(6));
+          
+          if (data.status === 'update') {
+            onUpdate?.(data.content, data.will_modify);
+          } else if (data.status === 'content') {
+            accumulatedContent += data.content;
+            onContent?.(accumulatedContent, data.will_modify);
+          } else if (data.status === 'complete') {
+            onComplete?.(data.content, data.will_modify);
+          } else if (data.status === 'error') {
+            onError?.(data.content);
+          }
+        } catch (e) {
+          console.error('Failed to parse SSE message:', line, e);
+        }
+      }
+    }
+  }
+}
+
+// List chats for a project
+export async function listChats(
+  userEmail: string,
+  projectId: string
+): Promise<ChatListResponse> {
+  const response = await fetch(
+    buildUrl('/chats', { user_id: userEmail, project_id: projectId })
+  );
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to fetch chats');
+  }
+  
+  return response.json();
+}
+
+// Get messages for a chat
+export async function getChatMessages(
+  chatId: string,
+  userEmail: string,
+  projectId: string
+): Promise<ChatMessagesResponse> {
+  const response = await fetch(
+    buildUrl(`/chats/${chatId}/messages`, { user_id: userEmail, project_id: projectId })
+  );
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to fetch messages');
+  }
+  
+  return response.json();
+}
+
+// Delete a chat
+export async function deleteChat(
+  chatId: string,
+  userEmail: string,
+  projectId: string
+): Promise<DeleteChatResponse> {
+  const response = await fetch(
+    buildUrl(`/chats/${chatId}`, { user_id: userEmail, project_id: projectId }),
+    {
+      method: 'DELETE',
+    }
+  );
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to delete chat');
   }
   
   return response.json();

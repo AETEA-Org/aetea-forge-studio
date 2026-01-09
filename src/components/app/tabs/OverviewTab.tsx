@@ -1,13 +1,15 @@
 import { Loader2 } from "lucide-react";
 import { useProjectOverview } from "@/hooks/useProjectSection";
 import { Markdown } from "@/components/ui/markdown";
+import { ModificationOverlay } from "@/components/app/ModificationOverlay";
 import type { OverviewModel } from "@/types/api";
 
 interface OverviewTabProps {
   projectId: string;
+  isModifying?: boolean;
 }
 
-export function OverviewTab({ projectId }: OverviewTabProps) {
+export function OverviewTab({ projectId, isModifying }: OverviewTabProps) {
   const { data, isLoading, error } = useProjectOverview(projectId);
   const overview = data?.content as OverviewModel | undefined;
 
@@ -71,7 +73,8 @@ export function OverviewTab({ projectId }: OverviewTabProps) {
   const platforms = overview.strategy_highlights?.main_platforms || [];
 
   return (
-    <div className="space-y-6">
+    <div className="relative space-y-6">
+      <ModificationOverlay isActive={isModifying || false} />
       {/* Campaign Summary */}
       <div className="glass rounded-xl p-6">
         <h2 className="font-semibold mb-3">Campaign Summary</h2>
