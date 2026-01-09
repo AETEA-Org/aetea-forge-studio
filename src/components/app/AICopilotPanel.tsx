@@ -366,7 +366,7 @@ export function AICopilotPanel({
 
   if (collapsed) {
     return (
-      <aside className="h-screen flex flex-col bg-sidebar border-l border-sidebar-border transition-all duration-300 w-12">
+      <aside className="h-screen flex flex-col bg-sidebar border-l border-sidebar-border transition-all duration-300 w-12 z-[60]">
         <div className="p-3 flex items-center justify-center border-b border-sidebar-border">
           <Button
             variant="ghost"
@@ -388,7 +388,7 @@ export function AICopilotPanel({
     <>
     <aside
         ref={panelRef}
-        className="h-screen flex bg-sidebar border-l border-sidebar-border transition-all duration-300 relative"
+        className="h-screen flex bg-sidebar border-l border-sidebar-border transition-all duration-300 relative z-[60]"
         style={{ width: `${panelWidth}px` }}
       >
         {/* Resize Handle */}
