@@ -41,20 +41,20 @@ export function ChatInput({ onSend, isStreaming, contextLabel, disabled }: ChatI
       <ChatContextIndicator contextLabel={contextLabel} />
       
       <form onSubmit={handleSubmit} className="flex gap-2">
-        <Textarea
-          ref={textareaRef}
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="Ask a question..."
-          disabled={isStreaming || disabled}
-          className="min-h-[44px] max-h-[120px] resize-none bg-background/50 border-border/50"
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              handleSubmit(e);
-            }
-          }}
-        />
+            <Textarea
+              ref={textareaRef}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Ask a question..."
+              disabled={isStreaming || disabled}
+              className="min-h-[44px] max-h-[120px] resize-none bg-background/50 border-border/50"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit(e);
+                }
+              }}
+            />
         <Button
           type="submit"
           disabled={!message.trim() || isStreaming || disabled}
