@@ -95,10 +95,18 @@ export default function Project() {
     // Check if modification applies to current view
     // For tasks tab with selected task, check if modifyingContext matches the task ID
     // Otherwise, check if it matches the active tab
+    
+    // Extract just the task ID from composite selectedTaskId for comparison
+    let taskIdForComparison = null;
+    if (selectedTaskId) {
+      const parts = selectedTaskId.split('/');
+      taskIdForComparison = parts[parts.length - 1];
+    }
+    
     const isCurrentViewModifying = 
       isModifying && 
       (modifyingContext === activeTab || 
-       (activeTab === 'tasks' && selectedTaskId && modifyingContext === selectedTaskId));
+       (activeTab === 'tasks' && taskIdForComparison && modifyingContext === taskIdForComparison));
     
     const commonProps = {
       isModifying: isCurrentViewModifying,

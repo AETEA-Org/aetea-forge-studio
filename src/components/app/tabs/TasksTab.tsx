@@ -15,6 +15,9 @@ interface TasksTabProps {
 export function TasksTab({ projectId, onTaskSelect, isModifying }: TasksTabProps) {
   const { data, isLoading, error } = useProjectTasks(projectId);
   const [selectedTask, setSelectedTask] = useState<TaskModel | null>(null);
+  
+  // Extract tasks early so it can be used in effects
+  const tasks = data?.tasks || [];
 
   // Notify parent when task selection changes
   useEffect(() => {
@@ -39,18 +42,20 @@ export function TasksTab({ projectId, onTaskSelect, isModifying }: TasksTabProps
     );
   }
 
-  const tasks = data?.tasks || [];
-
   return (
-    <div className="relative">
-      <ModificationOverlay isActive={isModifying || false} />
-      <TaskBoard tasks={tasks} onTaskClick={setSelectedTask} />
+    <>
+      <div className="relative">
+        <ModificationOverlay isActive={isModifying || false} />
+        <TaskBoard tasks={tasks} onTaskClick={setSelectedTask} />
+      </div>
       
+      {/* Render task modal separately with higher z-index blur overlay */}
       <TaskModal
         task={selectedTask}
         open={!!selectedTask}
         onClose={() => setSelectedTask(null)}
+        isModifying={isModifying || false}
       />
-    </div>
+    </>
   );
 }

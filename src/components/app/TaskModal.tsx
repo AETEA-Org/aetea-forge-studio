@@ -17,6 +17,7 @@ interface TaskModalProps {
   task: TaskModel | null;
   open: boolean;
   onClose: () => void;
+  isModifying?: boolean;
 }
 
 const categoryColors: Record<string, string> = {
@@ -35,7 +36,7 @@ const statusLabels: Record<string, string> = {
   done: 'Done',
 };
 
-export function TaskModal({ task, open, onClose }: TaskModalProps) {
+export function TaskModal({ task, open, onClose, isModifying }: TaskModalProps) {
   const backdropRef = useRef<HTMLDivElement>(null);
   
   // Dynamically calculate AI Copilot width and update backdrop
@@ -199,6 +200,25 @@ export function TaskModal({ task, open, onClose }: TaskModalProps) {
             </Button>
           </div>
         </div>
+        
+        {/* Blur overlay on top of modal when modifying */}
+        {isModifying && (
+          <div className="absolute inset-0 z-[100] bg-background/60 backdrop-blur-md flex items-center justify-center">
+            <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 animate-pulse" />
+            <div className="relative z-10 text-center space-y-4 px-6">
+              <div className="flex justify-center">
+                <div className="relative w-16 h-16">
+                  <div className="absolute inset-0 rounded-full border-4 border-primary/20" />
+                  <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary animate-spin" />
+                </div>
+              </div>
+              <p className="text-sm font-medium text-foreground/80">
+                AI is updating this task...
+              </p>
+            </div>
+          </div>
+        )}
+        
         </DialogPrimitive.Content>
       </DialogPortal>
     </Dialog>
