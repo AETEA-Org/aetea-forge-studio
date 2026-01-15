@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Bot, ChevronLeft, ChevronRight, Plus, History, GripVertical } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, History, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ChatHistoryDialog } from "./ChatHistoryDialog";
@@ -35,7 +35,6 @@ export function AICopilotPanel({
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
   const [willModify, setWillModify] = useState(false);
   const [modifyingContext, setModifyingContext] = useState<string | null>(null);
-  const [historyOpen, setHistoryOpen] = useState(false);
   const [optimisticMessages, setOptimisticMessages] = useState<ChatMessage[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [panelWidth, setPanelWidth] = useState(450); // Default 450px (increased from 384px)
@@ -378,7 +377,7 @@ export function AICopilotPanel({
           </Button>
         </div>
         <div className="flex-1 flex flex-col items-center justify-center p-2">
-          <Bot className="h-5 w-5 text-muted-foreground" />
+          <img src="/favicon.png" alt="AETEA" className="h-5 w-5" />
         </div>
       </aside>
     );
@@ -417,8 +416,8 @@ export function AICopilotPanel({
         >
               <ChevronRight className="h-4 w-4" />
         </Button>
-            <Bot className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium">AI Copilot</span>
+            <img src="/favicon.png" alt="AETEA" className="h-4 w-4" />
+            <span className="text-sm font-medium">AETEA</span>
           </div>
           
           <div className="flex items-center gap-1">
@@ -431,15 +430,21 @@ export function AICopilotPanel({
             >
               <Plus className="h-4 w-4" />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setHistoryOpen(true)}
-              className="h-8 w-8 text-sidebar-foreground/70 hover:text-sidebar-foreground"
-              title="Chat History"
-            >
-              <History className="h-4 w-4" />
-            </Button>
+            <ChatHistoryDialog
+              projectId={projectId}
+              activeChatId={activeChatId}
+              onSelectChat={setActiveChatId}
+              trigger={
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-sidebar-foreground/70 hover:text-sidebar-foreground"
+                  title="Chat History"
+                >
+                  <History className="h-4 w-4" />
+                </Button>
+              }
+            />
           </div>
       </div>
 
@@ -468,7 +473,7 @@ export function AICopilotPanel({
           ) : (
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
           <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-            <Bot className="h-8 w-8 text-primary" />
+            <img src="/favicon.png" alt="AETEA" className="h-8 w-8" />
           </div>
               <h3 className="font-medium text-foreground mb-2">Start a conversation</h3>
               <p className="text-sm text-muted-foreground mb-4 max-w-xs">
@@ -483,14 +488,6 @@ export function AICopilotPanel({
         </div>
         </div>
     </aside>
-
-      <ChatHistoryDialog
-        projectId={projectId}
-        activeChatId={activeChatId}
-        onSelectChat={setActiveChatId}
-        open={historyOpen}
-        onOpenChange={setHistoryOpen}
-      />
     </>
   );
 }

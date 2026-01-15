@@ -1,13 +1,11 @@
-import { useState } from "react";
-import { Loader2, Trash2, MessageSquare } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { useState, useMemo } from "react";
+import { Loader2, Trash2, MessageSquare, Pencil } from "lucide-react";
+import { formatDistanceToNow, isToday, isThisWeek, differenceInWeeks } from "date-fns";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,32 +20,72 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChats, useDeleteChat } from "@/hooks/useChats";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 interface ChatHistoryDialogProps {
   projectId: string;
   activeChatId: string | null;
   onSelectChat: (chatId: string) => void;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  trigger: React.ReactNode;
 }
 
 export function ChatHistoryDialog({
   projectId,
   activeChatId,
   onSelectChat,
-  open,
-  onOpenChange,
+  trigger,
 }: ChatHistoryDialogProps) {
   const { data, isLoading } = useChats(projectId);
   const deleteChatMutation = useDeleteChat();
   const { toast } = useToast();
   const [chatToDelete, setChatToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [open, setOpen] = useState(false);
 
   const chats = data?.chats || [];
 
+  // Group chats by date
+  const groupedChats = useMemo(() => {
+    const groups: { label: string; chats: typeof chats }[] = [];
+    const today: typeof chats = [];
+    const thisWeek: typeof chats = [];
+    const weeksAgo: { [key: number]: typeof chats } = {};
+
+    chats.forEach((chat) => {
+      const date = new Date(chat.last_modified);
+      if (isToday(date)) {
+        today.push(chat);
+      } else if (isThisWeek(date) && !isToday(date)) {
+        thisWeek.push(chat);
+      } else {
+        const weeks = differenceInWeeks(new Date(), date);
+        if (!weeksAgo[weeks]) {
+          weeksAgo[weeks] = [];
+        }
+        weeksAgo[weeks].push(chat);
+      }
+    });
+
+    if (today.length > 0) {
+      groups.push({ label: "Today", chats: today });
+    }
+    if (thisWeek.length > 0) {
+      groups.push({ label: "This week", chats: thisWeek });
+    }
+    
+    // Sort weeks and add to groups
+    Object.keys(weeksAgo)
+      .map(Number)
+      .sort((a, b) => a - b)
+      .forEach((weeks) => {
+        groups.push({ label: `${weeks}w ago`, chats: weeksAgo[weeks] });
+      });
+
+    return groups;
+  }, [chats]);
+
   const handleSelectChat = (chatId: string) => {
     onSelectChat(chatId);
-    onOpenChange(false);
+    setOpen(false);
   };
 
   const handleDeleteClick = (e: React.MouseEvent, chatId: string, chatTitle: string) => {
@@ -86,74 +124,104 @@ export function ChatHistoryDialog({
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Chat History</DialogTitle>
-            <DialogDescription>
-              View and manage your previous conversations
-            </DialogDescription>
-          </DialogHeader>
-
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          {trigger}
+        </PopoverTrigger>
+        <PopoverContent 
+          className="w-80 p-0" 
+          align="end"
+          side="bottom"
+          sideOffset={8}
+        >
           {isLoading ? (
             <div className="flex justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
           ) : chats.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-50" />
+            <div className="text-center py-8 text-muted-foreground px-4">
+              <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">No chat history yet</p>
             </div>
           ) : (
-            <ScrollArea className="max-h-[400px] pr-4">
-              <div className="space-y-2">
-                {chats.map((chat) => (
-                  <div
-                    key={chat.chat_id}
-                    className={`relative group rounded-lg border p-3 cursor-pointer transition-colors ${
-                      activeChatId === chat.chat_id
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border hover:border-primary/50 hover:bg-accent'
-                    }`}
-                    onClick={() => handleSelectChat(chat.chat_id)}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <MessageSquare className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                          <h4 className="text-sm font-medium truncate">
-                            {chat.title}
-                          </h4>
+            <ScrollArea className="max-h-[400px]">
+              <div className="p-2">
+                {groupedChats.map((group, groupIndex) => (
+                  <div key={group.label} className={cn(groupIndex > 0 && "mt-4")}>
+                    <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground uppercase">
+                      {group.label}
+                    </div>
+                    <div className="space-y-0.5">
+                      {group.chats.map((chat) => (
+                        <div
+                          key={chat.chat_id}
+                          className={cn(
+                            "relative group rounded-md px-3 py-2 cursor-pointer transition-colors",
+                            "hover:bg-accent",
+                            activeChatId === chat.chat_id && "bg-accent"
+                          )}
+                          onClick={() => handleSelectChat(chat.chat_id)}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <MessageSquare className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-sm font-medium truncate">
+                                    {chat.title}
+                                  </span>
+                                  {activeChatId === chat.chat_id && (
+                                    <span className="text-xs text-muted-foreground flex-shrink-0">
+                                      Current
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                  {formatDistanceToNow(new Date(chat.last_modified), { 
+                                    addSuffix: true 
+                                  })}
+                                </p>
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // Edit functionality could go here
+                                }}
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={(e) => handleDeleteClick(e, chat.chat_id, chat.title)}
+                                disabled={deleteChatMutation.isPending}
+                              >
+                                {deleteChatMutation.isPending && 
+                                 deleteChatMutation.variables?.chatId === chat.chat_id ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-3 w-3 text-destructive" />
+                                )}
+                              </Button>
+                            </div>
+                          </div>
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                          {formatDistanceToNow(new Date(chat.last_modified), { 
-                            addSuffix: true 
-                          })}
-                        </p>
-                      </div>
-                      
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={(e) => handleDeleteClick(e, chat.chat_id, chat.title)}
-                        disabled={deleteChatMutation.isPending}
-                      >
-                        {deleteChatMutation.isPending && 
-                         deleteChatMutation.variables?.chatId === chat.chat_id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        )}
-                      </Button>
+                      ))}
                     </div>
                   </div>
                 ))}
               </div>
             </ScrollArea>
           )}
-        </DialogContent>
-      </Dialog>
+        </PopoverContent>
+      </Popover>
 
       <AlertDialog 
         open={!!chatToDelete} 

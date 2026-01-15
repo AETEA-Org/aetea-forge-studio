@@ -3,7 +3,6 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Plus, Settings, FolderOpen, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import logo from "@/assets/aetea-logo-white.png";
 import { ProjectList } from "./ProjectList";
 
 interface SidebarProps {
@@ -26,7 +25,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       <div className="p-4 flex items-center justify-between border-b border-sidebar-border">
         {!collapsed && (
           <Link to="/app">
-            <img src={logo} alt="AETEA" className="h-6" />
+            <img src="/favicon.png" alt="AETEA" className="h-6" />
           </Link>
         )}
         <Button
