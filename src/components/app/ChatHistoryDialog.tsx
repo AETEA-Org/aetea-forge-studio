@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { Loader2, Trash2, MessageSquare } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { Loader2, Trash2, MessageSquare, Search } from "lucide-react";
 import { formatDistanceFromUTC, isUTCDateToday, isUTCDateThisWeek, weeksSinceUTC } from "@/lib/dateUtils";
 import {
   Popover,
@@ -7,6 +7,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChats, useDeleteChat } from "@/hooks/useChats";
 import { useToast } from "@/hooks/use-toast";
@@ -29,17 +30,29 @@ export function ChatHistoryDialog({
   const deleteChatMutation = useDeleteChat();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const chats = data?.chats || [];
 
-  // Group chats by date
-  const groupedChats = useMemo(() => {
-    const groups: { label: string; chats: typeof chats }[] = [];
-    const today: typeof chats = [];
-    const thisWeek: typeof chats = [];
-    const weeksAgo: { [key: number]: typeof chats } = {};
+  // Filter chats by search query
+  const filteredChats = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return chats;
+    }
+    const query = searchQuery.toLowerCase().trim();
+    return chats.filter((chat) =>
+      chat.title.toLowerCase().includes(query)
+    );
+  }, [chats, searchQuery]);
 
-    chats.forEach((chat) => {
+  // Group filtered chats by date
+  const groupedChats = useMemo(() => {
+    const groups: { label: string; chats: typeof filteredChats }[] = [];
+    const today: typeof filteredChats = [];
+    const thisWeek: typeof filteredChats = [];
+    const weeksAgo: { [key: number]: typeof filteredChats } = {};
+
+    filteredChats.forEach((chat) => {
       if (isUTCDateToday(chat.last_modified)) {
         today.push(chat);
       } else if (isUTCDateThisWeek(chat.last_modified)) {
@@ -69,7 +82,14 @@ export function ChatHistoryDialog({
       });
 
     return groups;
-  }, [chats]);
+  }, [filteredChats]);
+
+  // Clear search when popover closes
+  useEffect(() => {
+    if (!open) {
+      setSearchQuery("");
+    }
+  }, [open]);
 
   const handleSelectChat = (chatId: string) => {
     onSelectChat(chatId);
@@ -115,6 +135,22 @@ export function ChatHistoryDialog({
           side="bottom"
           sideOffset={8}
         >
+          {/* Search Bar */}
+          {!isLoading && chats.length > 0 && (
+            <div className="p-3 border-b border-border">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Search chats..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 h-9 text-sm"
+                />
+              </div>
+            </div>
+          )}
+
           {isLoading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -123,6 +159,12 @@ export function ChatHistoryDialog({
             <div className="text-center py-8 text-muted-foreground px-4">
               <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">No chat history yet</p>
+            </div>
+          ) : filteredChats.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground px-4">
+              <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">No chats found</p>
+              <p className="text-xs mt-1">Try a different search term</p>
             </div>
           ) : (
             <ScrollArea className="max-h-[400px]">

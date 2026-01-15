@@ -16,13 +16,13 @@ import type {
   DeleteChatResponse,
 } from "@/types/api";
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/api-proxy`;
+// Direct API base URL (bypassing Supabase Edge Function)
+const API_BASE_URL = 'https://m-abdur2024-aetea-ai.hf.space';
+const API_TOKEN = import.meta.env.VITE_AETEA_API_TOKEN;
 
 // Helper to build URL with params
 function buildUrl(path: string, params?: Record<string, string>): string {
-  const url = new URL(EDGE_FUNCTION_URL);
-  url.searchParams.set('path', path);
+  const url = new URL(path, API_BASE_URL);
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
       url.searchParams.set(key, value);
@@ -31,9 +31,26 @@ function buildUrl(path: string, params?: Record<string, string>): string {
   return url.toString();
 }
 
+// Helper to get headers with authorization
+function getHeaders(contentType?: string): HeadersInit {
+  const headers: HeadersInit = {};
+  
+  if (API_TOKEN) {
+    headers['Authorization'] = `Bearer ${API_TOKEN}`;
+  }
+  
+  if (contentType) {
+    headers['Content-Type'] = contentType;
+  }
+  
+  return headers;
+}
+
 // Health check
 export async function checkHealth(): Promise<HealthResponse> {
-  const response = await fetch(buildUrl('/health'));
+  const response = await fetch(buildUrl('/health'), {
+    headers: getHeaders(),
+  });
   if (!response.ok) {
     throw new Error('Health check failed');
   }
@@ -42,7 +59,9 @@ export async function checkHealth(): Promise<HealthResponse> {
 
 // List projects
 export async function listProjects(userEmail: string): Promise<ProjectsResponse> {
-  const response = await fetch(buildUrl('/projects', { user_id: userEmail }));
+  const response = await fetch(buildUrl('/projects', { user_id: userEmail }), {
+    headers: getHeaders(),
+  });
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.detail || 'Failed to fetch projects');
@@ -59,7 +78,10 @@ export async function getProjectSection<T>(
   console.log('API: Fetching section', { projectId, section, userEmail });
   
   const response = await fetch(
-    buildUrl(`/projects/${projectId}/section/${section}`, { user_id: userEmail })
+    buildUrl(`/projects/${projectId}/section/${section}`, { user_id: userEmail }),
+    {
+      headers: getHeaders(),
+    }
   );
   
   console.log('API: Response status', response.status, response.ok);
@@ -96,7 +118,10 @@ export async function getProjectStrategy(projectId: string, userEmail: string) {
 // Get project tasks
 export async function getProjectTasks(projectId: string, userEmail: string): Promise<TasksResponse> {
   const response = await fetch(
-    buildUrl(`/projects/${projectId}/tasks`, { user_id: userEmail })
+    buildUrl(`/projects/${projectId}/tasks`, { user_id: userEmail }),
+    {
+      headers: getHeaders(),
+    }
   );
   if (!response.ok) {
     const error = await response.json();
@@ -131,6 +156,7 @@ export async function analyzeBrief(
   
   const response = await fetch(url, {
     method: 'POST',
+    headers: getHeaders(), // Don't set Content-Type for FormData, browser will set it with boundary
     body: formData,
   });
 
@@ -183,6 +209,7 @@ export async function deleteProject(projectId: string, userEmail: string) {
     buildUrl(`/projects/${projectId}`, { user_id: userEmail }),
     {
       method: 'DELETE',
+      headers: getHeaders(),
     }
   );
   
@@ -210,9 +237,7 @@ export async function sendChatMessage(
   
   const response = await fetch(url, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: getHeaders('application/json'),
     body: JSON.stringify({
       user_id: userEmail,
       project_id: projectId,
@@ -275,7 +300,10 @@ export async function listChats(
   projectId: string
 ): Promise<ChatListResponse> {
   const response = await fetch(
-    buildUrl('/chats', { user_id: userEmail, project_id: projectId })
+    buildUrl('/chats', { user_id: userEmail, project_id: projectId }),
+    {
+      headers: getHeaders(),
+    }
   );
   
   if (!response.ok) {
@@ -293,7 +321,10 @@ export async function getChatMessages(
   projectId: string
 ): Promise<ChatMessagesResponse> {
   const response = await fetch(
-    buildUrl(`/chats/${chatId}/messages`, { user_id: userEmail, project_id: projectId })
+    buildUrl(`/chats/${chatId}/messages`, { user_id: userEmail, project_id: projectId }),
+    {
+      headers: getHeaders(),
+    }
   );
   
   if (!response.ok) {
@@ -314,6 +345,7 @@ export async function deleteChat(
     buildUrl(`/chats/${chatId}`, { user_id: userEmail, project_id: projectId }),
     {
       method: 'DELETE',
+      headers: getHeaders(),
     }
   );
   

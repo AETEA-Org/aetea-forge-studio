@@ -125,19 +125,10 @@ Create a `.env.local` file in the root directory:
 ```env
 VITE_SUPABASE_URL=your-supabase-url
 VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+VITE_AETEA_API_TOKEN=your-huggingface-api-token
 ```
 
-### Supabase Edge Function
-
-The project uses a Supabase Edge Function to proxy requests to the AETEA AI API. Configure the function with:
-
-```bash
-# Deploy the Edge Function
-supabase functions deploy api-proxy
-
-# Set environment secret
-supabase secrets set AETEA_API_TOKEN=your-api-token
-```
+**Note**: The `VITE_AETEA_API_TOKEN` is used to authenticate directly with the HuggingFace backend API. This token will be visible in the frontend bundle, so use a token with appropriate permissions.
 
 ---
 
