@@ -63,70 +63,8 @@ export function StrategyTab({ projectId, isModifying }: StrategyTabProps) {
   return (
     <div className="relative space-y-6">
       <ModificationOverlay isActive={isModifying || false} />
-      {/* Doctrine */}
-      <div className="glass rounded-xl p-6">
-        <h2 className="font-semibold mb-4">Strategic Doctrine</h2>
-        <ul className="space-y-2">
-          {doctrine.map((item, i) => (
-            <li key={i} className="flex items-start gap-2 text-sm">
-              <span className="text-primary mt-1 shrink-0">•</span>
-              <Markdown className="flex-1">{item}</Markdown>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* Campaign Pillars */}
-      <div className="glass rounded-xl p-6">
-        <h2 className="font-semibold mb-4">Campaign Pillars</h2>
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {pillars.map((pillar, i) => (
-            <div key={i} className="p-4 rounded-lg bg-muted/50 border border-border">
-              <h3 className="font-medium text-primary mb-2">{pillar.title}</h3>
-              <Markdown className="text-sm mb-3">{pillar.core_message}</Markdown>
-              <div className="space-y-2 text-xs text-muted-foreground">
-                <div>
-                  <span className="font-medium">Value:</span> <Markdown inline>{pillar.value_proposition}</Markdown>
-                </div>
-                <div>
-                  <span className="font-medium">Position:</span> <Markdown inline>{pillar.positioning_note}</Markdown>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* KPIs */}
-      <div className="glass rounded-xl p-6">
-        <h2 className="font-semibold mb-4">Key Performance Indicators</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="text-left py-2 font-medium">Metric</th>
-                <th className="text-left py-2 font-medium">Description</th>
-                <th className="text-left py-2 font-medium">Target</th>
-                <th className="text-left py-2 font-medium">Timeframe</th>
-              </tr>
-            </thead>
-            <tbody>
-              {kpis.map((kpi, i) => (
-                <tr key={i} className="border-b border-border/50">
-                  <td className="py-2 font-medium">{kpi.metric}</td>
-                  <td className="py-2 text-muted-foreground">
-                    <Markdown className="text-sm">{kpi.description}</Markdown>
-                  </td>
-                  <td className="py-2 text-primary">{kpi.target}</td>
-                  <td className="py-2 text-muted-foreground">{kpi.timeframe}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Audience Mapping */}
+      
+      {/* 1. Audience Mapping */}
       <div className="glass rounded-xl p-6">
         <h2 className="font-semibold mb-4">Audience Mapping</h2>
         
@@ -185,7 +123,88 @@ export function StrategyTab({ projectId, isModifying }: StrategyTabProps) {
         </div>
       </div>
 
-      {/* Channel Strategy */}
+      {/* 2. Insight */}
+      {strategy.insight && (
+        <div className="glass rounded-xl p-6 border-l-4 border-primary/50 bg-primary/5">
+          <h2 className="font-semibold mb-3 text-primary">Insight</h2>
+          <Markdown className="text-sm leading-relaxed">{strategy.insight}</Markdown>
+        </div>
+      )}
+
+      {/* 3. Strategic Doctrine */}
+      <div className="glass rounded-xl p-6">
+        <h2 className="font-semibold mb-4">Strategic Doctrine</h2>
+        <ul className="space-y-2">
+          {doctrine.map((item, i) => (
+            <li key={i} className="flex items-start gap-2 text-sm">
+              <span className="text-primary mt-1 shrink-0">•</span>
+              <Markdown className="flex-1">{item}</Markdown>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* 4. Creative Foundation */}
+      {strategy.creative_foundation && (
+        <div className="glass rounded-xl p-6 border-2 border-primary/30 bg-gradient-to-br from-primary/10 to-primary/5">
+          <h2 className="font-semibold mb-3 text-primary">Creative Foundation</h2>
+          <div className="text-2xl md:text-3xl font-bold text-primary tracking-tight">
+            <Markdown className="leading-tight">{strategy.creative_foundation}</Markdown>
+          </div>
+        </div>
+      )}
+
+      {/* 5. Campaign Pillars */}
+      <div className="glass rounded-xl p-6">
+        <h2 className="font-semibold mb-4">Campaign Pillars</h2>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {pillars.map((pillar, i) => (
+            <div key={i} className="p-4 rounded-lg bg-muted/50 border border-border">
+              <h3 className="font-medium text-primary mb-2">{pillar.title}</h3>
+              <Markdown className="text-sm mb-3">{pillar.core_message}</Markdown>
+              <div className="space-y-2 text-xs text-muted-foreground">
+                <div>
+                  <span className="font-medium">Value:</span> <Markdown inline>{pillar.value_proposition}</Markdown>
+                </div>
+                <div>
+                  <span className="font-medium">Position:</span> <Markdown inline>{pillar.positioning_note}</Markdown>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 6. Key Performance Indicators */}
+      <div className="glass rounded-xl p-6">
+        <h2 className="font-semibold mb-4">Key Performance Indicators</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left py-2 font-medium">Metric</th>
+                <th className="text-left py-2 font-medium">Description</th>
+                <th className="text-left py-2 font-medium">Target</th>
+                <th className="text-left py-2 font-medium">Timeframe</th>
+              </tr>
+            </thead>
+            <tbody>
+              {kpis.map((kpi, i) => (
+                <tr key={i} className="border-b border-border/50">
+                  <td className="py-2 font-medium">{kpi.metric}</td>
+                  <td className="py-2 text-muted-foreground">
+                    <Markdown className="text-sm">{kpi.description}</Markdown>
+                  </td>
+                  <td className="py-2 text-primary">{kpi.target}</td>
+                  <td className="py-2 text-muted-foreground">{kpi.timeframe}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* 7. Channel Strategy */}
       <div className="glass rounded-xl p-6">
         <h2 className="font-semibold mb-4">Channel Strategy</h2>
         

@@ -1,8 +1,9 @@
-import { Loader2 } from "lucide-react";
+import { Loader2, ExternalLink, Instagram, Twitter, Facebook, Linkedin, Youtube } from "lucide-react";
 import { useProjectResearch } from "@/hooks/useProjectSection";
 import { Markdown } from "@/components/ui/markdown";
 import { ModificationOverlay } from "@/components/app/ModificationOverlay";
 import type { ResearchModel } from "@/types/api";
+import { cn } from "@/lib/utils";
 
 interface ResearchTabProps {
   projectId: string;
@@ -60,6 +61,29 @@ export function ResearchTab({ projectId, isModifying }: ResearchTabProps) {
   const weaknesses = research.swot?.weaknesses || [];
   const opportunities = research.swot?.opportunities || [];
   const threats = research.swot?.threats || [];
+
+  // Helper function to detect social media platform from URL
+  const getSocialIcon = (url: string) => {
+    const lowerUrl = url.toLowerCase();
+    if (lowerUrl.includes('instagram.com')) return Instagram;
+    if (lowerUrl.includes('twitter.com') || lowerUrl.includes('x.com')) return Twitter;
+    if (lowerUrl.includes('facebook.com')) return Facebook;
+    if (lowerUrl.includes('linkedin.com')) return Linkedin;
+    if (lowerUrl.includes('youtube.com')) return Youtube;
+    if (lowerUrl.includes('tiktok.com')) return ExternalLink; // TikTok icon not in lucide-react
+    return ExternalLink;
+  };
+
+  const getSocialLabel = (url: string) => {
+    const lowerUrl = url.toLowerCase();
+    if (lowerUrl.includes('instagram.com')) return 'Instagram';
+    if (lowerUrl.includes('twitter.com') || lowerUrl.includes('x.com')) return 'Twitter/X';
+    if (lowerUrl.includes('facebook.com')) return 'Facebook';
+    if (lowerUrl.includes('linkedin.com')) return 'LinkedIn';
+    if (lowerUrl.includes('youtube.com')) return 'YouTube';
+    if (lowerUrl.includes('tiktok.com')) return 'TikTok';
+    return 'Social';
+  };
 
   return (
     <div className="relative space-y-6">
@@ -125,16 +149,62 @@ export function ResearchTab({ projectId, isModifying }: ResearchTabProps) {
         <h2 className="font-semibold mb-4">Competitors & Positioning</h2>
         
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-          {competitors.map((comp, i) => (
-            <div key={i} className="p-4 rounded-lg bg-muted/50 border-l-2 border-primary">
-              <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium mb-3">
-                {comp.competitor_type}
-              </span>
-              <h3 className="font-medium text-lg mb-2">{comp.name}</h3>
-              <Markdown className="text-sm text-muted-foreground mb-2">{comp.one_line_summary}</Markdown>
-              <Markdown className="text-xs text-muted-foreground italic">{comp.perceived_positioning}</Markdown>
-            </div>
-          ))}
+          {competitors.map((comp, i) => {
+            const hasHomepage = comp.homepage_url && comp.homepage_url.trim() !== '';
+            const hasSocialHandles = comp.social_handles && comp.social_handles.length > 0;
+            
+            return (
+              <div key={i} className="p-4 rounded-lg bg-muted/50 border-l-2 border-primary">
+                <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium mb-3">
+                  {comp.competitor_type}
+                </span>
+                <h3 className="font-medium text-lg mb-2">{comp.name}</h3>
+                <Markdown className="text-sm text-muted-foreground mb-2">{comp.one_line_summary}</Markdown>
+                <Markdown className="text-xs text-muted-foreground italic mb-3">{comp.perceived_positioning}</Markdown>
+                
+                {/* Homepage URL */}
+                {hasHomepage && (
+                  <div className="mb-2">
+                    <a
+                      href={comp.homepage_url!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 hover:underline transition-colors"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      <span>Visit Website</span>
+                    </a>
+                  </div>
+                )}
+                
+                {/* Social Handles */}
+                {hasSocialHandles && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {comp.social_handles.map((url, j) => {
+                      const Icon = getSocialIcon(url);
+                      const label = getSocialLabel(url);
+                      return (
+                        <a
+                          key={j}
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={cn(
+                            "inline-flex items-center gap-1.5 p-1.5 rounded",
+                            "text-muted-foreground hover:text-primary hover:bg-primary/10",
+                            "transition-colors"
+                          )}
+                          title={label}
+                        >
+                          <Icon className="h-3.5 w-3.5" />
+                        </a>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         <div>

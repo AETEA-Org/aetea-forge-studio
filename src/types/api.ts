@@ -83,6 +83,8 @@ export interface Competitor {
   competitor_type: string;
   one_line_summary: string;
   perceived_positioning: string;
+  homepage_url?: string | null;
+  social_handles: string[];
 }
 
 export interface ResearchModel {
@@ -152,6 +154,8 @@ export interface ContentCalendarItem {
 
 export interface StrategyModel {
   doctrine: string[];
+  insight: string;
+  creative_foundation: string;
   campaign_pillars: CampaignPillar[];
   kpis: KPI[];
   audience_mapping: {
