@@ -1,7 +1,7 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { FolderOpen, Loader2, MoreVertical, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceFromUTC } from "@/lib/dateUtils";
 import { useProjects } from "@/hooks/useProjects";
 import { useAuth } from "@/hooks/useAuth";
 import { deleteProject } from "@/services/api";
@@ -149,7 +149,7 @@ export function ProjectList({ collapsed }: ProjectListProps) {
                 <span className="text-sm font-medium truncate">{project.title}</span>
               </div>
               <p className="text-xs text-muted-foreground mt-1 ml-6">
-                {formatDistanceToNow(new Date(project.last_modified), { addSuffix: true })}
+                {formatDistanceFromUTC(project.last_modified, { addSuffix: true })}
               </p>
             </button>
             

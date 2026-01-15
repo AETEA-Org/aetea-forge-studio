@@ -1,21 +1,11 @@
 import { useState, useMemo } from "react";
-import { Loader2, Trash2, MessageSquare, Pencil } from "lucide-react";
-import { formatDistanceToNow, isToday, isThisWeek, differenceInWeeks } from "date-fns";
+import { Loader2, Trash2, MessageSquare } from "lucide-react";
+import { formatDistanceFromUTC, isUTCDateToday, isUTCDateThisWeek, weeksSinceUTC } from "@/lib/dateUtils";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChats, useDeleteChat } from "@/hooks/useChats";
@@ -38,7 +28,6 @@ export function ChatHistoryDialog({
   const { data, isLoading } = useChats(projectId);
   const deleteChatMutation = useDeleteChat();
   const { toast } = useToast();
-  const [chatToDelete, setChatToDelete] = useState<{ id: string; title: string } | null>(null);
   const [open, setOpen] = useState(false);
 
   const chats = data?.chats || [];
@@ -51,13 +40,12 @@ export function ChatHistoryDialog({
     const weeksAgo: { [key: number]: typeof chats } = {};
 
     chats.forEach((chat) => {
-      const date = new Date(chat.last_modified);
-      if (isToday(date)) {
+      if (isUTCDateToday(chat.last_modified)) {
         today.push(chat);
-      } else if (isThisWeek(date) && !isToday(date)) {
+      } else if (isUTCDateThisWeek(chat.last_modified)) {
         thisWeek.push(chat);
       } else {
-        const weeks = differenceInWeeks(new Date(), date);
+        const weeks = weeksSinceUTC(chat.last_modified);
         if (!weeksAgo[weeks]) {
           weeksAgo[weeks] = [];
         }
@@ -88,27 +76,22 @@ export function ChatHistoryDialog({
     setOpen(false);
   };
 
-  const handleDeleteClick = (e: React.MouseEvent, chatId: string, chatTitle: string) => {
+  const handleDeleteClick = async (e: React.MouseEvent, chatId: string, chatTitle: string) => {
     e.stopPropagation();
-    setChatToDelete({ id: chatId, title: chatTitle });
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!chatToDelete) return;
     
     try {
       await deleteChatMutation.mutateAsync({ 
-        chatId: chatToDelete.id, 
+        chatId, 
         projectId 
       });
       
       toast({
         title: "Chat deleted",
-        description: `"${chatToDelete.title}" has been deleted.`,
+        description: `"${chatTitle}" has been deleted.`,
       });
       
       // If deleted chat was active, clear selection
-      if (activeChatId === chatToDelete.id) {
+      if (activeChatId === chatId) {
         onSelectChat('');
       }
     } catch (err) {
@@ -117,8 +100,6 @@ export function ChatHistoryDialog({
         description: err instanceof Error ? err.message : "An unknown error occurred.",
         variant: "destructive",
       });
-    } finally {
-      setChatToDelete(null);
     }
   };
 
@@ -129,7 +110,7 @@ export function ChatHistoryDialog({
           {trigger}
         </PopoverTrigger>
         <PopoverContent 
-          className="w-80 p-0" 
+          className="w-80 p-0 z-[100]" 
           align="end"
           side="bottom"
           sideOffset={8}
@@ -177,25 +158,14 @@ export function ChatHistoryDialog({
                                   )}
                                 </div>
                                 <p className="text-xs text-muted-foreground">
-                                  {formatDistanceToNow(new Date(chat.last_modified), { 
+                                  {formatDistanceFromUTC(chat.last_modified, { 
                                     addSuffix: true 
                                   })}
                                 </p>
                               </div>
                             </div>
                             
-                            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  // Edit functionality could go here
-                                }}
-                              >
-                                <Pencil className="h-3 w-3" />
-                              </Button>
+                            <div className="flex items-center gap-0.5">
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -222,35 +192,6 @@ export function ChatHistoryDialog({
           )}
         </PopoverContent>
       </Popover>
-
-      <AlertDialog 
-        open={!!chatToDelete} 
-        onOpenChange={(open) => !open && setChatToDelete(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Chat</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete "{chatToDelete?.title}"? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteChatMutation.isPending}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteConfirm}
-              disabled={deleteChatMutation.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleteChatMutation.isPending && (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              )}
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }

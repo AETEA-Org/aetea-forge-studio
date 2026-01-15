@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceFromUTC } from "@/lib/dateUtils";
 
 interface ProjectHeaderProps {
   title: string;
@@ -19,7 +19,7 @@ export function ProjectHeader({ title, lastModified }: ProjectHeaderProps) {
       <h1 className="font-display text-2xl font-bold">{title}</h1>
       {lastModified && (
         <p className="text-sm text-muted-foreground mt-1">
-          Updated {formatDistanceToNow(new Date(lastModified), { addSuffix: true })}
+          Updated {formatDistanceFromUTC(lastModified, { addSuffix: true })}
         </p>
       )}
     </div>

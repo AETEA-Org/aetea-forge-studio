@@ -1,15 +1,9 @@
-import { Loader2, MessageSquare, Trash2, MoreVertical } from "lucide-react";
+import { Loader2, MessageSquare, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceFromUTC } from "@/lib/dateUtils";
 import { useChats, useDeleteChat } from "@/hooks/useChats";
 import type { ChatListItem } from "@/types/api";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useState } from "react";
 
 interface ChatListProps {
@@ -28,10 +22,6 @@ export function ChatList({ projectId, activeChatId, onChatSelect, onNewChat }: C
 
   const handleDelete = async (e: React.MouseEvent, chatId: string) => {
     e.stopPropagation();
-    
-    if (!confirm("Are you sure you want to delete this chat?")) {
-      return;
-    }
 
     setDeletingId(chatId);
     try {
@@ -108,7 +98,7 @@ export function ChatList({ projectId, activeChatId, onChatSelect, onNewChat }: C
                   <span className="text-sm font-medium truncate">{chat.title}</span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1 ml-6">
-                  {formatDistanceToNow(new Date(chat.last_modified), { addSuffix: true })}
+                  {formatDistanceFromUTC(chat.last_modified, { addSuffix: true })}
                 </p>
               </button>
 
@@ -117,25 +107,12 @@ export function ChatList({ projectId, activeChatId, onChatSelect, onNewChat }: C
                 {deletingId === chat.chat_id ? (
                   <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                 ) : (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        className="p-1 rounded hover:bg-sidebar-accent opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <MoreVertical className="h-4 w-4 text-muted-foreground" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={(e) => handleDelete(e, chat.chat_id)}
-                        className="text-destructive focus:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <button
+                    className="p-1 rounded hover:bg-sidebar-accent"
+                    onClick={(e) => handleDelete(e, chat.chat_id)}
+                  >
+                    <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                  </button>
                 )}
               </div>
             </div>

@@ -436,6 +436,7 @@ export function AICopilotPanel({
               onSelectChat={setActiveChatId}
               trigger={
                 <Button
+                  type="button"
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 text-sidebar-foreground/70 hover:text-sidebar-foreground"

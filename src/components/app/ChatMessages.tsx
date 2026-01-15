@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Bot, User } from "lucide-react";
+import { User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Markdown } from "@/components/ui/markdown";
 import type { ChatMessage } from "@/types/api";
@@ -39,7 +39,7 @@ export function ChatMessages({
           >
             {message.role === "assistant" && (
               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-1">
-                <Bot className="h-4 w-4 text-primary" />
+                <img src="/favicon.png" alt="AETEA" className="h-4 w-4" />
               </div>
             )}
             
@@ -68,7 +68,7 @@ export function ChatMessages({
         {updateMessage && (
           <div className="flex gap-3 justify-start">
             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-1">
-              <Bot className="h-4 w-4 text-primary" />
+              <img src="/favicon.png" alt="AETEA" className="h-4 w-4" />
             </div>
             <div className="max-w-[80%] rounded-lg px-4 py-2.5 bg-muted/50 text-muted-foreground">
               <p className="text-sm italic">{updateMessage}</p>
@@ -80,7 +80,7 @@ export function ChatMessages({
         {isStreaming && streamingContent && (
           <div className="flex gap-3 justify-start">
             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-1">
-              <Bot className="h-4 w-4 text-primary" />
+              <img src="/favicon.png" alt="AETEA" className="h-4 w-4" />
             </div>
             <div className="max-w-[80%] rounded-lg px-4 py-2.5 bg-muted text-foreground">
               <Markdown className="text-sm leading-relaxed">
@@ -94,7 +94,7 @@ export function ChatMessages({
         {messages.length === 0 && !isStreaming && !updateMessage && (
           <div className="flex items-center justify-center h-full text-center py-12">
             <div className="space-y-2 max-w-sm">
-              <Bot className="h-8 w-8 text-muted-foreground mx-auto" />
+              <img src="/favicon.png" alt="AETEA" className="h-8 w-8 mx-auto" />
               <p className="text-sm text-muted-foreground">
                 Start a conversation to get AI assistance with your project.
               </p>
