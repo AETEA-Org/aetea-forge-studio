@@ -130,10 +130,12 @@ export function ChatHistoryDialog({
           {trigger}
         </PopoverTrigger>
         <PopoverContent 
-          className="w-80 p-0 z-[100]" 
-          align="end"
-          side="bottom"
+          className="w-80 p-0 z-[100] max-h-[calc(100vh-8rem)] overflow-hidden" 
+          align="start"
+          side="top"
           sideOffset={8}
+          avoidCollisions={true}
+          collisionPadding={24}
         >
           {/* Search Bar */}
           {!isLoading && chats.length > 0 && (
@@ -167,39 +169,41 @@ export function ChatHistoryDialog({
               <p className="text-xs mt-1">Try a different search term</p>
             </div>
           ) : (
-            <ScrollArea className="max-h-[400px]">
-              <div className="p-2">
-                {groupedChats.map((group, groupIndex) => (
-                  <div key={group.label} className={cn(groupIndex > 0 && "mt-4")}>
-                    <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground uppercase">
-                      {group.label}
-                    </div>
-                    <div className="space-y-0.5">
-                      {group.chats.map((chat) => (
-                        <div
-                          key={chat.chat_id}
-                          className={cn(
-                            "relative group rounded-md px-3 py-2 cursor-pointer transition-colors",
-                            "hover:bg-accent",
-                            activeChatId === chat.chat_id && "bg-accent"
-                          )}
-                          onClick={() => handleSelectChat(chat.chat_id)}
+            <div style={{ width: '100%', maxWidth: '100%', overflow: 'hidden', boxSizing: 'border-box' }}>
+              <ScrollArea className="max-h-[400px]" style={{ width: '100%', maxWidth: '100%' }}>
+                <div className="p-2" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
+                  {groupedChats.map((group, groupIndex) => (
+                    <div key={group.label} className={cn(groupIndex > 0 && "mt-4")} style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
+                      <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground uppercase">
+                        {group.label}
+                      </div>
+                      <div className="space-y-0.5" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
+                        {group.chats.map((chat) => (
+                          <div
+                            key={chat.chat_id}
+                            className={cn(
+                              "relative group rounded-md py-2 cursor-pointer transition-colors",
+                              "hover:bg-accent",
+                              activeChatId === chat.chat_id && "bg-accent"
+                            )}
+                            onClick={() => handleSelectChat(chat.chat_id)}
+                            style={{ minWidth: 0, maxWidth: 'calc(320px - 16px)', width: '100%', paddingLeft: '12px', paddingRight: '12px', boxSizing: 'border-box' }}
                         >
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-1 min-w-0" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
+                            <div className="flex items-center gap-1.5 flex-1 min-w-0" style={{ minWidth: 0, maxWidth: 'calc(100% - 28px)', overflow: 'hidden' }}>
                               <MessageSquare className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-sm font-medium truncate">
+                              <div className="flex-1 min-w-0" style={{ minWidth: 0, maxWidth: '100%', overflow: 'hidden' }}>
+                                <div className="flex items-center gap-1 min-w-0" style={{ minWidth: 0, maxWidth: '100%', overflow: 'hidden' }}>
+                                  <span className="text-sm font-medium truncate" style={{ minWidth: 0, flex: '1 1 0%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
                                     {chat.title}
                                   </span>
                                   {activeChatId === chat.chat_id && (
-                                    <span className="text-xs text-muted-foreground flex-shrink-0">
+                                    <span className="text-xs text-muted-foreground flex-shrink-0 whitespace-nowrap ml-1">
                                       Current
                                     </span>
                                   )}
                                 </div>
-                                <p className="text-xs text-muted-foreground">
+                                <p className="text-xs text-muted-foreground truncate" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                   {formatDistanceFromUTC(chat.last_modified, { 
                                     addSuffix: true 
                                   })}
@@ -207,30 +211,34 @@ export function ChatHistoryDialog({
                               </div>
                             </div>
                             
-                            <div className="flex items-center gap-0.5">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6"
-                                onClick={(e) => handleDeleteClick(e, chat.chat_id, chat.title)}
-                                disabled={deleteChatMutation.isPending}
-                              >
-                                {deleteChatMutation.isPending && 
-                                 deleteChatMutation.variables?.chatId === chat.chat_id ? (
-                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                ) : (
-                                  <Trash2 className="h-3 w-3 text-destructive" />
-                                )}
-                              </Button>
-                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 flex-shrink-0"
+                              style={{ flexShrink: 0, minWidth: '24px', width: '24px', height: '24px' }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteClick(e, chat.chat_id, chat.title);
+                              }}
+                              disabled={deleteChatMutation.isPending}
+                              title="Delete chat"
+                            >
+                              {deleteChatMutation.isPending && 
+                               deleteChatMutation.variables?.chatId === chat.chat_id ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-3 w-3 text-destructive" />
+                              )}
+                            </Button>
                           </div>
                         </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </ScrollArea>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
           )}
         </PopoverContent>
       </Popover>
