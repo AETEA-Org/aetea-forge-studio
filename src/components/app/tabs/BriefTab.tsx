@@ -1,4 +1,4 @@
-import { Loader2, Calendar } from "lucide-react";
+import { Loader2, Calendar, Sparkles } from "lucide-react";
 import { useEffect } from "react";
 import { useProjectBrief } from "@/hooks/useProjectSection";
 import { ModificationOverlay } from "@/components/app/ModificationOverlay";
@@ -15,6 +15,18 @@ interface BriefTabProps {
 export function BriefTab({ projectId, isModifying }: BriefTabProps) {
   const { data, isLoading, error } = useProjectBrief(projectId);
   const brief = data?.content as BriefModel | undefined;
+
+  // Safe accessor for typography (must be before early returns for hooks)
+  const typographyList = brief?.brand_information?.typography || [];
+
+  // Load fonts when typography is available (must be before early returns)
+  useEffect(() => {
+    if (typographyList.length > 0) {
+      loadFonts(typographyList).catch(() => {
+        // Silently handle errors - fonts will fallback to system fonts
+      });
+    }
+  }, [typographyList]);
 
   if (isLoading) {
     return (
@@ -59,18 +71,13 @@ export function BriefTab({ projectId, isModifying }: BriefTabProps) {
   const targetMetrics = brief.campaign_goals?.target_metrics || [];
   const voiceTags = brief.brand_information?.brand_voice_tags || [];
   const colors = brief.brand_information?.colors || [];
-  const typographyList = brief.brand_information?.typography || [];
   const deliverables = brief.project_brief?.deliverables || [];
   const keyDates = brief.project_brief?.key_dates || [];
-
-  // Load fonts when typography is available
-  useEffect(() => {
-    if (typographyList.length > 0) {
-      loadFonts(typographyList).catch(() => {
-        // Silently handle errors - fonts will fallback to system fonts
-      });
-    }
-  }, [typographyList]);
+  const userHashtags = brief.hashtags?.hashtags_from_user || [];
+  const aeteaHashtags = brief.hashtags?.hashtags_ai_recommended || [];
+  const hasAnyHashtags = userHashtags.length > 0 || aeteaHashtags.length > 0;
+  
+  // typographyList is already declared above for the useEffect hook
 
   return (
     <div className="relative space-y-6">
@@ -122,6 +129,46 @@ export function BriefTab({ projectId, isModifying }: BriefTabProps) {
           </div>
         </div>
       </div>
+
+      {/* Hashtags */}
+      {hasAnyHashtags && (
+        <div className="glass rounded-xl p-6">
+          <h2 className="font-semibold mb-4">Hashtags</h2>
+          
+          <div className="space-y-4">
+            {/* User Hashtags */}
+            {userHashtags.length > 0 && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-2">From Brief</p>
+                <div className="flex flex-wrap gap-2">
+                  {userHashtags.map((tag, i) => (
+                    <span key={i} className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* AETEA Recommended Hashtags */}
+            {aeteaHashtags.length > 0 && (
+              <div>
+                <div className="flex items-center gap-1.5 mb-2">
+                  <p className="text-xs text-muted-foreground">AETEA Recommended</p>
+                  <Sparkles className="h-3 w-3 text-muted-foreground" />
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {aeteaHashtags.map((tag, i) => (
+                    <span key={i} className="text-xs px-2 py-1 rounded-full bg-muted/50 text-muted-foreground">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Brand Information */}
       <div className="glass rounded-xl p-6">

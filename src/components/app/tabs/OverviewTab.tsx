@@ -17,6 +17,18 @@ export function OverviewTab({ projectId, isModifying }: OverviewTabProps) {
   const { data, isLoading, error } = useProjectOverview(projectId);
   const overview = data?.content as OverviewModel | undefined;
 
+  // Safe accessors with defaults (must be before early returns for hooks)
+  const typography = overview?.brand_snapshot?.typography || [];
+
+  // Load fonts when typography is available (must be before early returns)
+  useEffect(() => {
+    if (typography.length > 0) {
+      loadFonts(typography).catch(() => {
+        // Silently handle errors - fonts will fallback to system fonts
+      });
+    }
+  }, [typography]);
+
   // DEBUG: Log the actual data structure
   console.log('OverviewTab DEBUG:', {
     projectId,
@@ -72,18 +84,10 @@ export function OverviewTab({ projectId, isModifying }: OverviewTabProps) {
   const goals = overview.goals_and_success || [];
   const voiceTags = overview.brand_snapshot?.brand_voice_tags || [];
   const colors = overview.brand_snapshot?.color_palette || [];
-  const typography = overview.brand_snapshot?.typography || [];
   const bulletPoints = overview.strategy_highlights?.bullet_points || [];
   const platforms = overview.strategy_highlights?.main_platforms || [];
-
-  // Load fonts when typography is available
-  useEffect(() => {
-    if (typography.length > 0) {
-      loadFonts(typography).catch(() => {
-        // Silently handle errors - fonts will fallback to system fonts
-      });
-    }
-  }, [typography]);
+  
+  // typography is already declared above for the useEffect hook
 
   return (
     <div className="relative space-y-6">

@@ -75,6 +75,10 @@ export interface BriefModel {
     budget?: string;
     constraints: string;
   };
+  hashtags?: {
+    hashtags_from_user: string[];
+    hashtags_ai_recommended: string[];
+  };
 }
 
 // Research Model
