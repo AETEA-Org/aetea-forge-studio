@@ -131,7 +131,17 @@ export function StrategyTab({ projectId, isModifying }: StrategyTabProps) {
         </div>
       )}
 
-      {/* 3. Strategic Doctrine */}
+      {/* 3. Creative Foundation */}
+      {strategy.creative_foundation && (
+        <div className="glass rounded-xl p-6 border-2 border-primary/30 bg-gradient-to-br from-primary/10 to-primary/5">
+          <h2 className="font-semibold mb-3 text-primary">Creative Foundation</h2>
+          <div className="text-2xl md:text-3xl font-bold text-primary tracking-tight">
+            <Markdown className="leading-tight">{strategy.creative_foundation}</Markdown>
+          </div>
+        </div>
+      )}
+
+      {/* 4. Strategic Doctrine */}
       <div className="glass rounded-xl p-6">
         <h2 className="font-semibold mb-4">Strategic Doctrine</h2>
         <ul className="space-y-2">
@@ -143,16 +153,6 @@ export function StrategyTab({ projectId, isModifying }: StrategyTabProps) {
           ))}
         </ul>
       </div>
-
-      {/* 4. Creative Foundation */}
-      {strategy.creative_foundation && (
-        <div className="glass rounded-xl p-6 border-2 border-primary/30 bg-gradient-to-br from-primary/10 to-primary/5">
-          <h2 className="font-semibold mb-3 text-primary">Creative Foundation</h2>
-          <div className="text-2xl md:text-3xl font-bold text-primary tracking-tight">
-            <Markdown className="leading-tight">{strategy.creative_foundation}</Markdown>
-          </div>
-        </div>
-      )}
 
       {/* 5. Campaign Pillars */}
       <div className="glass rounded-xl p-6">
