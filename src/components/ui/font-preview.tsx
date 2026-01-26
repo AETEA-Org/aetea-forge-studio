@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { AlertCircle } from "lucide-react";
 import { loadFont, getFontFamily } from "@/lib/fontUtils";
 import { cn } from "@/lib/utils";
 
@@ -35,15 +36,19 @@ export function FontPreview({ fontName, className }: FontPreviewProps) {
   return (
     <span
       className={cn(
-        "text-xs px-2 py-1 rounded bg-muted inline-block",
+        "text-xs px-2 py-1 rounded bg-muted inline-flex items-center gap-1.5",
+        hasError && "opacity-70",
         className
       )}
       style={{
-        fontFamily: isLoaded && !hasError ? getFontFamily(fontName) : undefined,
+        fontFamily: isLoaded ? getFontFamily(fontName) : undefined,
       }}
-      title={hasError ? `Font "${fontName}" failed to load` : fontName}
+      title={hasError ? `Font "${fontName}" failed to load - showing fallback font` : fontName}
     >
       {fontName}
+      {hasError && (
+        <AlertCircle className="h-3 w-3 text-muted-foreground/60" aria-hidden="true" />
+      )}
     </span>
   );
 }

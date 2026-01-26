@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
-import { getFontFamily, loadFonts } from "@/lib/fontUtils";
+import { ChevronDown, ChevronUp, AlertCircle } from "lucide-react";
+import { getFontFamily, loadFont } from "@/lib/fontUtils";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 
 interface TypographyTesterProps {
   fonts: string[];
@@ -11,12 +12,22 @@ interface TypographyTesterProps {
 export function TypographyTester({ fonts }: TypographyTesterProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [testText, setTestText] = useState("");
+  const [failedFonts, setFailedFonts] = useState<Set<string>>(new Set());
 
-  // Load fonts when tester is opened
+  // Load fonts when tester is opened and track failures
   useEffect(() => {
     if (isOpen && fonts.length > 0) {
-      loadFonts(fonts).catch(() => {
-        // Silently handle errors - fonts will fallback to system fonts
+      const failed = new Set<string>();
+      
+      // Load fonts individually to track which ones fail
+      Promise.allSettled(
+        fonts.map(font =>
+          loadFont(font).catch(() => {
+            failed.add(font);
+          })
+        )
+      ).then(() => {
+        setFailedFonts(failed);
       });
     }
   }, [isOpen, fonts]);
@@ -54,21 +65,39 @@ export function TypographyTester({ fonts }: TypographyTesterProps) {
                 Preview:
               </p>
               <div className="space-y-3">
-                {fonts.map((font, i) => (
-                  <div key={i} className="p-3 rounded-lg bg-muted/30 border border-border">
-                    <p className="text-xs text-muted-foreground mb-1.5 font-medium">
-                      {font}
-                    </p>
-                    <p
-                      className="text-sm leading-relaxed"
-                      style={{
-                        fontFamily: getFontFamily(font),
-                      }}
+                {fonts.map((font, i) => {
+                  const hasError = failedFonts.has(font);
+                  return (
+                    <div
+                      key={i}
+                      className={cn(
+                        "p-3 rounded-lg bg-muted/30 border border-border",
+                        hasError && "opacity-70"
+                      )}
                     >
-                      {testText}
-                    </p>
-                  </div>
-                ))}
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <p className="text-xs text-muted-foreground font-medium">
+                          {font}
+                        </p>
+                        {hasError && (
+                          <AlertCircle
+                            className="h-3 w-3 text-muted-foreground/60"
+                            title={`Font "${font}" failed to load - showing fallback font`}
+                            aria-label={`Font ${font} failed to load`}
+                          />
+                        )}
+                      </div>
+                      <p
+                        className="text-sm leading-relaxed"
+                        style={{
+                          fontFamily: getFontFamily(font),
+                        }}
+                      >
+                        {testText}
+                      </p>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
