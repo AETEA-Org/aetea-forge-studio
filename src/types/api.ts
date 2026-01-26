@@ -152,10 +152,23 @@ export interface ContentCalendarItem {
   pillar: string;
 }
 
+export interface InsightModel {
+  core_cultural_insight: string;
+  emotional_behavioral_tension: string;
+  resolution_alignment_over_performance: string;
+  brand_role: string;
+  single_minded_proposition: string;
+}
+
+export interface CreativeFoundationModel {
+  foundation: string;
+  rationale: string;
+}
+
 export interface StrategyModel {
   doctrine: string[];
-  insight: string;
-  creative_foundation: string;
+  insight: InsightModel;
+  creative_foundation: CreativeFoundationModel;
   campaign_pillars: CampaignPillar[];
   kpis: KPI[];
   audience_mapping: {

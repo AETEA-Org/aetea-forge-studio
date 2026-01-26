@@ -126,8 +126,49 @@ export function StrategyTab({ projectId, isModifying }: StrategyTabProps) {
       {/* 2. Insight */}
       {strategy.insight && (
         <div className="glass rounded-xl p-6 border-l-4 border-primary/50 bg-primary/5">
-          <h2 className="font-semibold mb-3 text-primary">Insight</h2>
-          <Markdown className="text-sm leading-relaxed">{strategy.insight}</Markdown>
+          <h2 className="font-semibold mb-4 text-primary">Insight</h2>
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">
+                Core Cultural Insight
+              </h3>
+              <Markdown className="text-sm leading-relaxed">
+                {strategy.insight.core_cultural_insight}
+              </Markdown>
+            </div>
+            <div>
+              <h3 className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">
+                Emotional & Behavioral Tension
+              </h3>
+              <Markdown className="text-sm leading-relaxed">
+                {strategy.insight.emotional_behavioral_tension}
+              </Markdown>
+            </div>
+            <div>
+              <h3 className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">
+                Resolution: Alignment Over Performance
+              </h3>
+              <Markdown className="text-sm leading-relaxed">
+                {strategy.insight.resolution_alignment_over_performance}
+              </Markdown>
+            </div>
+            <div>
+              <h3 className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">
+                Brand Role
+              </h3>
+              <Markdown className="text-sm leading-relaxed">
+                {strategy.insight.brand_role}
+              </Markdown>
+            </div>
+            <div>
+              <h3 className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">
+                Single-Minded Proposition
+              </h3>
+              <Markdown className="text-sm leading-relaxed">
+                {strategy.insight.single_minded_proposition}
+              </Markdown>
+            </div>
+          </div>
         </div>
       )}
 
@@ -135,8 +176,11 @@ export function StrategyTab({ projectId, isModifying }: StrategyTabProps) {
       {strategy.creative_foundation && (
         <div className="glass rounded-xl p-6 border-2 border-primary/30 bg-gradient-to-br from-primary/10 to-primary/5">
           <h2 className="font-semibold mb-3 text-primary">Creative Foundation</h2>
-          <div className="text-2xl md:text-3xl font-bold text-primary tracking-tight">
-            <Markdown className="leading-tight">{strategy.creative_foundation}</Markdown>
+          <div className="text-2xl md:text-3xl font-bold text-primary tracking-tight mb-3">
+            <Markdown className="leading-tight">{strategy.creative_foundation.foundation}</Markdown>
+          </div>
+          <div className="text-sm text-muted-foreground leading-relaxed">
+            <Markdown>{strategy.creative_foundation.rationale}</Markdown>
           </div>
         </div>
       )}

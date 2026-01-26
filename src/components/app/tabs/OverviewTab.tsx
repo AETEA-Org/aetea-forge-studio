@@ -131,7 +131,13 @@ export function OverviewTab({ projectId, isModifying }: OverviewTabProps) {
           {/* Typography */}
           <div>
             <p className="text-xs text-muted-foreground mb-2">Typography</p>
-            <p className="text-sm">{typography.join(', ')}</p>
+            <div className="flex flex-wrap gap-2">
+              {typography.map((font, i) => (
+                <span key={i} className="text-xs px-2 py-1 rounded bg-muted">
+                  {font}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       </div>
