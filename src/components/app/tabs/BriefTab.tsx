@@ -1,6 +1,10 @@
 import { Loader2, Calendar } from "lucide-react";
+import { useEffect } from "react";
 import { useProjectBrief } from "@/hooks/useProjectSection";
 import { ModificationOverlay } from "@/components/app/ModificationOverlay";
+import { FontPreview } from "@/components/ui/font-preview";
+import { TypographyTester } from "@/components/ui/typography-tester";
+import { loadFonts } from "@/lib/fontUtils";
 import type { BriefModel } from "@/types/api";
 
 interface BriefTabProps {
@@ -58,6 +62,15 @@ export function BriefTab({ projectId, isModifying }: BriefTabProps) {
   const typographyList = brief.brand_information?.typography || [];
   const deliverables = brief.project_brief?.deliverables || [];
   const keyDates = brief.project_brief?.key_dates || [];
+
+  // Load fonts when typography is available
+  useEffect(() => {
+    if (typographyList.length > 0) {
+      loadFonts(typographyList).catch(() => {
+        // Silently handle errors - fonts will fallback to system fonts
+      });
+    }
+  }, [typographyList]);
 
   return (
     <div className="relative space-y-6">
@@ -163,11 +176,10 @@ export function BriefTab({ projectId, isModifying }: BriefTabProps) {
               <p className="text-xs text-muted-foreground mb-2">Typography</p>
               <div className="flex flex-wrap gap-2">
                 {typographyList.map((font, i) => (
-                  <span key={i} className="text-xs px-2 py-1 rounded bg-muted">
-                    {font}
-                  </span>
+                  <FontPreview key={i} fontName={font} />
                 ))}
               </div>
+              <TypographyTester fonts={typographyList} />
             </div>
           </div>
         </div>

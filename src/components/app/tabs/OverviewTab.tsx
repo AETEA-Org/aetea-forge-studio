@@ -1,7 +1,11 @@
 import { Loader2 } from "lucide-react";
+import { useEffect } from "react";
 import { useProjectOverview } from "@/hooks/useProjectSection";
 import { Markdown } from "@/components/ui/markdown";
 import { ModificationOverlay } from "@/components/app/ModificationOverlay";
+import { FontPreview } from "@/components/ui/font-preview";
+import { TypographyTester } from "@/components/ui/typography-tester";
+import { loadFonts } from "@/lib/fontUtils";
 import type { OverviewModel } from "@/types/api";
 
 interface OverviewTabProps {
@@ -72,6 +76,15 @@ export function OverviewTab({ projectId, isModifying }: OverviewTabProps) {
   const bulletPoints = overview.strategy_highlights?.bullet_points || [];
   const platforms = overview.strategy_highlights?.main_platforms || [];
 
+  // Load fonts when typography is available
+  useEffect(() => {
+    if (typography.length > 0) {
+      loadFonts(typography).catch(() => {
+        // Silently handle errors - fonts will fallback to system fonts
+      });
+    }
+  }, [typography]);
+
   return (
     <div className="relative space-y-6">
       <ModificationOverlay isActive={isModifying || false} />
@@ -133,11 +146,10 @@ export function OverviewTab({ projectId, isModifying }: OverviewTabProps) {
             <p className="text-xs text-muted-foreground mb-2">Typography</p>
             <div className="flex flex-wrap gap-2">
               {typography.map((font, i) => (
-                <span key={i} className="text-xs px-2 py-1 rounded bg-muted">
-                  {font}
-                </span>
+                <FontPreview key={i} fontName={font} />
               ))}
             </div>
+            <TypographyTester fonts={typography} />
           </div>
         </div>
       </div>
