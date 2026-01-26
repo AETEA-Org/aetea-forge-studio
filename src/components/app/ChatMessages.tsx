@@ -17,12 +17,46 @@ export function ChatMessages({
   updateMessage,
 }: ChatMessagesProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const prevMessageCountRef = useRef<number>(0);
+  const prevStreamingContentRef = useRef<string>("");
+  const prevFirstMessageIdRef = useRef<string | null>(null);
 
-  // Scroll to bottom when new messages arrive
+  // Scroll to bottom when:
+  // 1. Chat is first loaded or switched (messages go from 0/empty to having messages, OR first message ID changed)
+  // 2. A new message is added AND streaming is active
+  // 3. Streaming content is actively updating (during AI response streaming)
   useEffect(() => {
-    if (scrollRef.current) {
+    if (!scrollRef.current) return;
+
+    const currentMessageCount = messages.length;
+    const prevMessageCount = prevMessageCountRef.current;
+    const messageCountIncreased = currentMessageCount > prevMessageCount;
+    const streamingContentChanged = streamingContent !== prevStreamingContentRef.current;
+    
+    // Get first message ID to detect chat switches
+    const firstMessageId = messages.length > 0 ? messages[0].message_id : null;
+    const chatSwitched = firstMessageId !== null && firstMessageId !== prevFirstMessageIdRef.current;
+    
+    // Detect initial chat load: went from 0/empty to having messages, not streaming
+    const isInitialLoad = prevMessageCount === 0 && currentMessageCount > 0 && !isStreaming && !updateMessage;
+    
+    // Auto-scroll if:
+    // - Initial chat load or chat switched (opening a past chat), OR
+    // - A new message was added AND streaming is active, OR
+    // - Streaming content is actively updating (user sent message, AI is responding)
+    const shouldAutoScroll = 
+      (isInitialLoad || chatSwitched) ||
+      (messageCountIncreased && (isStreaming || updateMessage !== null)) ||
+      (isStreaming && streamingContentChanged && streamingContent);
+
+    if (shouldAutoScroll) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
+
+    // Update refs for next comparison
+    prevMessageCountRef.current = currentMessageCount;
+    prevStreamingContentRef.current = streamingContent || "";
+    prevFirstMessageIdRef.current = firstMessageId;
   }, [messages, streamingContent, updateMessage, isStreaming]);
 
   return (
