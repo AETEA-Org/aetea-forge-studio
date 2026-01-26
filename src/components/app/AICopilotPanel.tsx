@@ -169,9 +169,8 @@ export function AICopilotPanel({
           async (content: string, willModifyFlag: boolean) => {
             console.log('✅ Complete:', 'willModify:', willModifyFlag, 'isModifyingActiveRef:', isModifyingActiveRef.current);
             setUpdateMessage(null);
-            setStreamingContent("");
-            setIsStreaming(false);
-            setOptimisticMessages([]); // Clear optimistic messages
+            // Keep streaming content visible during refetch to prevent blackout
+            // Don't clear streamingContent, isStreaming, or optimisticMessages yet
             
             // WAIT for chat messages to load so complete message is visible
             console.log('💾 Refetching chat messages...');
@@ -182,6 +181,11 @@ export function AICopilotPanel({
               queryKey: ['chats', projectId],
             });
             console.log('✅ Chat messages loaded - complete message now visible');
+            
+            // Now clear streaming state after messages are loaded to prevent blackout
+            setStreamingContent("");
+            setIsStreaming(false);
+            setOptimisticMessages([]); // Clear optimistic messages
 
             // Handle modification completion
             // Check if modification was ever activated (ref is true), regardless of willModifyFlag in complete
