@@ -71,12 +71,13 @@ export function ReferenceIcon({ displayName, url, className }: ReferenceIconProp
           className={cn(
             "inline-flex items-center justify-center",
             "h-5 w-5 rounded-full",
-            "bg-primary text-primary-foreground",
-            "hover:bg-primary/90 hover:scale-110",
+            "bg-muted border border-border",
+            "text-muted-foreground",
+            "hover:bg-muted/80 hover:border-muted-foreground/30",
+            "hover:scale-110",
             "transition-all duration-150",
             "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
             "align-middle",
-            "shadow-sm",
             className
           )}
           aria-label={`Reference ${displayName}: ${url}`}
