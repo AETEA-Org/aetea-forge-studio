@@ -131,15 +131,15 @@ export function ResearchTab({ projectId, isModifying }: ResearchTabProps) {
         <div className="grid md:grid-cols-3 gap-6">
           <div>
             <p className="text-xs text-muted-foreground mb-2">Demographics</p>
-            <p className="text-sm">{research.audience_culture.demographics}</p>
+            <Markdown className="text-sm">{research.audience_culture.demographics}</Markdown>
           </div>
           <div>
             <p className="text-xs text-muted-foreground mb-2">Psychographics</p>
-            <p className="text-sm">{research.audience_culture.psychographics}</p>
+            <Markdown className="text-sm">{research.audience_culture.psychographics}</Markdown>
           </div>
           <div>
             <p className="text-xs text-muted-foreground mb-2">Behaviour Patterns</p>
-            <p className="text-sm">{research.audience_culture.behaviour_patterns}</p>
+            <Markdown className="text-sm">{research.audience_culture.behaviour_patterns}</Markdown>
           </div>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import ReactMarkdown from 'react-markdown';
 import { cn } from '@/lib/utils';
+import { ReferenceIcon, isReferenceLink } from '@/components/ui/reference-icon';
 
 interface MarkdownProps {
   children: string | null | undefined;
@@ -12,15 +13,54 @@ export function Markdown({ children, className, inline = false }: MarkdownProps)
   if (!children) return null;
 
   const components = {
-    // Style links
-    a: ({ node, ...props }: any) => (
-      <a 
-        {...props} 
-        target="_blank" 
-        rel="noopener noreferrer" 
-        className="text-primary hover:underline break-words"
-      />
-    ),
+    // Style links - replace references with icons
+    a: ({ node, href, children: linkChildren, ...props }: any) => {
+      // Extract display name from children (react-markdown passes text as children)
+      let displayName = '';
+      
+      if (typeof linkChildren === 'string') {
+        displayName = linkChildren;
+      } else if (Array.isArray(linkChildren)) {
+        // Flatten nested children to get text content
+        const extractText = (child: any): string => {
+          if (typeof child === 'string') return child;
+          if (typeof child === 'number') return String(child);
+          if (child?.props?.children) {
+            const nested = child.props.children;
+            if (typeof nested === 'string') return nested;
+            if (Array.isArray(nested)) return nested.map(extractText).join('');
+          }
+          return '';
+        };
+        displayName = linkChildren.map(extractText).join('');
+      } else if (linkChildren) {
+        displayName = String(linkChildren);
+      }
+      
+      // Check if this is a reference link
+      if (href && displayName && isReferenceLink(displayName)) {
+        return (
+          <ReferenceIcon 
+            displayName={displayName} 
+            url={href}
+            className="mx-0.5"
+          />
+        );
+      }
+      
+      // Regular link - render as text
+      return (
+        <a 
+          href={href}
+          {...props} 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="text-primary hover:underline break-words"
+        >
+          {linkChildren}
+        </a>
+      );
+    },
     // Style strong/bold
     strong: ({ node, ...props }: any) => (
       <strong {...props} className="font-semibold" />
