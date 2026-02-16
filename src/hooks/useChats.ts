@@ -23,14 +23,14 @@ export function useChats(projectId: string | undefined) {
   });
 }
 
-export function useChatMessages(chatId: string | undefined, projectId: string | undefined) {
+export function useChatMessages(chatId: string | undefined) {
   const { user } = useAuth();
   const userEmail = user?.email;
 
   return useQuery({
-    queryKey: ['chat-messages', chatId, projectId, userEmail],
-    queryFn: () => getChatMessages(chatId!, userEmail!, projectId!),
-    enabled: !!chatId && !!projectId && !!userEmail,
+    queryKey: ['chat-messages', chatId, userEmail],
+    queryFn: () => getChatMessages(chatId!, userEmail!),
+    enabled: !!chatId && !!userEmail,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }
@@ -76,14 +76,10 @@ export function useSendChatMessage(
           if (willModifyFlag) {
             setWillModify(true);
             // Invalidate relevant queries based on context
-            if (['brief', 'research', 'strategy'].includes(context)) {
+            if (['tab:brief', 'tab:research', 'tab:strategy'].includes(context)) {
+              const tab = context.replace('tab:', '');
               await queryClient.invalidateQueries({
-                queryKey: ['project', projectId, context],
-              });
-            } else if (context) {
-              // Task context - invalidate tasks
-              await queryClient.invalidateQueries({
-                queryKey: ['project', projectId, 'tasks'],
+                queryKey: ['campaign', projectId, tab],
               });
             }
           }
@@ -91,7 +87,7 @@ export function useSendChatMessage(
           setWillModify(false);
           // Invalidate messages to refetch
           await queryClient.invalidateQueries({
-            queryKey: ['chat-messages', chatId, projectId],
+            queryKey: ['chat-messages', chatId],
           });
           callbacks?.onComplete?.(content, willModifyFlag);
         },

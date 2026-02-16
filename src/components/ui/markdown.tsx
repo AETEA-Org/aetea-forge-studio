@@ -93,20 +93,24 @@ export function Markdown({ children, className, inline = false }: MarkdownProps)
 
   // For block rendering, include paragraph and list styling
   return (
-    <div className={cn("markdown-content", className)}>
+    <div className={cn("markdown-content break-words", className)} style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
       <ReactMarkdown
         components={{
           ...components,
           // Style paragraphs
           p: ({ node, ...props }: any) => (
-            <p {...props} className="mb-2 last:mb-0 break-words" />
+            <p {...props} className="mb-2 last:mb-0 break-words" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }} />
           ),
           // Style lists
           ul: ({ node, ...props }: any) => (
-            <ul {...props} className="space-y-1" />
+            <ul {...props} className="space-y-1 break-words" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }} />
           ),
           li: ({ node, ...props }: any) => (
-            <li {...props} className="break-words" />
+            <li {...props} className="break-words" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }} />
+          ),
+          // Style code blocks
+          pre: ({ node, ...props }: any) => (
+            <pre {...props} className="overflow-x-auto break-words" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }} />
           ),
         }}
       >

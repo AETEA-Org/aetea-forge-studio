@@ -1,5 +1,5 @@
 import { Loader2, ArrowRight } from "lucide-react";
-import { useProjectStrategy } from "@/hooks/useProjectSection";
+import { useCampaignStrategy } from "@/hooks/useProjectSection";
 import { Markdown } from "@/components/ui/markdown";
 import { ModificationOverlay } from "@/components/app/ModificationOverlay";
 import type { StrategyModel } from "@/types/api";
@@ -10,7 +10,7 @@ interface StrategyTabProps {
 }
 
 export function StrategyTab({ projectId, isModifying }: StrategyTabProps) {
-  const { data, isLoading, error } = useProjectStrategy(projectId);
+  const { data, isLoading, error } = useCampaignStrategy(projectId);
   const strategy = data?.content as StrategyModel | undefined;
 
   if (isLoading) {

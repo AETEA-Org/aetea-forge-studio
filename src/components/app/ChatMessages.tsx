@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { Markdown } from "@/components/ui/markdown";
+import { formatDistanceFromUTC } from "@/lib/dateUtils";
 import type { ChatMessage } from "@/types/api";
 
 interface ChatMessagesProps {
@@ -60,49 +61,56 @@ export function ChatMessages({
   }, [messages, streamingContent, updateMessage, isStreaming]);
 
   return (
-    <div className="flex-1 h-full overflow-y-auto custom-scrollbar" ref={scrollRef}>
-      <div className="p-4 space-y-4">
+    <div className="flex-1 h-full overflow-y-auto overflow-x-hidden custom-scrollbar" ref={scrollRef}>
+      <div className="p-4 space-y-4 min-w-0">
         {messages.map((message) => (
           <div
             key={message.message_id}
             className={cn(
-              "flex gap-3",
-              message.role === "user" ? "justify-end" : "justify-start"
+              "flex flex-col gap-1",
+              message.role === "user" ? "items-end" : "items-start"
             )}
           >
             <div
               className={cn(
-                "max-w-[80%] rounded-lg px-4 py-2.5",
+                "max-w-[80%] rounded-lg px-4 py-2.5 break-words",
                 message.role === "user"
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted text-foreground"
               )}
+              style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
             >
-              <Markdown className="text-sm leading-relaxed">
+              <Markdown className="text-sm leading-relaxed break-words" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                 {message.content}
               </Markdown>
             </div>
+            <span className="text-xs text-muted-foreground px-1">
+              {formatDistanceFromUTC(message.timestamp, { addSuffix: true })}
+            </span>
           </div>
         ))}
 
         {/* Update message (temporary, lighter color) */}
         {updateMessage && (
-          <div className="flex gap-3 justify-start">
-            <div className="max-w-[80%] rounded-lg px-4 py-2.5 bg-muted/50 text-muted-foreground">
-              <p className="text-sm italic">{updateMessage}</p>
+          <div className="flex flex-col gap-1 items-start">
+            <div className="max-w-[80%] rounded-lg px-4 py-2.5 bg-muted/50 text-muted-foreground break-words" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+              <p className="text-sm italic break-words" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{updateMessage}</p>
             </div>
           </div>
         )}
 
         {/* Streaming message */}
         {isStreaming && streamingContent && (
-          <div className="flex gap-3 justify-start">
-            <div className="max-w-[80%] rounded-lg px-4 py-2.5 bg-muted text-foreground">
-              <Markdown className="text-sm leading-relaxed">
+          <div className="flex flex-col gap-1 items-start">
+            <div className="max-w-[80%] rounded-lg px-4 py-2.5 bg-muted text-foreground break-words" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+              <Markdown className="text-sm leading-relaxed break-words" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                 {streamingContent}
               </Markdown>
               <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-1" />
             </div>
+            <span className="text-xs text-muted-foreground px-1">
+              Just now
+            </span>
           </div>
         )}
 

@@ -1,6 +1,6 @@
 import { Loader2, Calendar, Sparkles } from "lucide-react";
 import { useEffect } from "react";
-import { useProjectBrief } from "@/hooks/useProjectSection";
+import { useCampaignBrief } from "@/hooks/useProjectSection";
 import { ModificationOverlay } from "@/components/app/ModificationOverlay";
 import { FontPreview } from "@/components/ui/font-preview";
 import { TypographyTester } from "@/components/ui/typography-tester";
@@ -13,7 +13,7 @@ interface BriefTabProps {
 }
 
 export function BriefTab({ projectId, isModifying }: BriefTabProps) {
-  const { data, isLoading, error } = useProjectBrief(projectId);
+  const { data, isLoading, error } = useCampaignBrief(projectId);
   const brief = data?.content as BriefModel | undefined;
 
   // Safe accessor for typography (must be before early returns for hooks)

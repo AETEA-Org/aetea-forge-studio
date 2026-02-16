@@ -246,9 +246,8 @@ export type SectionName = 'overview' | 'brief' | 'research' | 'strategy';
 
 // Chat types
 export interface AgentStreamMessage {
-  status: 'update' | 'content' | 'complete' | 'error';
+  status: 'content' | 'update' | 'event' | 'complete' | 'error';
   content: string;
-  will_modify: boolean;
 }
 
 export interface ChatListItem {

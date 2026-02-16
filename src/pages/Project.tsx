@@ -6,7 +6,6 @@ import { ProjectTabs, ProjectTab } from "@/components/app/ProjectTabs";
 import { BriefTab } from "@/components/app/tabs/BriefTab";
 import { ResearchTab } from "@/components/app/tabs/ResearchTab";
 import { StrategyTab } from "@/components/app/tabs/StrategyTab";
-import { TasksTab } from "@/components/app/tabs/TasksTab";
 import { AnalyticsTab } from "@/components/app/tabs/AnalyticsTab";
 import { ProjectSettingsTab } from "@/components/app/tabs/ProjectSettingsTab";
 import { useProjects } from "@/hooks/useProjects";
@@ -72,24 +71,6 @@ export default function Project() {
     setIsModifying(false, null);
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Construct composite task ID if needed (user_id/project_id/task_id)
-  const getCompositeTaskId = (taskId: string): string => {
-    if (taskId.includes('/')) {
-      // Already composite
-      return taskId;
-    }
-    // Construct composite ID
-    return `${user?.email || ''}/${id}/${taskId}`;
-  };
-
-  const handleTaskSelect = (taskId: string | null) => {
-    if (taskId) {
-      setSelectedTaskId(getCompositeTaskId(taskId));
-    } else {
-      setSelectedTaskId(null);
-    }
-  };
-
   if (chatLoading) {
     return (
       <div className="min-h-full flex items-center justify-center">
@@ -108,20 +89,9 @@ export default function Project() {
 
   const renderTabContent = () => {
     // Check if modification applies to current view
-    // For tasks tab with selected task, check if modifyingContext matches the task ID
-    // Otherwise, check if it matches the active tab
-    
-    // Extract just the task ID from composite selectedTaskId for comparison
-    let taskIdForComparison = null;
-    if (selectedTaskId) {
-      const parts = selectedTaskId.split('/');
-      taskIdForComparison = parts[parts.length - 1];
-    }
-    
     const isCurrentViewModifying = 
       isModifying && 
-      (modifyingContext === activeTab || 
-       (activeTab === 'tasks' && taskIdForComparison && modifyingContext === taskIdForComparison));
+      (modifyingContext === activeTab);
     
     const commonProps = {
       isModifying: isCurrentViewModifying,
@@ -134,14 +104,6 @@ export default function Project() {
         return <ResearchTab projectId={id} {...commonProps} />;
       case 'strategy':
         return <StrategyTab projectId={id} {...commonProps} />;
-      case 'tasks':
-        return (
-          <TasksTab 
-            projectId={id} 
-            onTaskSelect={handleTaskSelect}
-            {...commonProps}
-          />
-        );
       case 'analytics':
         return <AnalyticsTab {...commonProps} />;
       case 'settings':
@@ -164,10 +126,6 @@ export default function Project() {
               activeTab={activeTab} 
               onTabChange={(tab) => {
                 setActiveTab(tab);
-                // Clear task selection when switching away from tasks tab
-                if (tab !== 'tasks') {
-                  setSelectedTaskId(null);
-                }
               }} 
             />
             

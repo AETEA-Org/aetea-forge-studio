@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { ChevronLeft, ChevronRight, Plus, History, GripVertical } from "lucide-react";
+import { ChevronLeft, ChevronRight, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ChatHistoryDialog } from "./ChatHistoryDialog";
 import { ChatMessages } from "./ChatMessages";
 import { ChatInput } from "./ChatInput";
 import { useChatMessages } from "@/hooks/useChats";
@@ -30,20 +29,16 @@ export function AICopilotPanel({
   collapsed,
   onToggle,
 }: AICopilotPanelProps) {
-  const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [streamingContent, setStreamingContent] = useState("");
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
-  const [willModify, setWillModify] = useState(false);
-  const [modifyingContext, setModifyingContext] = useState<string | null>(null);
   const [optimisticMessages, setOptimisticMessages] = useState<ChatMessage[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [panelWidth, setPanelWidth] = useState(450); // Default 450px (increased from 384px)
   const [isResizing, setIsResizing] = useState(false);
   const panelRef = useRef<HTMLElement>(null);
   
-  // Refs to track modification state and prevent redundant updates
+  // Refs to track modification state
   const isModifyingActiveRef = useRef(false);
-  const modificationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const { setIsModifying } = useModification();
   const { user } = useAuth();
@@ -56,30 +51,20 @@ export function AICopilotPanel({
     selectedTaskId,
   });
 
-  const { data: messagesData } = useChatMessages(activeChatId, projectId);
+  // Auto-load chat on page load - projectId is actually chatId
+  const chatId = projectId;
+  const { data: messagesData } = useChatMessages(chatId);
 
   // Get messages or empty array, and combine with optimistic messages
   const serverMessages: ChatMessage[] = messagesData?.messages || [];
   const messages = [...serverMessages, ...optimisticMessages];
 
-  // Handle new chat creation
-  const handleNewChat = useCallback(() => {
-    const newChatId = crypto.randomUUID();
-    setActiveChatId(newChatId);
-    setStreamingContent("");
-    setUpdateMessage(null);
-    setWillModify(false);
-    setModifyingContext(null);
-    setOptimisticMessages([]);
-    setError(null);
-  }, []);
-
   const [isStreaming, setIsStreaming] = useState(false);
 
   // Handle message sending
   const handleSendMessage = useCallback(
-    async (message: string) => {
-      if (!user?.email) {
+    async (message: string, files?: File[]) => {
+      if (!user?.email || !chatId) {
         toast({
           title: "Authentication required",
           description: "Please sign in to send messages.",
@@ -87,14 +72,6 @@ export function AICopilotPanel({
         });
         return;
       }
-
-      // Create new chat if none exists
-      if (!activeChatId) {
-        const newChatId = crypto.randomUUID();
-        setActiveChatId(newChatId);
-      }
-
-      const chatId = activeChatId || crypto.randomUUID();
 
       // Add optimistic user message immediately
       const optimisticMessage: ChatMessage = {
@@ -107,164 +84,98 @@ export function AICopilotPanel({
       
       setStreamingContent("");
       setUpdateMessage(null);
-      setWillModify(false);
-      setModifyingContext(null);
       setIsStreaming(true);
       setError(null);
       
-      // Reset modification tracking refs
+      // Reset modification tracking ref
       isModifyingActiveRef.current = false;
-      if (modificationTimeoutRef.current) {
-        clearTimeout(modificationTimeoutRef.current);
-        modificationTimeoutRef.current = null;
-      }
 
       console.log('🚀 Sending chat message:', {
         userEmail: user.email,
-        projectId,
         chatId,
         context,
         contextLabel,
         message: message.substring(0, 50) + '...',
+        filesCount: files?.length || 0,
       });
 
       try {
         await sendChatMessage(
           user.email,
-          projectId,
           chatId,
-          context,
           message,
+          'campaign', // mode is always campaign in campaign view
+          context,
+          files,
           // onUpdate
-          (content: string, willModifyFlag: boolean) => {
-            console.log('📝 Update:', content.substring(0, 50), 'willModify:', willModifyFlag);
+          (content: string) => {
+            console.log('📝 Update:', content.substring(0, 50));
             setUpdateMessage(content);
-            
-            // Only trigger modification state ONCE on first will_modify: true
-            if (willModifyFlag && !isModifyingActiveRef.current) {
-              console.log('🔵 Activating modification overlay');
-              isModifyingActiveRef.current = true;
-              setWillModify(true);
-              setModifyingContext(context);
-              setIsModifying(true, context);
-            }
           },
           // onContent
-          (content: string, willModifyFlag: boolean) => {
+          (content: string) => {
             console.log('💬 Content chunk received, length:', content.length);
             // Remove update message when content arrives
             setUpdateMessage(null);
             setStreamingContent(content);
-            
-            // Only trigger modification state ONCE on first will_modify: true
-            if (willModifyFlag && !isModifyingActiveRef.current) {
-              console.log('🔵 Activating modification overlay');
-              isModifyingActiveRef.current = true;
-              setWillModify(true);
-              setModifyingContext(context);
-              setIsModifying(true, context);
+          },
+          // onEvent
+          (eventName: string) => {
+            console.log('🎯 Event received:', eventName);
+            if (eventName === 'campaign_modifying') {
+              if (!isModifyingActiveRef.current) {
+                console.log('🔵 Activating modification overlay');
+                isModifyingActiveRef.current = true;
+                setIsModifying(true, context);
+              }
+            } else if (eventName === 'campaign_modified') {
+              console.log('🔄 Campaign modified - refetching data');
+              // Refetch campaign data for current tab
+              if (['tab:brief', 'tab:research', 'tab:strategy'].includes(context)) {
+                const tab = context.replace('tab:', '');
+                queryClient.refetchQueries({
+                  queryKey: ['campaign', chatId, tab, user.email],
+                }).catch((err) => {
+                  console.error('Error refetching campaign data:', err);
+                });
+              }
             }
           },
           // onComplete
-          async (content: string, willModifyFlag: boolean) => {
-            console.log('✅ Complete:', 'willModify:', willModifyFlag, 'isModifyingActiveRef:', isModifyingActiveRef.current);
+          async (content: string) => {
+            console.log('✅ Complete');
             setUpdateMessage(null);
-            // Keep streaming content visible during refetch to prevent blackout
-            // Don't clear streamingContent, isStreaming, or optimisticMessages yet
             
             // WAIT for chat messages to load so complete message is visible
             console.log('💾 Refetching chat messages...');
             await queryClient.refetchQueries({
-              queryKey: ['chat-messages', chatId, projectId],
-            });
-            await queryClient.refetchQueries({
-              queryKey: ['chats', projectId],
+              queryKey: ['chat-messages', chatId],
             });
             console.log('✅ Chat messages loaded - complete message now visible');
             
-            // Now clear streaming state after messages are loaded to prevent blackout
+            // Now clear streaming state after messages are loaded
             setStreamingContent("");
             setIsStreaming(false);
-            setOptimisticMessages([]); // Clear optimistic messages
+            setOptimisticMessages([]);
 
-            // Handle modification completion
-            // Check if modification was ever activated (ref is true), regardless of willModifyFlag in complete
+            // Remove blur if modification was active
             if (isModifyingActiveRef.current) {
-              console.log('🟢 Completing modification - refreshing tab data and removing overlay');
-              
-              // Clear any existing timeout to prevent race conditions
-              if (modificationTimeoutRef.current) {
-                clearTimeout(modificationTimeoutRef.current);
-              }
-              
-              // Async function to handle data refresh and blur removal
-              (async () => {
-                try {
-                  // Small delay before starting refresh for smooth UX
-                  await new Promise(resolve => setTimeout(resolve, 300));
-                  
-                  console.log('🔄 Refetching tab data for context:', context);
-                  // Use refetchQueries which WAITS for data to actually load
-                  // Query keys must match those in useProjectSection/useProjectTasks
-                  if (['brief', 'research', 'strategy'].includes(context)) {
-                    await queryClient.refetchQueries({
-                      queryKey: ['project', projectId, context, user.email],
-                    });
-                    console.log('✅ Tab data refetch complete for:', context);
-                  } else if (context) {
-                    // Task context - refetch tasks
-                    await queryClient.refetchQueries({
-                      queryKey: ['project', projectId, 'tasks', user.email],
-                    });
-                    console.log('✅ Tab data refetch complete for: tasks');
-                  }
-                  
-                  // Small delay before removing blur for smooth transition
-                  await new Promise(resolve => setTimeout(resolve, 200));
-                  
-                  // Data is now loaded, safe to remove blur
-                  console.log('🔴 Removing modification overlay - all data loaded');
-                  setIsModifying(false, null);
-                  setWillModify(false);
-                  setModifyingContext(null);
-                  isModifyingActiveRef.current = false;
-                  modificationTimeoutRef.current = null;
-                } catch (error) {
-                  console.error('Error during data refresh:', error);
-                  // Remove blur even on error to prevent stuck state
-                  setIsModifying(false, null);
-                  setWillModify(false);
-                  setModifyingContext(null);
-                  isModifyingActiveRef.current = false;
-                  modificationTimeoutRef.current = null;
-                }
-              })();
-            } else {
-              // No modification occurred during stream, just clear states
-              console.log('⚪ No modification detected - clearing states');
-              setWillModify(false);
-              setModifyingContext(null);
+              console.log('🔴 Removing modification overlay');
+              setIsModifying(false, null);
+              isModifyingActiveRef.current = false;
             }
           },
           // onError
           (errorMsg: string) => {
             console.error('❌ Error from server:', errorMsg);
             
-            // Clear any pending timeouts
-            if (modificationTimeoutRef.current) {
-              clearTimeout(modificationTimeoutRef.current);
-              modificationTimeoutRef.current = null;
-            }
-            
             setUpdateMessage(null);
             setStreamingContent("");
             setIsStreaming(false);
-            setWillModify(false);
-            setModifyingContext(null);
-            setIsModifying(false, null);
             setOptimisticMessages([]);
             setError(errorMsg);
             isModifyingActiveRef.current = false;
+            setIsModifying(false, null);
             
             toast({
               title: "Error",
@@ -277,21 +188,13 @@ export function AICopilotPanel({
         console.error("❌ Failed to send message:", error);
         const errorMsg = error instanceof Error ? error.message : "Failed to send message";
         
-        // Clear any pending timeouts
-        if (modificationTimeoutRef.current) {
-          clearTimeout(modificationTimeoutRef.current);
-          modificationTimeoutRef.current = null;
-        }
-        
         setUpdateMessage(null);
         setStreamingContent("");
         setIsStreaming(false);
-        setWillModify(false);
-        setModifyingContext(null);
-        setIsModifying(false, null);
         setOptimisticMessages([]);
         setError(errorMsg);
         isModifyingActiveRef.current = false;
+        setIsModifying(false, null);
         
         toast({
           title: "Failed to send message",
@@ -300,28 +203,19 @@ export function AICopilotPanel({
         });
       }
     },
-    [activeChatId, context, contextLabel, projectId, user, setIsModifying, queryClient, toast]
+    [chatId, context, contextLabel, user, setIsModifying, queryClient, toast]
   );
 
-  // Reset chat when project changes
+  // Reset state when chat changes
   useEffect(() => {
-    // Clear any pending modification timeouts
-    if (modificationTimeoutRef.current) {
-      clearTimeout(modificationTimeoutRef.current);
-      modificationTimeoutRef.current = null;
-    }
-    
-    setActiveChatId(null);
     setStreamingContent("");
     setUpdateMessage(null);
-    setWillModify(false);
-    setModifyingContext(null);
     setOptimisticMessages([]);
     setError(null);
     isModifyingActiveRef.current = false;
     setIsModifying(false, null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId]); // Only run when project changes, not when setIsModifying changes
+  }, [chatId]); // Only run when chat changes
 
   // Handle panel resizing
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -358,14 +252,6 @@ export function AICopilotPanel({
     };
   }, [isResizing]);
 
-  // Cleanup timeouts on unmount
-  useEffect(() => {
-    return () => {
-      if (modificationTimeoutRef.current) {
-        clearTimeout(modificationTimeoutRef.current);
-      }
-    };
-  }, []);
 
   if (collapsed) {
     return (
@@ -391,7 +277,7 @@ export function AICopilotPanel({
     <>
     <aside
         ref={panelRef}
-        className="h-screen flex bg-sidebar border-l border-sidebar-border transition-all duration-300 relative z-[60]"
+        className="h-screen flex bg-sidebar border-l border-sidebar-border transition-all duration-300 relative z-[60] overflow-hidden"
         style={{ width: `${panelWidth}px` }}
       >
         {/* Resize Handle */}
@@ -408,88 +294,42 @@ export function AICopilotPanel({
           </div>
         </div>
 
-        <div className="flex flex-col flex-1 h-full">
+        <div className="flex flex-col flex-1 h-full min-w-0 overflow-hidden">
       {/* Header */}
-        <div className="p-3 flex items-center justify-between border-b border-sidebar-border">
-          <div className="flex items-center gap-2">
+        <div className="p-3 flex items-center justify-between border-b border-sidebar-border min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
         <Button
           variant="ghost"
           size="icon"
           onClick={onToggle}
-          className="h-8 w-8 text-sidebar-foreground/70 hover:text-sidebar-foreground"
+          className="h-8 w-8 text-sidebar-foreground/70 hover:text-sidebar-foreground shrink-0"
         >
               <ChevronRight className="h-4 w-4" />
         </Button>
-            <img src="/favicon.png" alt="AETEA" className="h-4 w-4" />
-            <span className="text-sm font-medium">AETEA</span>
-          </div>
-          
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleNewChat}
-              className="h-8 w-8 text-sidebar-foreground/70 hover:text-sidebar-foreground"
-              title="New Chat"
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-            <ChatHistoryDialog
-              projectId={projectId}
-              activeChatId={activeChatId}
-              onSelectChat={setActiveChatId}
-              trigger={
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-sidebar-foreground/70 hover:text-sidebar-foreground"
-                  title="Chat History"
-                >
-                  <History className="h-4 w-4" />
-                </Button>
-              }
-            />
+            <img src="/favicon.png" alt="AETEA" className="h-4 w-4 shrink-0" />
+            <span className="text-sm font-medium truncate">AETEA</span>
           </div>
       </div>
 
         {/* Chat Content */}
-        <div className="flex-1 flex flex-col min-h-0">
-          {activeChatId ? (
-            <>
-              <ChatMessages
-                messages={messages}
-                streamingContent={streamingContent}
-                isStreaming={isStreaming}
-                updateMessage={updateMessage}
-              />
-              {error && (
-                <div className="px-4 py-2 bg-destructive/10 border-t border-destructive/20">
-                  <p className="text-xs text-destructive">{error}</p>
-                </div>
-              )}
-              <ChatInput
-                onSend={handleSendMessage}
-                isStreaming={isStreaming}
-                contextLabel={contextLabel}
-                disabled={false}
-              />
-            </>
-          ) : (
-        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-            <img src="/favicon.png" alt="AETEA" className="h-8 w-8" />
-          </div>
-              <h3 className="font-medium text-foreground mb-2">Start a conversation</h3>
-              <p className="text-sm text-muted-foreground mb-4 max-w-xs">
-                Ask me anything about your project. I'm here to help!
-              </p>
-              <Button onClick={handleNewChat} size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                New Chat
-              </Button>
+        <div className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden">
+          <ChatMessages
+            messages={messages}
+            streamingContent={streamingContent}
+            isStreaming={isStreaming}
+            updateMessage={updateMessage}
+          />
+          {error && (
+            <div className="px-4 py-2 bg-destructive/10 border-t border-destructive/20">
+              <p className="text-xs text-destructive">{error}</p>
             </div>
           )}
+          <ChatInput
+            onSend={handleSendMessage}
+            isStreaming={isStreaming}
+            contextLabel={contextLabel}
+            disabled={false}
+          />
         </div>
         </div>
     </aside>

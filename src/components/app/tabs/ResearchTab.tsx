@@ -1,5 +1,5 @@
 import { Loader2, ExternalLink, Instagram, Twitter, Facebook, Linkedin, Youtube } from "lucide-react";
-import { useProjectResearch } from "@/hooks/useProjectSection";
+import { useCampaignResearch } from "@/hooks/useProjectSection";
 import { Markdown } from "@/components/ui/markdown";
 import { ModificationOverlay } from "@/components/app/ModificationOverlay";
 import type { ResearchModel } from "@/types/api";
@@ -11,7 +11,7 @@ interface ResearchTabProps {
 }
 
 export function ResearchTab({ projectId, isModifying }: ResearchTabProps) {
-  const { data, isLoading, error } = useProjectResearch(projectId);
+  const { data, isLoading, error } = useCampaignResearch(projectId);
   const research = data?.content as ResearchModel | undefined;
 
   if (isLoading) {

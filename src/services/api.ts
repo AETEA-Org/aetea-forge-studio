@@ -280,27 +280,39 @@ export async function deleteChatById(chatId: string, userEmail: string): Promise
 // Chat functions
 export async function sendChatMessage(
   userEmail: string,
-  projectId: string,
   chatId: string,
-  context: string,
   message: string,
-  onUpdate?: (content: string, willModify: boolean) => void,
-  onContent?: (content: string, willModify: boolean) => void,
-  onComplete?: (content: string, willModify: boolean) => void,
+  mode: string,
+  context?: string,
+  files?: File[],
+  onUpdate?: (content: string) => void,
+  onContent?: (content: string) => void,
+  onEvent?: (eventName: string) => void,
+  onComplete?: (content: string) => void,
   onError?: (message: string) => void
 ): Promise<void> {
   const url = buildUrl('/ai/chat');
   
+  const formData = new FormData();
+  formData.append('user_id', userEmail);
+  formData.append('chat_id', chatId);
+  formData.append('message', message);
+  formData.append('mode', mode);
+  
+  if (context) {
+    formData.append('context', context);
+  }
+  
+  if (files && files.length > 0) {
+    files.forEach((file) => {
+      formData.append('files', file);
+    });
+  }
+
   const response = await fetch(url, {
     method: 'POST',
-    headers: getHeaders('application/json'),
-    body: JSON.stringify({
-      user_id: userEmail,
-      project_id: projectId,
-      chat_id: chatId,
-      context: context,
-      message: message,
-    }),
+    headers: getHeaders(), // Don't set Content-Type for FormData, browser will set it with boundary
+    body: formData,
   });
 
   if (!response.ok) {
@@ -333,12 +345,14 @@ export async function sendChatMessage(
           const data: AgentStreamMessage = JSON.parse(line.slice(6));
           
           if (data.status === 'update') {
-            onUpdate?.(data.content, data.will_modify);
+            onUpdate?.(data.content);
           } else if (data.status === 'content') {
             accumulatedContent += data.content;
-            onContent?.(accumulatedContent, data.will_modify);
+            onContent?.(accumulatedContent);
+          } else if (data.status === 'event') {
+            onEvent?.(data.content);
           } else if (data.status === 'complete') {
-            onComplete?.(data.content, data.will_modify);
+            onComplete?.(accumulatedContent || data.content);
           } else if (data.status === 'error') {
             onError?.(data.content);
           }
@@ -373,11 +387,10 @@ export async function listChats(
 // Get messages for a chat
 export async function getChatMessages(
   chatId: string,
-  userEmail: string,
-  projectId: string
+  userEmail: string
 ): Promise<ChatMessagesResponse> {
   const response = await fetch(
-    buildUrl(`/chats/${chatId}/messages`, { user_id: userEmail, project_id: projectId }),
+    buildUrl(`/chats/${chatId}/messages`, { user_id: userEmail }),
     {
       headers: getHeaders(),
     }

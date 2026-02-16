@@ -1,41 +1,43 @@
 import { useQuery } from "@tanstack/react-query";
-import { getProjectSection } from "@/services/api";
+import { getCampaignByChatId } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 import type { 
-  SectionName, 
-  OverviewModel, 
   BriefModel, 
   ResearchModel, 
   StrategyModel,
   SectionResponse 
 } from "@/types/api";
 
-// Generic hook for any section
-export function useProjectSection<T>(projectId: string | undefined, section: SectionName) {
+// Generic hook to get a campaign section
+export function useCampaignSection<T>(
+  chatId: string | undefined,
+  section: 'brief' | 'research' | 'strategy'
+) {
   const { user } = useAuth();
   const userEmail = user?.email;
 
   return useQuery({
-    queryKey: ['project', projectId, section, userEmail],
-    queryFn: () => getProjectSection<T>(projectId!, section, userEmail!),
-    enabled: !!projectId && !!userEmail,
+    queryKey: ['campaign', chatId, section, userEmail],
+    queryFn: async () => {
+      const data = await getCampaignByChatId(chatId!, userEmail!);
+      return {
+        content: data.sections[section] as T,
+      } as SectionResponse<T>;
+    },
+    enabled: !!chatId && !!userEmail,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }
 
 // Convenience hooks for specific sections
-export function useProjectOverview(projectId: string | undefined) {
-  return useProjectSection<OverviewModel>(projectId, 'overview');
+export function useCampaignBrief(chatId: string | undefined) {
+  return useCampaignSection<BriefModel>(chatId, 'brief');
 }
 
-export function useProjectBrief(projectId: string | undefined) {
-  return useProjectSection<BriefModel>(projectId, 'brief');
+export function useCampaignResearch(chatId: string | undefined) {
+  return useCampaignSection<ResearchModel>(chatId, 'research');
 }
 
-export function useProjectResearch(projectId: string | undefined) {
-  return useProjectSection<ResearchModel>(projectId, 'research');
-}
-
-export function useProjectStrategy(projectId: string | undefined) {
-  return useProjectSection<StrategyModel>(projectId, 'strategy');
+export function useCampaignStrategy(chatId: string | undefined) {
+  return useCampaignSection<StrategyModel>(chatId, 'strategy');
 }
