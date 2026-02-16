@@ -101,9 +101,12 @@ export function Markdown({ children, className, inline = false }: MarkdownProps)
           p: ({ node, ...props }: any) => (
             <p {...props} className="mb-2 last:mb-0 break-words" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }} />
           ),
-          // Style lists
+          // Style lists (list-disc/pl-5 restore bullets; Tailwind Preflight removes list-style)
           ul: ({ node, ...props }: any) => (
-            <ul {...props} className="space-y-1 break-words" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }} />
+            <ul {...props} className="list-disc pl-5 space-y-1 break-words my-2" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }} />
+          ),
+          ol: ({ node, ...props }: any) => (
+            <ol {...props} className="list-decimal pl-5 space-y-1 break-words my-2" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }} />
           ),
           li: ({ node, ...props }: any) => (
             <li {...props} className="break-words" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }} />

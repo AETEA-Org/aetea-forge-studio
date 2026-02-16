@@ -106,7 +106,6 @@ export function ChatMessages({
               <Markdown className="text-sm leading-relaxed break-words" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                 {streamingContent}
               </Markdown>
-              <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-1" />
             </div>
             <span className="text-xs text-muted-foreground px-1">
               Just now
