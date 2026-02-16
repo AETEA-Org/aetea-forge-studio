@@ -1,15 +1,23 @@
 import { useState, useRef } from "react";
-import { Upload, FileText, Sparkles, AlertCircle, Loader2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Upload, FileText, Sparkles, AlertCircle, Loader2, Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useCreateProject } from "@/hooks/useCreateProject";
 import { BriefAnalysisLoading } from "@/components/app/BriefAnalysisLoading";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { startBrainstormFirstMessage } from "@/services/api";
 import { cn } from "@/lib/utils";
 
 export default function App() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [briefText, setBriefText] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [isStartingBrainstorm, setIsStartingBrainstorm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { createProject, isSubmitting, showLoadingScreen, progress, error, reset } = useCreateProject();
@@ -63,6 +71,32 @@ export default function App() {
 
   const handleSubmit = async () => {
     await createProject(briefText, files);
+  };
+
+  const handleStartBrainstorming = async () => {
+    if (!user?.email) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to start brainstorming.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const newChatId = crypto.randomUUID();
+    const message = briefText.trim();
+    setIsStartingBrainstorm(true);
+    try {
+      await startBrainstormFirstMessage(user.email, newChatId, message, files.length > 0 ? files : undefined);
+      navigate(`/app/chat/${newChatId}`);
+    } catch {
+      toast({
+        title: "Brainstorming failed",
+        description: "Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsStartingBrainstorm(false);
+    }
   };
 
   // Show loading screen when campaign creation started
@@ -192,15 +226,17 @@ export default function App() {
               {isSubmitting ? "Processing..." : "Analyze Brief"}
             </Button>
             <Button
-              onClick={() => {
-                // TODO: Implement brainstorm functionality
-              }}
-              disabled={isSubmitting || showLoadingScreen}
-              variant="outline"
+              onClick={handleStartBrainstorming}
+              disabled={isSubmitting || showLoadingScreen || !briefText.trim() || isStartingBrainstorm}
               className="flex-1"
               size="lg"
             >
-              Start Brainstorming
+              {isStartingBrainstorm ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Lightbulb className="h-4 w-4 mr-2" />
+              )}
+              {isStartingBrainstorm ? "Opening..." : "Start Brainstorming"}
             </Button>
           </div>
         </div>

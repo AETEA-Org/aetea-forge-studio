@@ -12,8 +12,8 @@ import { SpeedInsights } from "@vercel/speed-insights/react";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import AppPage from "./pages/App";
-import Campaign from "./pages/Campaign";
 import { CampaignShell } from "./layouts/CampaignShell";
+import ChatOrCampaign from "./pages/ChatOrCampaign";
 import TaskDetailPage from "./pages/TaskDetailPage";
 import TaskReviewPage from "./pages/TaskReviewPage";
 import Settings from "./pages/Settings";
@@ -44,7 +44,7 @@ const App = () => (
               >
                 <Route index element={<AppPage />} />
                 <Route path="chat/:chatId" element={<CampaignShell />}>
-                  <Route index element={<Campaign />} />
+                  <Route index element={<ChatOrCampaign />} />
                   <Route path="task/:taskId" element={<TaskDetailPage />} />
                   <Route path="task/:taskId/review" element={<TaskReviewPage />} />
                 </Route>

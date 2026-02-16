@@ -1,15 +1,24 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Loader2, Paperclip, X } from "lucide-react";
+import { Send, Loader2, Paperclip, X, Lightbulb, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ChatContextIndicator } from "./ChatContextIndicator";
 import { cn } from "@/lib/utils";
+
+export type ChatMode = "brainstorm" | "campaign";
 
 interface ChatInputProps {
   onSend: (message: string, files?: File[]) => void;
   isStreaming: boolean;
   contextLabel: string;
   disabled?: boolean;
+  /** When false, hide the "Context: ..." label (e.g. in Chat View; only relevant in campaign view). Default true. */
+  showContextIndicator?: boolean;
+  /** When provided, shows mode toggle (icon + label) and uses this as current mode */
+  mode?: ChatMode;
+  onModeToggle?: () => void;
+  /** Max height (px) for textarea before scrolling. Default 120. Use 200+ for chat view. */
+  textareaMaxHeight?: number;
 }
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -47,7 +56,16 @@ function validateFile(file: File): { valid: boolean; error?: string } {
   return { valid: true };
 }
 
-export function ChatInput({ onSend, isStreaming, contextLabel, disabled }: ChatInputProps) {
+export function ChatInput({
+  onSend,
+  isStreaming,
+  contextLabel,
+  disabled,
+  showContextIndicator = true,
+  mode,
+  onModeToggle,
+  textareaMaxHeight = 120,
+}: ChatInputProps) {
   const [message, setMessage] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -134,7 +152,7 @@ export function ChatInput({ onSend, isStreaming, contextLabel, disabled }: ChatI
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      <ChatContextIndicator contextLabel={contextLabel} />
+      {showContextIndicator && <ChatContextIndicator contextLabel={contextLabel} />}
       
       {/* File previews */}
       {files.length > 0 && (
@@ -184,7 +202,8 @@ export function ChatInput({ onSend, isStreaming, contextLabel, disabled }: ChatI
           onChange={(e) => setMessage(e.target.value)}
           placeholder={isDragging ? "Drop files here..." : "Ask a question..."}
           disabled={isStreaming || disabled}
-          className="min-h-[44px] max-h-[120px] resize-none bg-background/50 border-border/50 flex-1 min-w-0"
+          className="min-h-[44px] resize-none bg-background/50 border-border/50 flex-1 min-w-0"
+          style={{ maxHeight: `${textareaMaxHeight}px` }}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
@@ -192,6 +211,23 @@ export function ChatInput({ onSend, isStreaming, contextLabel, disabled }: ChatI
             }
           }}
         />
+        {onModeToggle && mode !== undefined && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onModeToggle}
+            disabled={isStreaming || disabled}
+            className="h-[44px] shrink-0 flex items-center gap-1.5 px-3 border-border"
+          >
+            {mode === "brainstorm" ? (
+              <Lightbulb className="h-4 w-4" />
+            ) : (
+              <LayoutDashboard className="h-4 w-4" />
+            )}
+            <span className="text-xs font-medium capitalize">{mode}</span>
+          </Button>
+        )}
         <Button
           type="submit"
           disabled={(!message.trim() && files.length === 0) || isStreaming || disabled}

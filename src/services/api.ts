@@ -73,6 +73,23 @@ export async function listAllChats(userEmail: string): Promise<ChatListResponse>
   return response.json();
 }
 
+// Create a new chat
+export async function createChat(
+  userEmail: string,
+  mode: 'brainstorm' | 'campaign' = 'brainstorm'
+): Promise<{ chat_id: string; title: string; last_modified: string }> {
+  const response = await fetch(buildUrl('/chats'), {
+    method: 'POST',
+    headers: getHeaders('application/json'),
+    body: JSON.stringify({ user_id: userEmail, mode }),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to create chat');
+  }
+  return response.json();
+}
+
 // Get project section
 export async function getProjectSection<T>(
   projectId: string,
@@ -580,6 +597,97 @@ export async function sendChatMessage(
         } catch (e) {
           console.error('Failed to parse SSE message:', line, e);
         }
+      }
+    }
+  }
+}
+
+// Pending brainstorm stream: set by landing when Start Brainstorming is pressed, consumed by ChatView
+let pendingBrainstormStream: {
+  chatId: string;
+  userMessage: string;
+  reader: ReadableStreamDefaultReader<Uint8Array>;
+} | null = null;
+
+/** Start first brainstorm message (POST /ai/chat). Stores the response stream for ChatView to consume. Does not await stream. */
+export async function startBrainstormFirstMessage(
+  userEmail: string,
+  chatId: string,
+  message: string,
+  files?: File[]
+): Promise<void> {
+  const url = buildUrl('/ai/chat');
+  const formData = new FormData();
+  formData.append('user_id', userEmail);
+  formData.append('chat_id', chatId);
+  formData.append('message', message);
+  formData.append('mode', 'brainstorm');
+  if (files && files.length > 0) {
+    files.forEach((file) => formData.append('files', file));
+  }
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: formData,
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || 'Brainstorm request failed');
+  }
+  const reader = response.body?.getReader();
+  if (!reader) {
+    throw new Error('No response body');
+  }
+  pendingBrainstormStream = { chatId, userMessage: message, reader };
+}
+
+/** Get and clear pending brainstorm stream for this chat (used by ChatView on mount). */
+export function getAndClearPendingBrainstormStream(chatId: string): {
+  userMessage: string;
+  reader: ReadableStreamDefaultReader<Uint8Array>;
+} | null {
+  if (!pendingBrainstormStream || pendingBrainstormStream.chatId !== chatId) {
+    return null;
+  }
+  const { userMessage, reader } = pendingBrainstormStream;
+  pendingBrainstormStream = null;
+  return { userMessage, reader };
+}
+
+/** Consume an AI chat SSE stream (reader) and invoke callbacks. */
+export async function consumeAgentStream(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  callbacks: {
+    onUpdate?: (content: string) => void;
+    onContent?: (content: string) => void;
+    onEvent?: (eventName: string) => void;
+    onComplete?: (content: string) => void;
+    onError?: (message: string) => void;
+  }
+): Promise<void> {
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let accumulatedContent = '';
+  const { onUpdate, onContent, onEvent, onComplete, onError } = callbacks;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      try {
+        const data: AgentStreamMessage = JSON.parse(line.slice(6));
+        if (data.status === 'update') onUpdate?.(data.content);
+        else if (data.status === 'content') {
+          accumulatedContent += data.content;
+          onContent?.(accumulatedContent);
+        } else if (data.status === 'event') onEvent?.(data.content);
+        else if (data.status === 'complete') onComplete?.(accumulatedContent || data.content);
+        else if (data.status === 'error') onError?.(data.content);
+      } catch (e) {
+        console.error('Failed to parse SSE message:', line, e);
       }
     }
   }

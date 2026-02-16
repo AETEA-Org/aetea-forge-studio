@@ -15,22 +15,20 @@ import { CampaignProvider } from "@/components/app/CampaignContext";
 import { useModification } from "@/hooks/useModification";
 import { useQuery } from "@tanstack/react-query";
 import { getChat, getCampaignById } from "@/services/api";
+import type { ChatOrCampaignOutletContext } from "@/pages/ChatOrCampaign";
 
-export default function Campaign() {
+interface CampaignProps {
+  outletContext?: ChatOrCampaignOutletContext | null;
+}
+
+export default function Campaign({ outletContext: outletContextProp }: CampaignProps = {}) {
   const { chatId } = useParams<{ chatId: string }>();
   
   const { user } = useAuth();
   const { setIsModifying } = useModification();
   
-  // Get state from AppLayout via Outlet context - MUST be called before any returns
-  const outletContext = useOutletContext<{ 
-    isModifying?: boolean; 
-    modifyingContext?: string | null;
-    activeTab?: CampaignTab;
-    selectedTaskId?: string | null;
-    setActiveTab?: (tab: CampaignTab) => void;
-    setSelectedTaskId?: (taskId: string | null) => void;
-  }>();
+  const contextFromOutlet = useOutletContext<ChatOrCampaignOutletContext>();
+  const outletContext = outletContextProp ?? contextFromOutlet;
   
   const isModifying = outletContext?.isModifying || false;
   const modifyingContext = outletContext?.modifyingContext || null;

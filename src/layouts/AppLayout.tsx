@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { Outlet, useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { Sidebar } from "@/components/app/Sidebar";
 import { AICopilotPanel } from "@/components/app/AICopilotPanel";
 import { ModificationProvider } from "@/components/app/ModificationContext";
+import { getChat } from "@/services/api";
+import { useAuth } from "@/hooks/useAuth";
 import type { CampaignTab } from "@/components/app/CampaignTabs";
 
 export function AppLayout() {
@@ -16,6 +19,13 @@ export function AppLayout() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   
   const { chatId } = useParams<{ chatId?: string }>();
+  const { user } = useAuth();
+  const { data: chatData } = useQuery({
+    queryKey: ["chat", chatId, user?.email],
+    queryFn: () => getChat(chatId!, user!.email!),
+    enabled: !!chatId && !!user?.email,
+  });
+  const hasCampaign = !!chatData?.campaign_id;
 
   // Handler that updates modification state - shared between AICopilotPanel and Project
   // Wrapped in useCallback to prevent recreating on every render
@@ -61,8 +71,8 @@ export function AppLayout() {
           />
         </main>
 
-        {/* Right AI Panel - Only show when chat is open */}
-        {chatId && (
+        {/* Right AI Panel - Only show when chat is open and has a campaign (Campaign view) */}
+        {chatId && hasCampaign && (
           <AICopilotPanel 
             chatId={chatId}
             activeTab={activeTab}
