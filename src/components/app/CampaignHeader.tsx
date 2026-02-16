@@ -1,11 +1,11 @@
 import { formatDistanceFromUTC } from "@/lib/dateUtils";
 
-interface ProjectHeaderProps {
+interface CampaignHeaderProps {
   title: string;
   lastModified?: string;
 }
 
-export function ProjectHeader({ title, lastModified }: ProjectHeaderProps) {
+export function CampaignHeader({ title, lastModified }: CampaignHeaderProps) {
   return (
     <div className="mb-6">
       <h1 className="font-display text-2xl font-bold">{title}</h1>

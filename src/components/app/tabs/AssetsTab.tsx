@@ -10,7 +10,7 @@ import type { Asset } from "@/types/api";
 type ViewMode = 'grid' | 'detail';
 
 interface AssetsTabProps {
-  projectId: string;
+  chatId: string;
   isModifying?: boolean;
 }
 
@@ -36,13 +36,13 @@ function getFileIcon(asset: Asset) {
 // URL expiration time: 1 hour in milliseconds
 const URL_EXPIRATION_MS = 60 * 60 * 1000;
 
-export function AssetsTab({ projectId, isModifying }: AssetsTabProps) {
+export function AssetsTab({ chatId, isModifying }: AssetsTabProps) {
   const { user } = useAuth();
   const [selectedFolder, setSelectedFolder] = useState<string | undefined>(undefined);
   const [viewMode, setViewMode] = useState<ViewMode>('detail');
   const [refreshingUrls, setRefreshingUrls] = useState<Set<string>>(new Set());
   
-  const { data, isLoading, error } = useAssets(projectId, selectedFolder);
+  const { data, isLoading, error } = useAssets(chatId, selectedFolder);
   
   // Check if URL is expired (1 hour since fetch)
   const isUrlExpired = useCallback((fetchedAt?: number): boolean => {

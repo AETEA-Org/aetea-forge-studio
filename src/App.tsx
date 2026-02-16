@@ -12,7 +12,7 @@ import { SpeedInsights } from "@vercel/speed-insights/react";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import AppPage from "./pages/App";
-import Project from "./pages/Project";
+import Campaign from "./pages/Campaign";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
@@ -40,8 +40,7 @@ const App = () => (
                 }
               >
                 <Route index element={<AppPage />} />
-                <Route path="chat/:chatId" element={<Project />} />
-                <Route path="project/:projectId" element={<Project />} />
+                <Route path="chat/:chatId" element={<Campaign />} />
                 <Route path="settings" element={<Settings />} />
               </Route>
               

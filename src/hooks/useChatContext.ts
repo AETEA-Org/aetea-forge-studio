@@ -1,8 +1,7 @@
-import { useParams } from "react-router-dom";
-import type { ProjectTab } from "@/components/app/ProjectTabs";
+import type { CampaignTab } from "@/components/app/CampaignTabs";
 
 interface UseChatContextProps {
-  activeTab?: ProjectTab;
+  activeTab?: CampaignTab;
   selectedTaskId?: string | null;
 }
 
@@ -15,12 +14,10 @@ export function useChatContext({
   activeTab,
   selectedTaskId,
 }: UseChatContextProps = {}): ChatContext {
-  const { projectId } = useParams<{ projectId: string }>();
-
   // Otherwise, use the active tab name with "tab:" prefix
   const tab = activeTab || 'brief';
   const context = `tab:${tab}`;
-  const contextLabels: Record<ProjectTab, string> = {
+  const contextLabels: Record<CampaignTab, string> = {
     brief: 'Brief',
     asset: 'Asset',
     research: 'Research',

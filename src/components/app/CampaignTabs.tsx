@@ -8,14 +8,14 @@ import {
   Settings 
 } from "lucide-react";
 
-export type ProjectTab = 'brief' | 'asset' | 'research' | 'strategy' | 'analytics' | 'settings';
+export type CampaignTab = 'brief' | 'asset' | 'research' | 'strategy' | 'analytics' | 'settings';
 
-interface ProjectTabsProps {
-  activeTab: ProjectTab;
-  onTabChange: (tab: ProjectTab) => void;
+interface CampaignTabsProps {
+  activeTab: CampaignTab;
+  onTabChange: (tab: CampaignTab) => void;
 }
 
-const tabs: { id: ProjectTab; label: string; icon: React.ElementType; comingSoon?: boolean }[] = [
+const tabs: { id: CampaignTab; label: string; icon: React.ElementType; comingSoon?: boolean }[] = [
   { id: 'brief', label: 'Brief', icon: FileText },
   { id: 'asset', label: 'Assets', icon: FolderOpen },
   { id: 'research', label: 'Research', icon: Search },
@@ -24,7 +24,7 @@ const tabs: { id: ProjectTab; label: string; icon: React.ElementType; comingSoon
   { id: 'settings', label: 'Settings', icon: Settings, comingSoon: true },
 ];
 
-export function ProjectTabs({ activeTab, onTabChange }: ProjectTabsProps) {
+export function CampaignTabs({ activeTab, onTabChange }: CampaignTabsProps) {
   return (
     <div className="border-b border-border mb-6">
       <nav className="flex gap-1 -mb-px overflow-x-auto">

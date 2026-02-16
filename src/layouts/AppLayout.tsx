@@ -3,7 +3,7 @@ import { Outlet, useParams } from "react-router-dom";
 import { Sidebar } from "@/components/app/Sidebar";
 import { AICopilotPanel } from "@/components/app/AICopilotPanel";
 import { ModificationProvider } from "@/components/app/ModificationContext";
-import type { ProjectTab } from "@/components/app/ProjectTabs";
+import type { CampaignTab } from "@/components/app/CampaignTabs";
 
 export function AppLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -12,11 +12,10 @@ export function AppLayout() {
   const [modifyingContext, setModifyingContextState] = useState<string | null>(null);
   
   // Shared state for active tab and selected task - lifted for AI Copilot context detection
-  const [activeTab, setActiveTab] = useState<ProjectTab>('brief');
+  const [activeTab, setActiveTab] = useState<CampaignTab>('brief');
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   
-  const { projectId, chatId } = useParams<{ projectId?: string; chatId?: string }>();
-  const id = chatId || projectId; // Support both routes
+  const { chatId } = useParams<{ chatId?: string }>();
 
   // Handler that updates modification state - shared between AICopilotPanel and Project
   // Wrapped in useCallback to prevent recreating on every render
@@ -25,19 +24,19 @@ export function AppLayout() {
     setModifyingContextState(context);
   }, []); // Empty deps - this function never needs to change
 
-  // Reset all state when project/chat changes
+  // Reset all state when chat changes
   useEffect(() => {
-    if (!id) {
+    if (!chatId) {
       setIsModifyingState(false);
       setModifyingContextState(null);
       setActiveTab('brief');
       setSelectedTaskId(null);
     } else {
-      // Reset to brief when switching projects/chats
+      // Reset to brief when switching chats
       setActiveTab('brief');
       setSelectedTaskId(null);
     }
-  }, [id]);
+  }, [chatId]);
 
   return (
     <ModificationProvider setIsModifying={handleModification}>
@@ -62,10 +61,10 @@ export function AppLayout() {
           />
         </main>
 
-        {/* Right AI Panel - Only show when project/chat is open */}
-        {id && (
+        {/* Right AI Panel - Only show when chat is open */}
+        {chatId && (
           <AICopilotPanel 
-            projectId={id}
+            chatId={chatId}
             activeTab={activeTab}
             selectedTaskId={selectedTaskId}
             collapsed={copilotCollapsed} 

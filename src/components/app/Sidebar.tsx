@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Plus, Settings, FolderOpen, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ProjectList } from "./ProjectList";
+import { SidebarChatList } from "./SidebarChatList";
 
 interface SidebarProps {
   collapsed: boolean;
@@ -52,9 +52,9 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         </Button>
       </div>
 
-      {/* Projects List */}
+      {/* Chats List */}
       <div className="flex-1 overflow-y-auto custom-scrollbar">
-        <ProjectList collapsed={collapsed} />
+        <SidebarChatList collapsed={collapsed} />
       </div>
 
       {/* Settings */}

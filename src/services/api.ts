@@ -169,6 +169,40 @@ export async function getCampaignByChatId(
   return response.json();
 }
 
+// Get campaign by campaign_id
+export async function getCampaignById(
+  campaignId: string,
+  userEmail: string
+): Promise<{
+  campaign: {
+    id: string;
+    chat_id: string;
+    user_id: string;
+    title: string;
+    created_at: string;
+    updated_at: string;
+  };
+  sections: {
+    brief: any;
+    research: any;
+    strategy: any;
+  };
+}> {
+  const response = await fetch(
+    buildUrl(`/campaigns/${campaignId}`, { user_id: userEmail }),
+    {
+      headers: getHeaders(),
+    }
+  );
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to fetch campaign');
+  }
+  
+  return response.json();
+}
+
 // Get project tasks
 export async function getProjectTasks(projectId: string, userEmail: string): Promise<TasksResponse> {
   const response = await fetch(

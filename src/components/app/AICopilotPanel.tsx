@@ -12,18 +12,18 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import type { ChatMessage } from "@/types/api";
-import type { ProjectTab } from "./ProjectTabs";
+import type { CampaignTab } from "./CampaignTabs";
 
 interface AICopilotPanelProps {
-  projectId: string;
-  activeTab: ProjectTab;
+  chatId: string;
+  activeTab: CampaignTab;
   selectedTaskId: string | null;
   collapsed: boolean;
   onToggle: () => void;
 }
 
 export function AICopilotPanel({
-  projectId,
+  chatId,
   activeTab,
   selectedTaskId,
   collapsed,
@@ -51,8 +51,7 @@ export function AICopilotPanel({
     selectedTaskId,
   });
 
-  // Auto-load chat on page load - projectId is actually chatId
-  const chatId = projectId;
+  // Auto-load chat on page load
   const { data: messagesData } = useChatMessages(chatId);
 
   // Get messages or empty array, and combine with optimistic messages
@@ -131,14 +130,12 @@ export function AICopilotPanel({
             } else if (eventName === 'campaign_modified') {
               console.log('🔄 Campaign modified - refetching data');
               // Refetch campaign data for current tab
-              if (['tab:brief', 'tab:research', 'tab:strategy'].includes(context)) {
-                const tab = context.replace('tab:', '');
-                queryClient.refetchQueries({
-                  queryKey: ['campaign', chatId, tab, user.email],
-                }).catch((err) => {
-                  console.error('Error refetching campaign data:', err);
-                });
-              }
+              // Note: This will refetch all campaign queries - the specific tab will be refetched by its hook
+              queryClient.invalidateQueries({
+                queryKey: ['campaign'],
+              }).catch((err) => {
+                console.error('Error invalidating campaign data:', err);
+              });
             }
           },
           // onComplete

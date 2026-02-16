@@ -16,45 +16,45 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-interface ProjectListProps {
+interface SidebarChatListProps {
   collapsed: boolean;
 }
 
-export function ProjectList({ collapsed }: ProjectListProps) {
+export function SidebarChatList({ collapsed }: SidebarChatListProps) {
   const navigate = useNavigate();
-  const { projectId } = useParams();
+  const { chatId } = useParams<{ chatId?: string }>();
   const { data, isLoading, error } = useProjects();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [projectToDelete, setProjectToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [chatToDelete, setChatToDelete] = useState<{ id: string; title: string } | null>(null);
   
   const chats = data?.chats || [];
 
-  const handleDeleteClick = (e: React.MouseEvent, projectId: string, projectTitle: string) => {
+  const handleDeleteClick = (e: React.MouseEvent, chatId: string, chatTitle: string) => {
     e.stopPropagation();
-    setProjectToDelete({ id: projectId, title: projectTitle });
+    setChatToDelete({ id: chatId, title: chatTitle });
   };
 
   const handleDeleteConfirm = async () => {
-    if (!projectToDelete || !user?.email) return;
+    if (!chatToDelete || !user?.email) return;
 
-    setDeletingId(projectToDelete.id);
+    setDeletingId(chatToDelete.id);
     try {
-      await deleteChatById(projectToDelete.id, user.email);
+      await deleteChatById(chatToDelete.id, user.email);
       
       // Invalidate chats query to refetch list
       queryClient.invalidateQueries({ queryKey: ['chats'] });
       
       // If currently viewing the deleted chat, redirect to /app
-      if (projectId === projectToDelete.id) {
+      if (chatId === chatToDelete.id) {
         navigate('/app');
       }
       
       toast({
         title: "Chat deleted",
-        description: `"${projectToDelete.title}" has been deleted successfully.`,
+        description: `"${chatToDelete.title}" has been deleted successfully.`,
       });
     } catch (error) {
       console.error('Delete chat error:', error);
@@ -65,7 +65,7 @@ export function ProjectList({ collapsed }: ProjectListProps) {
       });
     } finally {
       setDeletingId(null);
-      setProjectToDelete(null);
+      setChatToDelete(null);
     }
   };
 
@@ -80,7 +80,7 @@ export function ProjectList({ collapsed }: ProjectListProps) {
               className={cn(
                 "w-full p-2 rounded-md flex items-center justify-center",
                 "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent",
-                projectId === chat.chat_id && "bg-sidebar-accent text-sidebar-foreground"
+                chatId === chat.chat_id && "bg-sidebar-accent text-sidebar-foreground"
               )}
               title={chat.title}
             >
@@ -131,7 +131,7 @@ export function ProjectList({ collapsed }: ProjectListProps) {
             key={chat.chat_id}
             className={cn(
               "relative group rounded-md",
-              projectId === chat.chat_id && "bg-sidebar-accent"
+              chatId === chat.chat_id && "bg-sidebar-accent"
             )}
           >
             <button
@@ -140,7 +140,7 @@ export function ProjectList({ collapsed }: ProjectListProps) {
                 "w-full p-3 rounded-md text-left pr-10",
                 "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent",
                 "transition-colors",
-                projectId === chat.chat_id && "bg-sidebar-accent text-sidebar-foreground"
+                chatId === chat.chat_id && "bg-sidebar-accent text-sidebar-foreground"
               )}
               disabled={deletingId === chat.chat_id}
             >
@@ -184,9 +184,9 @@ export function ProjectList({ collapsed }: ProjectListProps) {
       </div>
       
       <DeleteProjectDialog
-        open={!!projectToDelete}
-        onOpenChange={(open) => !open && setProjectToDelete(null)}
-        projectTitle={projectToDelete?.title || ''}
+        open={!!chatToDelete}
+        onOpenChange={(open) => !open && setChatToDelete(null)}
+        projectTitle={chatToDelete?.title || ''}
         onConfirm={handleDeleteConfirm}
         isDeleting={!!deletingId}
       />

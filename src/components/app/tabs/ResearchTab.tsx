@@ -1,17 +1,17 @@
 import { Loader2, ExternalLink, Instagram, Twitter, Facebook, Linkedin, Youtube } from "lucide-react";
-import { useCampaignResearch } from "@/hooks/useProjectSection";
+import { useCampaignResearch } from "@/hooks/useCampaignSection";
 import { Markdown } from "@/components/ui/markdown";
 import { ModificationOverlay } from "@/components/app/ModificationOverlay";
 import type { ResearchModel } from "@/types/api";
 import { cn } from "@/lib/utils";
 
 interface ResearchTabProps {
-  projectId: string;
+  campaignId: string;
   isModifying?: boolean;
 }
 
-export function ResearchTab({ projectId, isModifying }: ResearchTabProps) {
-  const { data, isLoading, error } = useCampaignResearch(projectId);
+export function ResearchTab({ campaignId, isModifying }: ResearchTabProps) {
+  const { data, isLoading, error } = useCampaignResearch(campaignId);
   const research = data?.content as ResearchModel | undefined;
 
   if (isLoading) {

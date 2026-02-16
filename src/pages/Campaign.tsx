@@ -1,24 +1,22 @@
 import { useState, useEffect } from "react";
 import { useParams, useOutletContext } from "react-router-dom";
 import { Loader2 } from "lucide-react";
-import { ProjectHeader } from "@/components/app/ProjectHeader";
-import { ProjectTabs, ProjectTab } from "@/components/app/ProjectTabs";
+import { CampaignHeader } from "@/components/app/CampaignHeader";
+import { CampaignTabs, CampaignTab } from "@/components/app/CampaignTabs";
 import { BriefTab } from "@/components/app/tabs/BriefTab";
 import { AssetsTab } from "@/components/app/tabs/AssetsTab";
 import { ResearchTab } from "@/components/app/tabs/ResearchTab";
 import { StrategyTab } from "@/components/app/tabs/StrategyTab";
 import { AnalyticsTab } from "@/components/app/tabs/AnalyticsTab";
-import { ProjectSettingsTab } from "@/components/app/tabs/ProjectSettingsTab";
-import { useProjects } from "@/hooks/useProjects";
+import { CampaignSettingsTab } from "@/components/app/tabs/CampaignSettingsTab";
 import { useAuth } from "@/hooks/useAuth";
-import { ProjectProvider } from "@/components/app/ProjectContext";
+import { CampaignProvider } from "@/components/app/CampaignContext";
 import { useModification } from "@/hooks/useModification";
 import { useQuery } from "@tanstack/react-query";
-import { getChat, getCampaignByChatId } from "@/services/api";
+import { getChat, getCampaignById } from "@/services/api";
 
-export default function Project() {
-  const { projectId, chatId } = useParams<{ projectId?: string; chatId?: string }>();
-  const id = chatId || projectId; // Support both routes
+export default function Campaign() {
+  const { chatId } = useParams<{ chatId: string }>();
   
   const { user } = useAuth();
   const { setIsModifying } = useModification();
@@ -27,9 +25,9 @@ export default function Project() {
   const outletContext = useOutletContext<{ 
     isModifying?: boolean; 
     modifyingContext?: string | null;
-    activeTab?: ProjectTab;
+    activeTab?: CampaignTab;
     selectedTaskId?: string | null;
-    setActiveTab?: (tab: ProjectTab) => void;
+    setActiveTab?: (tab: CampaignTab) => void;
     setSelectedTaskId?: (taskId: string | null) => void;
   }>();
   
@@ -42,35 +40,22 @@ export default function Project() {
   
   // Fetch chat to get campaign_id
   const { data: chatData, isLoading: chatLoading } = useQuery({
-    queryKey: ['chat', id, user?.email],
-    queryFn: () => getChat(id!, user!.email!),
-    enabled: !!id && !!user?.email,
+    queryKey: ['chat', chatId, user?.email],
+    queryFn: () => getChat(chatId!, user!.email!),
+    enabled: !!chatId && !!user?.email,
   });
 
   // Fetch campaign if chat has campaign_id
   const { data: campaignData, isLoading: campaignLoading } = useQuery({
     queryKey: ['campaign', chatData?.campaign_id, user?.email],
-    queryFn: () => getCampaignByChatId(id!, user!.email!),
-    enabled: !!id && !!user?.email && !!chatData?.campaign_id,
+    queryFn: () => getCampaignById(chatData!.campaign_id!, user!.email!),
+    enabled: !!chatId && !!user?.email && !!chatData?.campaign_id,
   });
 
-  // DEBUG: Log project page state
-  console.log('Project Page DEBUG:', {
-    id,
-    chatId,
-    projectId,
-    chatLoading,
-    campaignLoading,
-    hasChatData: !!chatData,
-    hasCampaignData: !!campaignData,
-    campaignId: chatData?.campaign_id,
-    activeTab,
-  });
-
-  // Reset modification state when project/chat changes (tab reset handled in AppLayout)
+  // Reset modification state when chat changes (tab reset handled in AppLayout)
   useEffect(() => {
     setIsModifying(false, null);
-  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [chatId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (chatLoading) {
     return (
@@ -80,7 +65,7 @@ export default function Project() {
     );
   }
 
-  if (!id) {
+  if (!chatId) {
     return (
       <div className="min-h-full flex items-center justify-center">
         <p className="text-muted-foreground">No chat selected</p>
@@ -98,34 +83,45 @@ export default function Project() {
       isModifying: isCurrentViewModifying,
     };
 
+    // Only render tabs if campaign exists
+    if (!campaignData?.campaign.id) {
+      return (
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">No campaign found for this chat</p>
+        </div>
+      );
+    }
+
+    const campaignId = campaignData.campaign.id;
+
     switch (activeTab) {
       case 'brief':
-        return <BriefTab projectId={id} {...commonProps} />;
+        return <BriefTab campaignId={campaignId} {...commonProps} />;
       case 'asset':
-        return <AssetsTab projectId={id} {...commonProps} />;
+        return <AssetsTab chatId={chatId} {...commonProps} />;
       case 'research':
-        return <ResearchTab projectId={id} {...commonProps} />;
+        return <ResearchTab campaignId={campaignId} {...commonProps} />;
       case 'strategy':
-        return <StrategyTab projectId={id} {...commonProps} />;
+        return <StrategyTab campaignId={campaignId} {...commonProps} />;
       case 'analytics':
         return <AnalyticsTab {...commonProps} />;
       case 'settings':
-        return <ProjectSettingsTab {...commonProps} />;
+        return <CampaignSettingsTab {...commonProps} />;
       default:
         return null;
     }
   };
 
   return (
-    <ProjectProvider activeTab={activeTab} selectedTaskId={selectedTaskId}>
+    <CampaignProvider activeTab={activeTab} selectedTaskId={selectedTaskId}>
       <div className="min-h-full p-6 md:p-8">
           <div className="max-w-6xl mx-auto">
-            <ProjectHeader 
+            <CampaignHeader 
               title={campaignData?.campaign.title || chatData?.title || 'Chat'} 
               lastModified={campaignData?.campaign.updated_at || chatData?.last_modified}
             />
             
-            <ProjectTabs 
+            <CampaignTabs 
               activeTab={activeTab} 
               onTabChange={(tab) => {
                 setActiveTab(tab);
@@ -135,6 +131,6 @@ export default function Project() {
             {renderTabContent()}
           </div>
         </div>
-    </ProjectProvider>
+    </CampaignProvider>
   );
 }
