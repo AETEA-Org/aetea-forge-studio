@@ -38,7 +38,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         </Button>
       </div>
 
-      {/* New Project Button */}
+      {/* New Chat Button */}
       <div className="p-3">
         <Button
           onClick={() => navigate("/app")}
@@ -48,7 +48,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           )}
         >
           <Plus className="h-4 w-4" />
-          {!collapsed && <span>New Project</span>}
+          {!collapsed && <span>New Chat</span>}
         </Button>
       </div>
 
