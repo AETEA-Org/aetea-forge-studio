@@ -114,6 +114,60 @@ export async function getProjectStrategy(projectId: string, userEmail: string) {
   return getProjectSection<StrategyModel>(projectId, 'strategy', userEmail);
 }
 
+// Get a single chat
+export async function getChat(
+  chatId: string,
+  userEmail: string
+): Promise<{ chat_id: string; title: string; last_modified: string; mode: string; campaign_id: string | null }> {
+  const response = await fetch(
+    buildUrl(`/chats/${chatId}`, { user_id: userEmail }),
+    {
+      headers: getHeaders(),
+    }
+  );
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to fetch chat');
+  }
+  
+  return response.json();
+}
+
+// Get campaign by chat_id
+export async function getCampaignByChatId(
+  chatId: string,
+  userEmail: string
+): Promise<{
+  campaign: {
+    id: string;
+    chat_id: string;
+    user_id: string;
+    title: string;
+    created_at: string;
+    updated_at: string;
+  };
+  sections: {
+    brief: any;
+    research: any;
+    strategy: any;
+  };
+}> {
+  const response = await fetch(
+    buildUrl('/campaigns', { chat_id: chatId, user_id: userEmail }),
+    {
+      headers: getHeaders(),
+    }
+  );
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to fetch campaign');
+  }
+  
+  return response.json();
+}
+
 // Get project tasks
 export async function getProjectTasks(projectId: string, userEmail: string): Promise<TasksResponse> {
   const response = await fetch(
@@ -129,21 +183,22 @@ export async function getProjectTasks(projectId: string, userEmail: string): Pro
   return response.json();
 }
 
-// Create project with brief analysis (SSE streaming)
-export async function analyzeBrief(
+// Create campaign via AI chat (SSE streaming)
+export async function createCampaignViaChat(
   userEmail: string,
-  briefText?: string,
+  chatId: string,
+  message: string,
   files?: File[],
-  onProgress?: (message: string) => void,
-  onComplete?: (data: SSEMessage & { status: 'complete' }) => void,
+  onUpdate?: (content: string) => void,
+  onEvent?: (eventName: string) => void,
+  onComplete?: () => void,
   onError?: (message: string) => void
 ): Promise<void> {
   const formData = new FormData();
   formData.append('user_id', userEmail);
-  
-  if (briefText) {
-    formData.append('brief_text', briefText);
-  }
+  formData.append('chat_id', chatId);
+  formData.append('message', message);
+  formData.append('mode', 'campaign');
   
   if (files && files.length > 0) {
     files.forEach((file) => {
@@ -151,7 +206,7 @@ export async function analyzeBrief(
     });
   }
 
-  const url = buildUrl('/ai/brief-analysis');
+  const url = buildUrl('/ai/chat');
   
   const response = await fetch(url, {
     method: 'POST',
@@ -161,7 +216,7 @@ export async function analyzeBrief(
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.detail || 'Brief analysis failed');
+    throw new Error(error.detail || 'Campaign creation failed');
   }
 
   const reader = response.body?.getReader();
@@ -185,14 +240,16 @@ export async function analyzeBrief(
     for (const line of lines) {
       if (line.startsWith('data: ')) {
         try {
-          const data: SSEMessage = JSON.parse(line.slice(6));
+          const data: AgentStreamMessage = JSON.parse(line.slice(6));
           
-          if (data.status === 'progress' && data.message) {
-            onProgress?.(data.message);
-          } else if (data.status === 'complete' && data.data) {
-            onComplete?.(data as SSEMessage & { status: 'complete' });
-          } else if (data.status === 'error' && data.message) {
-            onError?.(data.message);
+          if (data.status === 'update') {
+            onUpdate?.(data.content);
+          } else if (data.status === 'event') {
+            onEvent?.(data.content);
+          } else if (data.status === 'complete') {
+            onComplete?.();
+          } else if (data.status === 'error') {
+            onError?.(data.content);
           }
         } catch (e) {
           console.error('Failed to parse SSE message:', line, e);

@@ -15,7 +15,8 @@ export function AppLayout() {
   const [activeTab, setActiveTab] = useState<ProjectTab>('overview');
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   
-  const { projectId } = useParams<{ projectId?: string }>();
+  const { projectId, chatId } = useParams<{ projectId?: string; chatId?: string }>();
+  const id = chatId || projectId; // Support both routes
 
   // Handler that updates modification state - shared between AICopilotPanel and Project
   // Wrapped in useCallback to prevent recreating on every render
@@ -24,19 +25,19 @@ export function AppLayout() {
     setModifyingContextState(context);
   }, []); // Empty deps - this function never needs to change
 
-  // Reset all state when project changes
+  // Reset all state when project/chat changes
   useEffect(() => {
-    if (!projectId) {
+    if (!id) {
       setIsModifyingState(false);
       setModifyingContextState(null);
       setActiveTab('overview');
       setSelectedTaskId(null);
     } else {
-      // Reset to overview when switching projects
+      // Reset to overview when switching projects/chats
       setActiveTab('overview');
       setSelectedTaskId(null);
     }
-  }, [projectId]);
+  }, [id]);
 
   return (
     <ModificationProvider setIsModifying={handleModification}>
@@ -61,10 +62,10 @@ export function AppLayout() {
           />
         </main>
 
-        {/* Right AI Panel - Only show when project is open */}
-        {projectId && (
+        {/* Right AI Panel - Only show when project/chat is open */}
+        {id && (
           <AICopilotPanel 
-            projectId={projectId}
+            projectId={id}
             activeTab={activeTab}
             selectedTaskId={selectedTaskId}
             collapsed={copilotCollapsed} 

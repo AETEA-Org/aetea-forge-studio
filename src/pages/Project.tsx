@@ -16,7 +16,8 @@ import { ProjectProvider } from "@/components/app/ProjectContext";
 import { useModification } from "@/hooks/useModification";
 
 export default function Project() {
-  const { projectId } = useParams<{ projectId: string }>();
+  const { projectId, chatId } = useParams<{ projectId?: string; chatId?: string }>();
+  const id = chatId || projectId; // Support both routes
   
   const { user } = useAuth();
   const { setIsModifying } = useModification();
@@ -40,10 +41,12 @@ export default function Project() {
   
   // Get chat info from the chats list
   const { data: chatsData, isLoading: chatsLoading } = useProjects();
-  const chat = chatsData?.chats.find(c => c.chat_id === projectId);
+  const chat = chatsData?.chats.find(c => c.chat_id === id);
 
   // DEBUG: Log project page state
   console.log('Project Page DEBUG:', {
+    id,
+    chatId,
     projectId,
     chatsLoading,
     hasChatsData: !!chatsData,
@@ -52,10 +55,10 @@ export default function Project() {
     activeTab,
   });
 
-  // Reset modification state when project changes (tab reset handled in AppLayout)
+  // Reset modification state when project/chat changes (tab reset handled in AppLayout)
   useEffect(() => {
     setIsModifying(false, null);
-  }, [projectId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Construct composite task ID if needed (user_id/project_id/task_id)
   const getCompositeTaskId = (taskId: string): string => {
@@ -64,7 +67,7 @@ export default function Project() {
       return taskId;
     }
     // Construct composite ID
-    return `${user?.email || ''}/${projectId}/${taskId}`;
+    return `${user?.email || ''}/${id}/${taskId}`;
   };
 
   const handleTaskSelect = (taskId: string | null) => {
@@ -83,10 +86,10 @@ export default function Project() {
     );
   }
 
-  if (!projectId) {
+  if (!id) {
     return (
       <div className="min-h-full flex items-center justify-center">
-        <p className="text-muted-foreground">No project selected</p>
+        <p className="text-muted-foreground">No chat selected</p>
       </div>
     );
   }
@@ -114,17 +117,17 @@ export default function Project() {
 
     switch (activeTab) {
       case 'overview':
-        return <OverviewTab projectId={projectId} {...commonProps} />;
+        return <OverviewTab projectId={id} {...commonProps} />;
       case 'brief':
-        return <BriefTab projectId={projectId} {...commonProps} />;
+        return <BriefTab projectId={id} {...commonProps} />;
       case 'research':
-        return <ResearchTab projectId={projectId} {...commonProps} />;
+        return <ResearchTab projectId={id} {...commonProps} />;
       case 'strategy':
-        return <StrategyTab projectId={projectId} {...commonProps} />;
+        return <StrategyTab projectId={id} {...commonProps} />;
       case 'tasks':
         return (
           <TasksTab 
-            projectId={projectId} 
+            projectId={id} 
             onTaskSelect={handleTaskSelect}
             {...commonProps}
           />

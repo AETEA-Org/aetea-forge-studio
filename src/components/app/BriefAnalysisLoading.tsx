@@ -6,14 +6,12 @@ interface BriefAnalysisLoadingProps {
 
 // Map progress messages to icons and progress percentages
 const progressSteps: Record<string, { icon: typeof Sparkles; percentage: number }> = {
-  'Starting brief analysis...': { icon: Sparkles, percentage: 5 },
-  'Extracting text from files...': { icon: FileText, percentage: 15 },
-  'Analyzing brief...': { icon: Search, percentage: 25 },
-  'Conducting market research...': { icon: TrendingUp, percentage: 45 },
-  'Generating campaign strategy...': { icon: Target, percentage: 65 },
-  'Creating execution tasks...': { icon: CheckSquare, percentage: 80 },
-  'Generating overview...': { icon: LayoutDashboard, percentage: 90 },
-  'Saving project...': { icon: Save, percentage: 95 },
+  'Analyzing your brief and documents': { icon: FileText, percentage: 15 },
+  'Researching market, audience, and competitors': { icon: TrendingUp, percentage: 35 },
+  'Developing campaign strategy': { icon: Target, percentage: 55 },
+  'Planning creative tasks': { icon: CheckSquare, percentage: 75 },
+  'Setting up creative direction': { icon: Sparkles, percentage: 90 },
+  'Finalizing your campaign': { icon: Save, percentage: 95 },
 };
 
 export function BriefAnalysisLoading({ progress }: BriefAnalysisLoadingProps) {
@@ -39,7 +37,7 @@ export function BriefAnalysisLoading({ progress }: BriefAnalysisLoadingProps) {
 
         {/* Title */}
         <h2 className="text-2xl font-bold text-center mb-3">
-          Creating Your Project
+          Creating Your Campaign
         </h2>
 
         {/* Progress Message */}

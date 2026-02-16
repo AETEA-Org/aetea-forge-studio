@@ -76,7 +76,7 @@ export function ProjectList({ collapsed }: ProjectListProps) {
           {chats.map((chat) => (
             <button
               key={chat.chat_id}
-              onClick={() => navigate(`/app/project/${chat.chat_id}`)}
+              onClick={() => navigate(`/app/chat/${chat.chat_id}`)}
               className={cn(
                 "w-full p-2 rounded-md flex items-center justify-center",
                 "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent",
@@ -135,7 +135,7 @@ export function ProjectList({ collapsed }: ProjectListProps) {
             )}
           >
             <button
-              onClick={() => navigate(`/app/project/${chat.chat_id}`)}
+              onClick={() => navigate(`/app/chat/${chat.chat_id}`)}
               className={cn(
                 "w-full p-3 rounded-md text-left pr-10",
                 "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent",

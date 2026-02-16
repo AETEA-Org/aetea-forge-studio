@@ -1,9 +1,8 @@
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { analyzeBrief } from "@/services/api";
+import { createCampaignViaChat, deleteChatById, getChat } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
-import type { SSEMessage } from "@/types/api";
 
 export function useCreateProject() {
   const { user } = useAuth();
@@ -11,12 +10,14 @@ export function useCreateProject() {
   const queryClient = useQueryClient();
   
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showLoadingScreen, setShowLoadingScreen] = useState(false);
   const [progress, setProgress] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
+  const [chatId, setChatId] = useState<string | null>(null);
 
   const createProject = useCallback(async (briefText?: string, files?: File[]) => {
     if (!user?.email) {
-      setError("You must be logged in to create a project");
+      setError("You must be logged in to create a campaign");
       return;
     }
 
@@ -25,55 +26,106 @@ export function useCreateProject() {
       return;
     }
 
+    // Generate fresh UUID for chat
+    const newChatId = crypto.randomUUID();
+    setChatId(newChatId);
     setIsSubmitting(true);
-    setProgress("Starting brief analysis...");
+    setShowLoadingScreen(false);
+    setProgress("");
     setError(null);
 
+    // Always prepend the message, even if briefText is empty
+    const message = `Create a campaign for me using the following details: ${briefText || ''}`.trim();
+
     try {
-      await analyzeBrief(
+      let campaignCreationStarted = false;
+      let loadingScreenActive = false;
+
+      await createCampaignViaChat(
         user.email,
-        briefText,
+        newChatId,
+        message,
         files,
-        // onProgress
-        (message) => {
-          setProgress(message);
+        // onUpdate - only show if we're in loading screen
+        (content: string) => {
+          if (loadingScreenActive) {
+            setProgress(content);
+          }
+        },
+        // onEvent
+        (eventName: string) => {
+          if (eventName === 'campaign_creation_started') {
+            campaignCreationStarted = true;
+            loadingScreenActive = true;
+            setShowLoadingScreen(true);
+            setIsSubmitting(false); // Button loading done, now full screen loading
+          }
         },
         // onComplete
-        (data) => {
-          const { project_id, title } = data.data;
+        async () => {
+          if (!campaignCreationStarted) {
+            // Error case: complete without campaign_creation_started
+            setError("Campaign creation failed. Please try again later.");
+            setIsSubmitting(false);
+            setShowLoadingScreen(false);
+            
+            // Silently delete the chat that was created
+            try {
+              await deleteChatById(newChatId, user.email);
+            } catch (deleteError) {
+              console.error('Failed to delete chat after error:', deleteError);
+            }
+            return;
+          }
+
+          // Success case
+          setShowLoadingScreen(false);
           
           // Invalidate chats query to refetch the list
           queryClient.invalidateQueries({ queryKey: ['chats'] });
           
-          setProgress("");
-          setIsSubmitting(false);
-          
-          // Navigate to the new project
-          navigate(`/app/project/${project_id}`);
+          // Navigate to chat view
+          navigate(`/app/chat/${newChatId}`);
         },
         // onError
-        (message) => {
+        (message: string) => {
           setError(message);
-          setProgress("");
           setIsSubmitting(false);
+          setShowLoadingScreen(false);
+          
+          // Silently delete the chat if it was created
+          if (newChatId) {
+            deleteChatById(newChatId, user.email).catch((deleteError) => {
+              console.error('Failed to delete chat after error:', deleteError);
+            });
+          }
         }
       );
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to create project";
+      const message = err instanceof Error ? err.message : "Campaign creation failed. Please try again later.";
       setError(message);
-      setProgress("");
       setIsSubmitting(false);
+      setShowLoadingScreen(false);
+      
+      // Silently delete the chat if it was created
+      if (newChatId) {
+        deleteChatById(newChatId, user.email).catch((deleteError) => {
+          console.error('Failed to delete chat after error:', deleteError);
+        });
+      }
     }
   }, [user?.email, navigate, queryClient]);
 
   const reset = useCallback(() => {
     setError(null);
     setProgress("");
+    setChatId(null);
   }, []);
 
   return {
     createProject,
     isSubmitting,
+    showLoadingScreen,
     progress,
     error,
     reset,

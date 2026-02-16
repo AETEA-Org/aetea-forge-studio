@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Upload, FileText, Sparkles, AlertCircle } from "lucide-react";
+import { Upload, FileText, Sparkles, AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useCreateProject } from "@/hooks/useCreateProject";
@@ -12,12 +12,13 @@ export default function App() {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const { createProject, isSubmitting, progress, error, reset } = useCreateProject();
+  const { createProject, isSubmitting, showLoadingScreen, progress, error, reset } = useCreateProject();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const newFiles = Array.from(e.target.files);
       setFiles((prev) => [...prev, ...newFiles]);
+      if (error) reset(); // Clear error when files are uploaded
     }
   };
 
@@ -56,6 +57,7 @@ export default function App() {
 
     if (acceptedFiles.length > 0) {
       setFiles((prev) => [...prev, ...acceptedFiles]);
+      if (error) reset(); // Clear error when files are uploaded
     }
   };
 
@@ -63,8 +65,8 @@ export default function App() {
     await createProject(briefText, files);
   };
 
-  // Show loading screen when submitting
-  if (isSubmitting) {
+  // Show loading screen when campaign creation started
+  if (showLoadingScreen) {
     return <BriefAnalysisLoading progress={progress} />;
   }
 
@@ -174,16 +176,33 @@ export default function App() {
             </div>
           )}
 
-          {/* Submit Button */}
-          <Button
-            onClick={handleSubmit}
-            disabled={isSubmitting || (!briefText.trim() && files.length === 0)}
-            className="w-full"
-            size="lg"
-          >
-            <Sparkles className="h-4 w-4 mr-2" />
-            Start Brief
-          </Button>
+          {/* Submit Buttons */}
+          <div className="flex gap-3">
+            <Button
+              onClick={handleSubmit}
+              disabled={isSubmitting || showLoadingScreen || (!briefText.trim() && files.length === 0)}
+              className="flex-1"
+              size="lg"
+            >
+              {isSubmitting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4 mr-2" />
+              )}
+              {isSubmitting ? "Processing..." : "Analyze Brief"}
+            </Button>
+            <Button
+              onClick={() => {
+                // TODO: Implement brainstorm functionality
+              }}
+              disabled={isSubmitting || showLoadingScreen}
+              variant="outline"
+              className="flex-1"
+              size="lg"
+            >
+              Start Brainstorming
+            </Button>
+          </div>
         </div>
       </div>
     </div>

@@ -40,6 +40,7 @@ const App = () => (
                 }
               >
                 <Route index element={<AppPage />} />
+                <Route path="chat/:chatId" element={<Project />} />
                 <Route path="project/:projectId" element={<Project />} />
                 <Route path="settings" element={<Settings />} />
               </Route>
