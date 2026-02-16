@@ -89,9 +89,9 @@ export function SidebarChatList({ collapsed }: SidebarChatListProps) {
           ))}
         </div>
         <DeleteProjectDialog
-          open={!!projectToDelete}
-          onOpenChange={(open) => !open && setProjectToDelete(null)}
-          projectTitle={projectToDelete?.title || ''}
+          open={!!chatToDelete}
+          onOpenChange={(open) => !open && setChatToDelete(null)}
+          projectTitle={chatToDelete?.title || ''}
           onConfirm={handleDeleteConfirm}
           isDeleting={!!deletingId}
         />
