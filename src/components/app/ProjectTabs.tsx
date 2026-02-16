@@ -3,11 +3,12 @@ import {
   FileText, 
   Search, 
   Target, 
+  FolderOpen,
   BarChart3, 
   Settings 
 } from "lucide-react";
 
-export type ProjectTab = 'brief' | 'research' | 'strategy' | 'analytics' | 'settings';
+export type ProjectTab = 'brief' | 'asset' | 'research' | 'strategy' | 'analytics' | 'settings';
 
 interface ProjectTabsProps {
   activeTab: ProjectTab;
@@ -16,6 +17,7 @@ interface ProjectTabsProps {
 
 const tabs: { id: ProjectTab; label: string; icon: React.ElementType; comingSoon?: boolean }[] = [
   { id: 'brief', label: 'Brief', icon: FileText },
+  { id: 'asset', label: 'Assets', icon: FolderOpen },
   { id: 'research', label: 'Research', icon: Search },
   { id: 'strategy', label: 'Strategy', icon: Target },
   { id: 'analytics', label: 'Analytics', icon: BarChart3, comingSoon: true },

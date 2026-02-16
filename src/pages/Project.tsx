@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import { ProjectHeader } from "@/components/app/ProjectHeader";
 import { ProjectTabs, ProjectTab } from "@/components/app/ProjectTabs";
 import { BriefTab } from "@/components/app/tabs/BriefTab";
+import { AssetsTab } from "@/components/app/tabs/AssetsTab";
 import { ResearchTab } from "@/components/app/tabs/ResearchTab";
 import { StrategyTab } from "@/components/app/tabs/StrategyTab";
 import { AnalyticsTab } from "@/components/app/tabs/AnalyticsTab";
@@ -100,6 +101,8 @@ export default function Project() {
     switch (activeTab) {
       case 'brief':
         return <BriefTab projectId={id} {...commonProps} />;
+      case 'asset':
+        return <AssetsTab projectId={id} {...commonProps} />;
       case 'research':
         return <ResearchTab projectId={id} {...commonProps} />;
       case 'strategy':

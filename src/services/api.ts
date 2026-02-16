@@ -13,6 +13,7 @@ import type {
   AgentStreamMessage,
   ChatMessagesResponse,
   DeleteChatResponse,
+  AssetListResponse,
 } from "@/types/api";
 
 // Direct API base URL (bypassing Supabase Edge Function)
@@ -272,6 +273,53 @@ export async function deleteChatById(chatId: string, userEmail: string): Promise
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.detail || 'Failed to delete chat');
+  }
+  
+  return response.json();
+}
+
+// Get assets by chat
+export async function getAssets(
+  chatId: string,
+  userEmail: string,
+  folderPath?: string
+): Promise<AssetListResponse> {
+  const params: Record<string, string> = {
+    user_id: userEmail,
+    chat_id: chatId,
+  };
+  
+  if (folderPath) {
+    params.folder_path = folderPath;
+  }
+  
+  const response = await fetch(buildUrl('/assets', params), {
+    headers: getHeaders(),
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to fetch assets');
+  }
+  
+  return response.json();
+}
+
+// Refresh asset download URL (returns JSON with download_url)
+export async function refreshAssetDownloadUrl(
+  assetId: string,
+  userEmail: string
+): Promise<{ download_url: string }> {
+  const response = await fetch(
+    buildUrl(`/assets/${assetId}/download`, { user_id: userEmail }),
+    {
+      headers: getHeaders(),
+    }
+  );
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to refresh asset URL');
   }
   
   return response.json();

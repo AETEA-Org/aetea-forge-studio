@@ -22,6 +22,7 @@ export function useChatContext({
   const context = `tab:${tab}`;
   const contextLabels: Record<ProjectTab, string> = {
     brief: 'Brief',
+    asset: 'Asset',
     research: 'Research',
     strategy: 'Strategy',
     analytics: 'Analytics',

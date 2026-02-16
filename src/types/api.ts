@@ -275,3 +275,20 @@ export interface DeleteChatResponse {
   message: string;
   chat_id: string;
 }
+
+// Asset types
+export interface Asset {
+  id: string;
+  user_id: string;
+  chat_id: string;
+  task_id: string | null;
+  folder_path: string;
+  file_name: string;
+  download_url: string;
+  mime_type: string;
+  created_at: string;
+}
+
+export interface AssetListResponse {
+  assets: Asset[];
+}
