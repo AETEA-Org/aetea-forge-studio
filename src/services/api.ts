@@ -14,6 +14,10 @@ import type {
   ChatMessagesResponse,
   DeleteChatResponse,
   AssetListResponse,
+  CreativeState,
+  StyleCardsResponse,
+  CampaignTasksResponse,
+  CampaignTask,
 } from "@/types/api";
 
 // Direct API base URL (bypassing Supabase Edge Function)
@@ -354,6 +358,141 @@ export async function refreshAssetDownloadUrl(
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.detail || 'Failed to refresh asset URL');
+  }
+  
+  return response.json();
+}
+
+// Get creative state
+export async function getCreativeState(
+  campaignId: string,
+  userEmail: string
+): Promise<CreativeState> {
+  const response = await fetch(
+    buildUrl(`/campaigns/${campaignId}/creative`, { user_id: userEmail }),
+    {
+      headers: getHeaders(),
+    }
+  );
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to fetch creative state');
+  }
+  
+  return response.json();
+}
+
+// Update creative state
+export async function updateCreativeState(
+  campaignId: string,
+  userEmail: string,
+  updates: {
+    selected_style_id?: string | null;
+    visual_direction?: { reference_image_ids: string[] } | null;
+  }
+): Promise<CreativeState> {
+  const response = await fetch(
+    buildUrl(`/campaigns/${campaignId}/creative`, { user_id: userEmail }),
+    {
+      method: 'PATCH',
+      headers: getHeaders('application/json'),
+      body: JSON.stringify(updates),
+    }
+  );
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to update creative state');
+  }
+  
+  return response.json();
+}
+
+// Get campaign tasks
+export async function getCampaignTasks(
+  campaignId: string,
+  userEmail: string
+): Promise<CampaignTasksResponse> {
+  const response = await fetch(
+    buildUrl(`/campaigns/${campaignId}/tasks`, { user_id: userEmail }),
+    { headers: getHeaders() }
+  );
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.detail || 'Failed to fetch tasks');
+  }
+  return response.json();
+}
+
+// Get single campaign task
+export async function getCampaignTask(
+  taskId: string,
+  userEmail: string
+): Promise<CampaignTask> {
+  const response = await fetch(
+    buildUrl(`/campaigns/tasks/${taskId}`, { user_id: userEmail }),
+    { headers: getHeaders() }
+  );
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.detail || 'Failed to fetch task');
+  }
+  return response.json();
+}
+
+// Update campaign task (e.g. status to done)
+export async function patchCampaignTask(
+  taskId: string,
+  userEmail: string,
+  body: { status?: CampaignTask['status']; body_copy?: string | null }
+): Promise<CampaignTask> {
+  const response = await fetch(
+    buildUrl(`/campaigns/tasks/${taskId}`, { user_id: userEmail }),
+    {
+      method: 'PATCH',
+      headers: getHeaders('application/json'),
+      body: JSON.stringify(body),
+    }
+  );
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.detail || 'Failed to update task');
+  }
+  return response.json();
+}
+
+// Get assets for a task (review page)
+export async function getCampaignTaskAssets(
+  taskId: string,
+  userEmail: string
+): Promise<AssetListResponse> {
+  const response = await fetch(
+    buildUrl(`/campaigns/tasks/${taskId}/assets`, { user_id: userEmail }),
+    { headers: getHeaders() }
+  );
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.detail || 'Failed to fetch task assets');
+  }
+  return response.json();
+}
+
+// Get style cards
+export async function getStyleCards(
+  limit: number = 30,
+  offset: number = 0
+): Promise<StyleCardsResponse> {
+  const response = await fetch(
+    buildUrl('/campaigns/style-cards', { limit: String(limit), offset: String(offset) }),
+    {
+      headers: getHeaders(),
+    }
+  );
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to fetch style cards');
   }
   
   return response.json();

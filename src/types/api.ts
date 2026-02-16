@@ -292,3 +292,81 @@ export interface Asset {
 export interface AssetListResponse {
   assets: Asset[];
 }
+
+// Creative State types
+export interface CreativeState {
+  id: string;
+  campaign_id: string;
+  creative_truth: {
+    claims_rtbs: string[];
+    ctas_specs: string[];
+  };
+  creative_tone: {
+    concept: string;
+    headline_sample: string;
+    body_copy_sample: string;
+  };
+  visual_direction: {
+    reference_image_ids: string[];
+  };
+  selected_style_id: string | null;
+  key_visual_asset_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StyleCard {
+  id: string;
+  name: string;
+  storage_path: string;
+  thumbnail_path: string;
+  preview_url: string | null;
+}
+
+export interface StyleCardsResponse {
+  style_cards: StyleCard[];
+  total: number | null;
+}
+
+// Campaign tasks (GET /campaigns/{id}/tasks)
+export type CampaignTaskStatus = 'todo' | 'in_progress' | 'under_review' | 'done';
+export type CampaignTaskType = 'text' | 'image' | 'video';
+
+export interface CampaignTask {
+  id: string;
+  campaign_id: string;
+  type: CampaignTaskType;
+  subtype?: string;
+  title: string;
+  description: string;
+  status: CampaignTaskStatus;
+  body_copy: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CampaignTasksResponse {
+  tasks: CampaignTask[];
+}
+
+// Creative State types
+export interface CreativeState {
+  id: string;
+  campaign_id: string;
+  creative_truth: {
+    claims_rtbs: string[];
+    ctas_specs: string[];
+  };
+  creative_tone: {
+    concept: string;
+    headline_sample: string;
+    body_copy_sample: string;
+  };
+  visual_direction: {
+    reference_image_ids: string[];
+  };
+  selected_style_id: string | null;
+  key_visual_asset_id: string | null;
+  created_at: string;
+  updated_at: string;
+}

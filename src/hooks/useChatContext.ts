@@ -14,20 +14,25 @@ export function useChatContext({
   activeTab,
   selectedTaskId,
 }: UseChatContextProps = {}): ChatContext {
-  // Otherwise, use the active tab name with "tab:" prefix
+  // When viewing a task, send task context so AI can complete/re-do the task
+  if (selectedTaskId) {
+    return {
+      context: `task:${selectedTaskId}`,
+      contextLabel: 'Task',
+    };
+  }
   const tab = activeTab || 'brief';
-  const context = `tab:${tab}`;
   const contextLabels: Record<CampaignTab, string> = {
     brief: 'Brief',
     asset: 'Asset',
     research: 'Research',
     strategy: 'Strategy',
+    creative: 'Creative',
     analytics: 'Analytics',
     settings: 'Settings',
   };
-
   return {
-    context: context,
+    context: `tab:${tab}`,
     contextLabel: contextLabels[tab] || 'Brief',
   };
 }

@@ -4,11 +4,12 @@ import {
   Search, 
   Target, 
   FolderOpen,
+  Palette,
   BarChart3, 
   Settings 
 } from "lucide-react";
 
-export type CampaignTab = 'brief' | 'asset' | 'research' | 'strategy' | 'analytics' | 'settings';
+export type CampaignTab = 'brief' | 'asset' | 'research' | 'strategy' | 'creative' | 'analytics' | 'settings';
 
 interface CampaignTabsProps {
   activeTab: CampaignTab;
@@ -20,6 +21,7 @@ const tabs: { id: CampaignTab; label: string; icon: React.ElementType; comingSoo
   { id: 'asset', label: 'Assets', icon: FolderOpen },
   { id: 'research', label: 'Research', icon: Search },
   { id: 'strategy', label: 'Strategy', icon: Target },
+  { id: 'creative', label: 'Creative', icon: Palette },
   { id: 'analytics', label: 'Analytics', icon: BarChart3, comingSoon: true },
   { id: 'settings', label: 'Settings', icon: Settings, comingSoon: true },
 ];

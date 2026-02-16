@@ -7,6 +7,7 @@ import { BriefTab } from "@/components/app/tabs/BriefTab";
 import { AssetsTab } from "@/components/app/tabs/AssetsTab";
 import { ResearchTab } from "@/components/app/tabs/ResearchTab";
 import { StrategyTab } from "@/components/app/tabs/StrategyTab";
+import { CreativeTab } from "@/components/app/tabs/CreativeTab";
 import { AnalyticsTab } from "@/components/app/tabs/AnalyticsTab";
 import { CampaignSettingsTab } from "@/components/app/tabs/CampaignSettingsTab";
 import { useAuth } from "@/hooks/useAuth";
@@ -103,6 +104,8 @@ export default function Campaign() {
         return <ResearchTab campaignId={campaignId} {...commonProps} />;
       case 'strategy':
         return <StrategyTab campaignId={campaignId} {...commonProps} />;
+      case 'creative':
+        return <CreativeTab campaignId={campaignId} chatId={chatId!} {...commonProps} />;
       case 'analytics':
         return <AnalyticsTab {...commonProps} />;
       case 'settings':

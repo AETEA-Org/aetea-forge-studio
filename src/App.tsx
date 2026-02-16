@@ -13,6 +13,9 @@ import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import AppPage from "./pages/App";
 import Campaign from "./pages/Campaign";
+import { CampaignShell } from "./layouts/CampaignShell";
+import TaskDetailPage from "./pages/TaskDetailPage";
+import TaskReviewPage from "./pages/TaskReviewPage";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
@@ -40,7 +43,11 @@ const App = () => (
                 }
               >
                 <Route index element={<AppPage />} />
-                <Route path="chat/:chatId" element={<Campaign />} />
+                <Route path="chat/:chatId" element={<CampaignShell />}>
+                  <Route index element={<Campaign />} />
+                  <Route path="task/:taskId" element={<TaskDetailPage />} />
+                  <Route path="task/:taskId/review" element={<TaskReviewPage />} />
+                </Route>
                 <Route path="settings" element={<Settings />} />
               </Route>
               
