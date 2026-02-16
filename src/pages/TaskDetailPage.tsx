@@ -153,6 +153,11 @@ export default function TaskDetailPage() {
           <div className="flex items-center gap-2 text-muted-foreground">
             <TypeIcon type={task.type} />
             <span className="text-sm capitalize">{task.type}</span>
+            {task.subtype && (
+              <span className="text-sm">
+                · {task.subtype.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+              </span>
+            )}
           </div>
           <span
             className={cn(
