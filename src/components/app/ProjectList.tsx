@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { formatDistanceFromUTC } from "@/lib/dateUtils";
 import { useProjects } from "@/hooks/useProjects";
 import { useAuth } from "@/hooks/useAuth";
-import { deleteProject } from "@/services/api";
+import { deleteChatById } from "@/services/api";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -30,7 +30,7 @@ export function ProjectList({ collapsed }: ProjectListProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [projectToDelete, setProjectToDelete] = useState<{ id: string; title: string } | null>(null);
   
-  const projects = data?.projects || [];
+  const chats = data?.chats || [];
 
   const handleDeleteClick = (e: React.MouseEvent, projectId: string, projectTitle: string) => {
     e.stopPropagation();
@@ -42,24 +42,24 @@ export function ProjectList({ collapsed }: ProjectListProps) {
 
     setDeletingId(projectToDelete.id);
     try {
-      await deleteProject(projectToDelete.id, user.email);
+      await deleteChatById(projectToDelete.id, user.email);
       
-      // Invalidate projects query to refetch list
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      // Invalidate chats query to refetch list
+      queryClient.invalidateQueries({ queryKey: ['chats'] });
       
-      // If currently viewing the deleted project, redirect to /app
+      // If currently viewing the deleted chat, redirect to /app
       if (projectId === projectToDelete.id) {
         navigate('/app');
       }
       
       toast({
-        title: "Project deleted",
+        title: "Chat deleted",
         description: `"${projectToDelete.title}" has been deleted successfully.`,
       });
     } catch (error) {
-      console.error('Delete project error:', error);
+      console.error('Delete chat error:', error);
       toast({
-        title: "Failed to delete project",
+        title: "Failed to delete chat",
         description: error instanceof Error ? error.message : 'An error occurred',
         variant: "destructive",
       });
@@ -73,16 +73,16 @@ export function ProjectList({ collapsed }: ProjectListProps) {
     return (
       <>
         <div className="p-2 space-y-1">
-          {projects.map((project) => (
+          {chats.map((chat) => (
             <button
-              key={project.project_id}
-              onClick={() => navigate(`/app/project/${project.project_id}`)}
+              key={chat.chat_id}
+              onClick={() => navigate(`/app/project/${chat.chat_id}`)}
               className={cn(
                 "w-full p-2 rounded-md flex items-center justify-center",
                 "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent",
-                projectId === project.project_id && "bg-sidebar-accent text-sidebar-foreground"
+                projectId === chat.chat_id && "bg-sidebar-accent text-sidebar-foreground"
               )}
-              title={project.title}
+              title={chat.title}
             >
               <FolderOpen className="h-4 w-4" />
             </button>
@@ -110,15 +110,15 @@ export function ProjectList({ collapsed }: ProjectListProps) {
   if (error) {
     return (
       <div className="p-4 text-center">
-        <p className="text-xs text-destructive">Failed to load projects</p>
+        <p className="text-xs text-destructive">Failed to load chats</p>
       </div>
     );
   }
 
-  if (projects.length === 0) {
+  if (chats.length === 0) {
     return (
       <div className="p-4 text-center">
-        <p className="text-xs text-muted-foreground">No projects yet</p>
+        <p className="text-xs text-muted-foreground">No chats yet</p>
       </div>
     );
   }
@@ -126,36 +126,36 @@ export function ProjectList({ collapsed }: ProjectListProps) {
   return (
     <>
       <div className="p-2 space-y-1">
-        {projects.map((project) => (
+        {chats.map((chat) => (
           <div
-            key={project.project_id}
+            key={chat.chat_id}
             className={cn(
               "relative group rounded-md",
-              projectId === project.project_id && "bg-sidebar-accent"
+              projectId === chat.chat_id && "bg-sidebar-accent"
             )}
           >
             <button
-              onClick={() => navigate(`/app/project/${project.project_id}`)}
+              onClick={() => navigate(`/app/project/${chat.chat_id}`)}
               className={cn(
                 "w-full p-3 rounded-md text-left pr-10",
                 "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent",
                 "transition-colors",
-                projectId === project.project_id && "bg-sidebar-accent text-sidebar-foreground"
+                projectId === chat.chat_id && "bg-sidebar-accent text-sidebar-foreground"
               )}
-              disabled={deletingId === project.project_id}
+              disabled={deletingId === chat.chat_id}
             >
               <div className="flex items-center gap-2">
                 <FolderOpen className="h-4 w-4 shrink-0" />
-                <span className="text-sm font-medium truncate">{project.title}</span>
+                <span className="text-sm font-medium truncate">{chat.title}</span>
               </div>
               <p className="text-xs text-muted-foreground mt-1 ml-6">
-                {formatDistanceFromUTC(project.last_modified, { addSuffix: true })}
+                {formatDistanceFromUTC(chat.last_modified, { addSuffix: true })}
               </p>
             </button>
             
             {/* Delete button */}
             <div className="absolute right-2 top-3">
-              {deletingId === project.project_id ? (
+              {deletingId === chat.chat_id ? (
                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
               ) : (
                 <DropdownMenu>
@@ -169,7 +169,7 @@ export function ProjectList({ collapsed }: ProjectListProps) {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem
-                      onClick={(e) => handleDeleteClick(e, project.project_id, project.title)}
+                      onClick={(e) => handleDeleteClick(e, chat.chat_id, chat.title)}
                       className="text-destructive focus:text-destructive"
                     >
                       <Trash2 className="h-4 w-4 mr-2" />

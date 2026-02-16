@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { listProjects } from "@/services/api";
+import { listAllChats } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 
 export function useProjects() {
@@ -7,8 +7,8 @@ export function useProjects() {
   const userEmail = user?.email;
 
   return useQuery({
-    queryKey: ['projects', userEmail],
-    queryFn: () => listProjects(userEmail!),
+    queryKey: ['chats', userEmail],
+    queryFn: () => listAllChats(userEmail!),
     enabled: !!userEmail,
     staleTime: 1000 * 60, // 1 minute
   });

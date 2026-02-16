@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type {
-  ProjectsResponse,
+  ChatListResponse,
   SectionResponse,
   TasksResponse,
   HealthResponse,
@@ -11,7 +11,6 @@ import type {
   SectionName,
   SSEMessage,
   AgentStreamMessage,
-  ChatListResponse,
   ChatMessagesResponse,
   DeleteChatResponse,
 } from "@/types/api";
@@ -57,14 +56,14 @@ export async function checkHealth(): Promise<HealthResponse> {
   return response.json();
 }
 
-// List projects
-export async function listProjects(userEmail: string): Promise<ProjectsResponse> {
-  const response = await fetch(buildUrl('/projects', { user_id: userEmail }), {
+// List all chats for a user
+export async function listAllChats(userEmail: string): Promise<ChatListResponse> {
+  const response = await fetch(buildUrl('/chats', { user_id: userEmail }), {
     headers: getHeaders(),
   });
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.detail || 'Failed to fetch projects');
+    throw new Error(error.detail || 'Failed to fetch chats');
   }
   return response.json();
 }
@@ -203,10 +202,10 @@ export async function analyzeBrief(
   }
 }
 
-// Delete project
-export async function deleteProject(projectId: string, userEmail: string) {
+// Delete chat
+export async function deleteChatById(chatId: string, userEmail: string): Promise<DeleteChatResponse> {
   const response = await fetch(
-    buildUrl(`/projects/${projectId}`, { user_id: userEmail }),
+    buildUrl(`/chats/${chatId}`, { user_id: userEmail }),
     {
       method: 'DELETE',
       headers: getHeaders(),
@@ -215,7 +214,7 @@ export async function deleteProject(projectId: string, userEmail: string) {
   
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.detail || 'Failed to delete project');
+    throw new Error(error.detail || 'Failed to delete chat');
   }
   
   return response.json();

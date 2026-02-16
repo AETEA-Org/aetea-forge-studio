@@ -38,17 +38,17 @@ export default function Project() {
   const setActiveTab = outletContext?.setActiveTab || (() => {});
   const setSelectedTaskId = outletContext?.setSelectedTaskId || (() => {});
   
-  // Get project info from the projects list
-  const { data: projectsData, isLoading: projectsLoading } = useProjects();
-  const project = projectsData?.projects.find(p => p.project_id === projectId);
+  // Get chat info from the chats list
+  const { data: chatsData, isLoading: chatsLoading } = useProjects();
+  const chat = chatsData?.chats.find(c => c.chat_id === projectId);
 
   // DEBUG: Log project page state
   console.log('Project Page DEBUG:', {
     projectId,
-    projectsLoading,
-    hasProjectsData: !!projectsData,
-    projectsCount: projectsData?.projects?.length,
-    foundProject: !!project,
+    chatsLoading,
+    hasChatsData: !!chatsData,
+    chatsCount: chatsData?.chats?.length,
+    foundChat: !!chat,
     activeTab,
   });
 
@@ -75,7 +75,7 @@ export default function Project() {
     }
   };
 
-  if (projectsLoading) {
+  if (chatsLoading) {
     return (
       <div className="min-h-full flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -143,8 +143,8 @@ export default function Project() {
       <div className="min-h-full p-6 md:p-8">
           <div className="max-w-6xl mx-auto">
             <ProjectHeader 
-              title={project?.title || 'Project'} 
-              lastModified={project?.last_modified}
+              title={chat?.title || 'Chat'} 
+              lastModified={chat?.last_modified}
             />
             
             <ProjectTabs 

@@ -42,8 +42,8 @@ export function useCreateProject() {
         (data) => {
           const { project_id, title } = data.data;
           
-          // Invalidate projects query to refetch the list
-          queryClient.invalidateQueries({ queryKey: ['projects'] });
+          // Invalidate chats query to refetch the list
+          queryClient.invalidateQueries({ queryKey: ['chats'] });
           
           setProgress("");
           setIsSubmitting(false);
