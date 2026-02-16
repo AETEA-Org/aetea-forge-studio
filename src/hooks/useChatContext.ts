@@ -31,9 +31,8 @@ export function useChatContext({
   }
 
   // Otherwise, use the active tab name
-  const context = activeTab || 'overview';
+  const context = activeTab || 'brief';
   const contextLabels: Record<ProjectTab, string> = {
-    overview: 'Overview',
     brief: 'Brief',
     research: 'Research',
     strategy: 'Strategy',
@@ -44,6 +43,6 @@ export function useChatContext({
 
   return {
     context: context,
-    contextLabel: contextLabels[context] || 'Overview',
+    contextLabel: contextLabels[context] || 'Brief',
   };
 }

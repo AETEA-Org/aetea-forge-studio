@@ -206,7 +206,7 @@ export function AICopilotPanel({
                   console.log('🔄 Refetching tab data for context:', context);
                   // Use refetchQueries which WAITS for data to actually load
                   // Query keys must match those in useProjectSection/useProjectTasks
-                  if (['overview', 'brief', 'research', 'strategy'].includes(context)) {
+                  if (['brief', 'research', 'strategy'].includes(context)) {
                     await queryClient.refetchQueries({
                       queryKey: ['project', projectId, context, user.email],
                     });

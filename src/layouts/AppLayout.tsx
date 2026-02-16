@@ -12,7 +12,7 @@ export function AppLayout() {
   const [modifyingContext, setModifyingContextState] = useState<string | null>(null);
   
   // Shared state for active tab and selected task - lifted for AI Copilot context detection
-  const [activeTab, setActiveTab] = useState<ProjectTab>('overview');
+  const [activeTab, setActiveTab] = useState<ProjectTab>('brief');
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   
   const { projectId, chatId } = useParams<{ projectId?: string; chatId?: string }>();
@@ -30,11 +30,11 @@ export function AppLayout() {
     if (!id) {
       setIsModifyingState(false);
       setModifyingContextState(null);
-      setActiveTab('overview');
+      setActiveTab('brief');
       setSelectedTaskId(null);
     } else {
-      // Reset to overview when switching projects/chats
-      setActiveTab('overview');
+      // Reset to brief when switching projects/chats
+      setActiveTab('brief');
       setSelectedTaskId(null);
     }
   }, [id]);

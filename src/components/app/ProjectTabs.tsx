@@ -1,6 +1,5 @@
 import { cn } from "@/lib/utils";
 import { 
-  LayoutDashboard, 
   FileText, 
   Search, 
   Target, 
@@ -9,7 +8,7 @@ import {
   Settings 
 } from "lucide-react";
 
-export type ProjectTab = 'overview' | 'brief' | 'research' | 'strategy' | 'tasks' | 'analytics' | 'settings';
+export type ProjectTab = 'brief' | 'research' | 'strategy' | 'tasks' | 'analytics' | 'settings';
 
 interface ProjectTabsProps {
   activeTab: ProjectTab;
@@ -17,7 +16,6 @@ interface ProjectTabsProps {
 }
 
 const tabs: { id: ProjectTab; label: string; icon: React.ElementType; comingSoon?: boolean }[] = [
-  { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'brief', label: 'Brief', icon: FileText },
   { id: 'research', label: 'Research', icon: Search },
   { id: 'strategy', label: 'Strategy', icon: Target },

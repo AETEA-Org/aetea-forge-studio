@@ -3,7 +3,6 @@ import { useParams, useOutletContext } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { ProjectHeader } from "@/components/app/ProjectHeader";
 import { ProjectTabs, ProjectTab } from "@/components/app/ProjectTabs";
-import { OverviewTab } from "@/components/app/tabs/OverviewTab";
 import { BriefTab } from "@/components/app/tabs/BriefTab";
 import { ResearchTab } from "@/components/app/tabs/ResearchTab";
 import { StrategyTab } from "@/components/app/tabs/StrategyTab";
@@ -14,6 +13,8 @@ import { useProjects } from "@/hooks/useProjects";
 import { useAuth } from "@/hooks/useAuth";
 import { ProjectProvider } from "@/components/app/ProjectContext";
 import { useModification } from "@/hooks/useModification";
+import { useQuery } from "@tanstack/react-query";
+import { getChat, getCampaignByChatId } from "@/services/api";
 
 export default function Project() {
   const { projectId, chatId } = useParams<{ projectId?: string; chatId?: string }>();
@@ -34,24 +35,35 @@ export default function Project() {
   
   const isModifying = outletContext?.isModifying || false;
   const modifyingContext = outletContext?.modifyingContext || null;
-  const activeTab = outletContext?.activeTab || 'overview';
+  const activeTab = outletContext?.activeTab || 'brief';
   const selectedTaskId = outletContext?.selectedTaskId || null;
   const setActiveTab = outletContext?.setActiveTab || (() => {});
   const setSelectedTaskId = outletContext?.setSelectedTaskId || (() => {});
   
-  // Get chat info from the chats list
-  const { data: chatsData, isLoading: chatsLoading } = useProjects();
-  const chat = chatsData?.chats.find(c => c.chat_id === id);
+  // Fetch chat to get campaign_id
+  const { data: chatData, isLoading: chatLoading } = useQuery({
+    queryKey: ['chat', id, user?.email],
+    queryFn: () => getChat(id!, user!.email!),
+    enabled: !!id && !!user?.email,
+  });
+
+  // Fetch campaign if chat has campaign_id
+  const { data: campaignData, isLoading: campaignLoading } = useQuery({
+    queryKey: ['campaign', chatData?.campaign_id, user?.email],
+    queryFn: () => getCampaignByChatId(id!, user!.email!),
+    enabled: !!id && !!user?.email && !!chatData?.campaign_id,
+  });
 
   // DEBUG: Log project page state
   console.log('Project Page DEBUG:', {
     id,
     chatId,
     projectId,
-    chatsLoading,
-    hasChatsData: !!chatsData,
-    chatsCount: chatsData?.chats?.length,
-    foundChat: !!chat,
+    chatLoading,
+    campaignLoading,
+    hasChatData: !!chatData,
+    hasCampaignData: !!campaignData,
+    campaignId: chatData?.campaign_id,
     activeTab,
   });
 
@@ -78,7 +90,7 @@ export default function Project() {
     }
   };
 
-  if (chatsLoading) {
+  if (chatLoading) {
     return (
       <div className="min-h-full flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -116,8 +128,6 @@ export default function Project() {
     };
 
     switch (activeTab) {
-      case 'overview':
-        return <OverviewTab projectId={id} {...commonProps} />;
       case 'brief':
         return <BriefTab projectId={id} {...commonProps} />;
       case 'research':
@@ -146,8 +156,8 @@ export default function Project() {
       <div className="min-h-full p-6 md:p-8">
           <div className="max-w-6xl mx-auto">
             <ProjectHeader 
-              title={chat?.title || 'Chat'} 
-              lastModified={chat?.last_modified}
+              title={campaignData?.campaign.title || chatData?.title || 'Chat'} 
+              lastModified={campaignData?.campaign.updated_at || chatData?.last_modified}
             />
             
             <ProjectTabs 

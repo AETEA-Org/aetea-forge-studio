@@ -76,7 +76,7 @@ export function useSendChatMessage(
           if (willModifyFlag) {
             setWillModify(true);
             // Invalidate relevant queries based on context
-            if (['overview', 'brief', 'research', 'strategy'].includes(context)) {
+            if (['brief', 'research', 'strategy'].includes(context)) {
               await queryClient.invalidateQueries({
                 queryKey: ['project', projectId, context],
               });
