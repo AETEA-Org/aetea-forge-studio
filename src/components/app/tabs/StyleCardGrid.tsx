@@ -92,46 +92,50 @@ export function StyleCardGrid({
           const isSelected = selectedStyleId === card.id;
 
           return (
-            <button
-              key={card.id}
-              onClick={() => onSelect(card.id)}
-              className={cn(
-                "relative w-[120px] h-[120px] shrink-0 rounded-lg border-2 overflow-hidden transition-all hover:scale-105 hover:shadow-md bg-card",
-                isSelected
-                  ? "border-primary shadow-md ring-2 ring-primary/30"
-                  : "border-border hover:border-primary/50"
-              )}
-              style={{ boxSizing: 'border-box' }}
-            >
-              {card.preview_url ? (
-                <img
-                  src={card.preview_url}
-                  alt={card.name}
-                  className="w-full h-full object-cover block"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                    const parent = target.parentElement;
-                    if (parent) {
-                      parent.className += ' bg-muted flex items-center justify-center';
-                      parent.innerHTML = `<span class="text-xs text-muted-foreground">${card.name}</span>`;
-                    }
-                  }}
-                />
-              ) : (
-                <div className="w-full h-full bg-muted flex items-center justify-center">
-                  <span className="text-xs text-muted-foreground">{card.name}</span>
-                </div>
-              )}
-              
-              {isSelected && (
-                <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                  <div className="bg-primary rounded-full p-1.5">
-                    <Check className="h-4 w-4 text-primary-foreground" />
+            <div key={card.id} className="flex flex-col items-center gap-1.5">
+              <button
+                onClick={() => onSelect(card.id)}
+                className={cn(
+                  "relative w-[120px] h-[120px] shrink-0 rounded-lg border-2 overflow-hidden transition-all hover:scale-105 hover:shadow-md bg-card",
+                  isSelected
+                    ? "border-primary shadow-md ring-2 ring-primary/30"
+                    : "border-border hover:border-primary/50"
+                )}
+                style={{ boxSizing: 'border-box' }}
+              >
+                {card.preview_url ? (
+                  <img
+                    src={card.preview_url}
+                    alt={card.name}
+                    className="w-full h-full object-cover block"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      const parent = target.parentElement;
+                      if (parent) {
+                        parent.className += ' bg-muted flex items-center justify-center';
+                        parent.innerHTML = `<span class="text-xs text-muted-foreground">${card.name}</span>`;
+                      }
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full bg-muted flex items-center justify-center">
+                    <span className="text-xs text-muted-foreground">{card.name}</span>
                   </div>
-                </div>
-              )}
-            </button>
+                )}
+
+                {isSelected && (
+                  <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                    <div className="bg-primary rounded-full p-1.5">
+                      <Check className="h-4 w-4 text-primary-foreground" />
+                    </div>
+                  </div>
+                )}
+              </button>
+              <span className="text-xs text-muted-foreground truncate w-full text-center px-0.5" title={card.name}>
+                {card.name}
+              </span>
+            </div>
           );
         })}
       </div>
