@@ -7,12 +7,14 @@ import { ChatInput } from "./ChatInput";
 import { useChatMessages } from "@/hooks/useChats";
 import { useChatContext } from "@/hooks/useChatContext";
 import { useModification } from "@/hooks/useModification";
+import { useAutoMessage } from "@/hooks/useAutoMessage";
 import { sendChatMessage } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import type { ChatMessage } from "@/types/api";
 import type { CampaignTab } from "./CampaignTabs";
+import type { AutoSendOptions } from "@/contexts/AutoMessageContext";
 
 interface AICopilotPanelProps {
   chatId: string;
@@ -39,8 +41,10 @@ export function AICopilotPanel({
   
   // Refs to track modification state
   const isModifyingActiveRef = useRef(false);
+  const updateClearTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { setIsModifying } = useModification();
+  const { registerHandler, unregisterHandler } = useAutoMessage();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -51,6 +55,17 @@ export function AICopilotPanel({
     selectedTaskId,
   });
 
+  // Auto-send: prefill chatbox then send. State holds pending auto-message.
+  const [autoMessage, setAutoMessage] = useState<{
+    text: string;
+    files?: File[];
+    contextOverride?: string;
+    prefillMode?: "instant" | "typewriter";
+    callbacks?: Pick<AutoSendOptions, "onEvent" | "onComplete" | "onError">;
+    resolve: () => void;
+    reject: (err: unknown) => void;
+  } | null>(null);
+
   // Auto-load chat on page load
   const { data: messagesData } = useChatMessages(chatId);
 
@@ -60,9 +75,20 @@ export function AICopilotPanel({
 
   const [isStreaming, setIsStreaming] = useState(false);
 
-  // Handle message sending
+  // Handle message sending. Optional override for auto-send (context + callbacks).
+  type SendOverride = {
+    contextOverride?: string;
+    onEvent?: (eventName: string) => void;
+    onComplete?: () => void;
+    onError?: (msg: string) => void;
+  };
+
   const handleSendMessage = useCallback(
-    async (message: string, files?: File[]) => {
+    async (
+      message: string,
+      files?: File[],
+      override?: SendOverride
+    ) => {
       if (!user?.email || !chatId) {
         toast({
           title: "Authentication required",
@@ -71,6 +97,8 @@ export function AICopilotPanel({
         });
         return;
       }
+
+      const ctxToUse = override?.contextOverride ?? context;
 
       // Add optimistic user message immediately
       const optimisticMessage: ChatMessage = {
@@ -92,7 +120,7 @@ export function AICopilotPanel({
       console.log('🚀 Sending chat message:', {
         userEmail: user.email,
         chatId,
-        context,
+        context: ctxToUse,
         contextLabel,
         message: message.substring(0, 50) + '...',
         filesCount: files?.length || 0,
@@ -104,7 +132,7 @@ export function AICopilotPanel({
           chatId,
           message,
           'campaign', // mode is always campaign in campaign view
-          context,
+          ctxToUse,
           files,
           // onUpdate
           (content: string) => {
@@ -114,8 +142,15 @@ export function AICopilotPanel({
           // onContent
           (content: string) => {
             console.log('💬 Content chunk received, length:', content.length);
-            // Remove update message when content arrives
-            setUpdateMessage(null);
+            // Delay clearing update so progress messages (e.g. "Creating image") are visible
+            // even when content arrives immediately after
+            if (updateClearTimeoutRef.current) {
+              clearTimeout(updateClearTimeoutRef.current);
+            }
+            updateClearTimeoutRef.current = setTimeout(() => {
+              setUpdateMessage(null);
+              updateClearTimeoutRef.current = null;
+            }, 500);
             setStreamingContent(content);
           },
           // onEvent
@@ -125,7 +160,7 @@ export function AICopilotPanel({
               if (!isModifyingActiveRef.current) {
                 console.log('🔵 Activating modification overlay');
                 isModifyingActiveRef.current = true;
-                setIsModifying(true, context);
+                setIsModifying(true, ctxToUse);
               }
             } else if (eventName === 'campaign_modified') {
               console.log('🔄 Campaign modified - refetching data');
@@ -137,10 +172,15 @@ export function AICopilotPanel({
                 console.error('Error invalidating campaign data:', err);
               });
             }
+            override?.onEvent?.(eventName);
           },
           // onComplete
           async (content: string) => {
             console.log('✅ Complete');
+            if (updateClearTimeoutRef.current) {
+              clearTimeout(updateClearTimeoutRef.current);
+              updateClearTimeoutRef.current = null;
+            }
             setUpdateMessage(null);
             
             // WAIT for chat messages to load so complete message is visible
@@ -161,11 +201,15 @@ export function AICopilotPanel({
               setIsModifying(false, null);
               isModifyingActiveRef.current = false;
             }
+            override?.onComplete?.();
           },
           // onError
           (errorMsg: string) => {
             console.error('❌ Error from server:', errorMsg);
-            
+            if (updateClearTimeoutRef.current) {
+              clearTimeout(updateClearTimeoutRef.current);
+              updateClearTimeoutRef.current = null;
+            }
             setUpdateMessage(null);
             setStreamingContent("");
             setIsStreaming(false);
@@ -179,12 +223,16 @@ export function AICopilotPanel({
               description: errorMsg,
               variant: "destructive",
             });
+            override?.onError?.(errorMsg);
           }
         );
       } catch (error) {
         console.error("❌ Failed to send message:", error);
         const errorMsg = error instanceof Error ? error.message : "Failed to send message";
-        
+        if (updateClearTimeoutRef.current) {
+          clearTimeout(updateClearTimeoutRef.current);
+          updateClearTimeoutRef.current = null;
+        }
         setUpdateMessage(null);
         setStreamingContent("");
         setIsStreaming(false);
@@ -198,21 +246,91 @@ export function AICopilotPanel({
           description: errorMsg,
           variant: "destructive",
         });
+        override?.onError?.(errorMsg);
       }
     },
     [chatId, context, contextLabel, user, setIsModifying, queryClient, toast]
   );
 
+  // Auto-send: ref to read pending data in onPrefillComplete (avoids stale closure)
+  const autoMessageRef = useRef<typeof autoMessage>(null);
+  useEffect(() => {
+    autoMessageRef.current = autoMessage;
+  }, [autoMessage]);
+
+  // Register triggerAutoSend handler for campaign actions (Generate Key Visual, Complete Task)
+  useEffect(() => {
+    const handler: (msg: string, opts?: AutoSendOptions) => Promise<void> = (
+      message,
+      options
+    ) => {
+      return new Promise<void>((resolve, reject) => {
+        setAutoMessage({
+          text: message,
+          files: options?.files,
+          contextOverride: options?.context,
+          prefillMode: options?.prefillMode ?? "instant",
+          callbacks: {
+            onEvent: options?.onEvent,
+            onComplete: options?.onComplete,
+            onError: options?.onError,
+          },
+          resolve,
+          reject,
+        });
+      });
+    };
+    registerHandler(handler);
+    return () => unregisterHandler();
+  }, [registerHandler, unregisterHandler]);
+
+  const handlePrefillComplete = useCallback(() => {
+    const pending = autoMessageRef.current;
+    if (!pending) return;
+    const { text, files, contextOverride, callbacks, resolve, reject } = pending;
+    setAutoMessage(null);
+    handleSendMessage(text, files, {
+      contextOverride,
+      onEvent: callbacks?.onEvent,
+      onComplete: () => {
+        callbacks?.onComplete?.();
+        resolve();
+      },
+      onError: (msg) => {
+        callbacks?.onError?.(msg);
+        reject(new Error(msg));
+      },
+    }).catch((err) => {
+      callbacks?.onError?.(err instanceof Error ? err.message : String(err));
+      reject(err);
+    });
+  }, [handleSendMessage]);
+
   // Reset state when chat changes
   useEffect(() => {
+    if (updateClearTimeoutRef.current) {
+      clearTimeout(updateClearTimeoutRef.current);
+      updateClearTimeoutRef.current = null;
+    }
     setStreamingContent("");
     setUpdateMessage(null);
     setOptimisticMessages([]);
     setError(null);
+    setAutoMessage(null);
     isModifyingActiveRef.current = false;
     setIsModifying(false, null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatId]); // Only run when chat changes
+
+  // Cleanup update clear timeout on unmount
+  useEffect(
+    () => () => {
+      if (updateClearTimeoutRef.current) {
+        clearTimeout(updateClearTimeoutRef.current);
+      }
+    },
+    []
+  );
 
   // Handle panel resizing
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -326,6 +444,9 @@ export function AICopilotPanel({
             isStreaming={isStreaming}
             contextLabel={contextLabel}
             disabled={false}
+            prefillMessage={autoMessage?.text ?? null}
+            onPrefillComplete={handlePrefillComplete}
+            prefillMode={autoMessage?.prefillMode}
           />
         </div>
         </div>

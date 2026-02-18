@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Sidebar } from "@/components/app/Sidebar";
 import { AICopilotPanel } from "@/components/app/AICopilotPanel";
 import { ModificationProvider } from "@/components/app/ModificationContext";
+import { AutoMessageProvider } from "@/contexts/AutoMessageContext";
 import { getChat } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 import type { CampaignTab } from "@/components/app/CampaignTabs";
@@ -50,6 +51,7 @@ export function AppLayout() {
 
   return (
     <ModificationProvider setIsModifying={handleModification}>
+      <AutoMessageProvider>
       <div className="flex h-screen bg-background overflow-hidden">
         {/* Left Sidebar */}
         <Sidebar 
@@ -82,6 +84,7 @@ export function AppLayout() {
           />
         )}
       </div>
+      </AutoMessageProvider>
     </ModificationProvider>
   );
 }

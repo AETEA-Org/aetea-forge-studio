@@ -5,9 +5,9 @@ import { useStyleCards } from "@/hooks/useStyleCards";
 import { useCampaignTasks } from "@/hooks/useCampaignTasks";
 import { useAuth } from "@/hooks/useAuth";
 import { useModification } from "@/hooks/useModification";
+import { useAutoMessage } from "@/hooks/useAutoMessage";
 import { useToast } from "@/hooks/use-toast";
-import { sendChatMessage } from "@/services/api";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { StyleCard } from "@/types/api";
 import { CreativeTruthCard } from "./CreativeTruthCard";
 import { CreativeToneCard } from "./CreativeToneCard";
@@ -15,6 +15,7 @@ import { VisualDirectionCard } from "./VisualDirectionCard";
 import { GenerateKeyVisualButton } from "./GenerateKeyVisualButton";
 import { CreativeTaskCard } from "./CreativeTaskCard";
 import { ModificationOverlay } from "@/components/app/ModificationOverlay";
+import { refreshAssetDownloadUrl } from "@/services/api";
 import { cn } from "@/lib/utils";
 
 interface CreativeTabProps {
@@ -26,6 +27,7 @@ interface CreativeTabProps {
 export function CreativeTab({ campaignId, chatId, isModifying }: CreativeTabProps) {
   const { user } = useAuth();
   const { setIsModifying } = useModification();
+  const { triggerAutoSend } = useAutoMessage();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
@@ -40,6 +42,18 @@ export function CreativeTab({ campaignId, chatId, isModifying }: CreativeTabProp
   // Fetch campaign tasks (for Tasks section below Key Visual)
   const { data: tasksData, isLoading: tasksLoading } = useCampaignTasks(campaignId);
   const tasks = tasksData?.tasks ?? [];
+
+  // Fetch fresh download URL for key visual (signed URLs expire; refreshAssetDownloadUrl returns a valid one).
+  const keyVisualAssetId = creativeState?.key_visual_asset_id ?? null;
+  const { data: keyVisualDownloadUrl } = useQuery({
+    queryKey: ['asset-download', keyVisualAssetId, user?.email],
+    queryFn: () =>
+      refreshAssetDownloadUrl(keyVisualAssetId!, user!.email!).then(
+        (r) => r.download_url
+      ),
+    enabled: !!keyVisualAssetId && !!user?.email,
+    staleTime: 50 * 60 * 1000, // 50 min (URLs often expire in ~1h)
+  });
 
   // Fetch style cards (only when Visual Direction card is flipped), with pagination
   const shouldLoadStyleCards = flippedCards.has('visual');
@@ -141,44 +155,31 @@ export function CreativeTab({ campaignId, chatId, isModifying }: CreativeTabProp
         },
       });
 
-      // Send POST /ai/chat with files
-      await sendChatMessage(
-        user.email,
-        chatId,
-        message,
-        'campaign',
-        'tab:creative',
-        referenceImages.length > 0 ? referenceImages : undefined,
-        // onUpdate
-        (content: string) => {
-          // Update overlay text if needed
-        },
-        // onContent
-        (content: string) => {
-          // Stream handled by AICopilotPanel
-        },
-        // onEvent
-        (eventName: string) => {
-          if (eventName === 'campaign_modifying') {
-            setIsModifying(true, 'creative');
-          } else if (eventName === 'campaign_modified') {
+      // Trigger auto-send: message appears in chatbox, then auto-sends and streams in AICopilotPanel
+      // Overlay driven only by backend campaign_modifying event
+      await triggerAutoSend(message, {
+        files: referenceImages.length > 0 ? referenceImages : undefined,
+        context: 'tab:creative',
+        onEvent: (eventName: string) => {
+          if (eventName === 'campaign_modified') {
             queryClient.invalidateQueries({
               queryKey: ['creative', campaignId, user.email],
             });
             queryClient.invalidateQueries({
               queryKey: ['campaign', campaignId, 'tasks', user.email],
             });
+            queryClient.invalidateQueries({ queryKey: ['asset-download'] });
+            queryClient.invalidateQueries({
+              queryKey: ['assets', chatId, user.email],
+            });
           }
         },
-        // onComplete
-        () => {
+        onComplete: () => {
           setIsModifying(false, null);
           setIsGenerating(false);
-          // Clear reference images after successful generation
           setReferenceImages([]);
         },
-        // onError
-        (errorMsg: string) => {
+        onError: (errorMsg: string) => {
           setIsModifying(false, null);
           setIsGenerating(false);
           toast({
@@ -186,8 +187,8 @@ export function CreativeTab({ campaignId, chatId, isModifying }: CreativeTabProp
             description: errorMsg,
             variant: "destructive",
           });
-        }
-      );
+        },
+      });
     } catch (error) {
       setIsModifying(false, null);
       setIsGenerating(false);
@@ -206,6 +207,7 @@ export function CreativeTab({ campaignId, chatId, isModifying }: CreativeTabProp
     campaignId,
     isGenerating,
     updateCreativeStateMutation,
+    triggerAutoSend,
     setIsModifying,
     queryClient,
     toast,
@@ -271,6 +273,28 @@ export function CreativeTab({ campaignId, chatId, isModifying }: CreativeTabProp
           />
         </div>
       </div>
+
+      {/* Key visual - shown only when it exists, above Generate Key Visual button. Title left, image centered in tab. */}
+      {keyVisualAssetId && (
+        <section className="mt-8 pt-6 border-t border-border">
+          <h3 className="text-lg font-semibold mb-4 text-left">Key Visual</h3>
+          <div className="flex justify-center w-full">
+            {keyVisualDownloadUrl ? (
+              <div className="rounded-lg border border-border overflow-hidden bg-muted/30 max-w-2xl w-full flex justify-center">
+                <img
+                  src={keyVisualDownloadUrl}
+                  alt="Key visual"
+                  className="max-w-full h-auto object-contain"
+                />
+              </div>
+            ) : (
+              <div className="flex items-center justify-center py-12 bg-muted/30 rounded-lg border border-border max-w-2xl w-full">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Generate Key Visual - large prominent button below entire card layout */}
       <section className="mt-8 pt-6 border-t border-border">

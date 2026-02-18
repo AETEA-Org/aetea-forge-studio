@@ -19,6 +19,12 @@ interface ChatInputProps {
   onModeToggle?: () => void;
   /** Max height (px) for textarea before scrolling. Default 120. Use 200+ for chat view. */
   textareaMaxHeight?: number;
+  /** When set, display this message in the textarea and optionally animate it. Parent clears when send starts. */
+  prefillMessage?: string | null;
+  /** Called when prefill is done (after typewriter or instant delay) so parent can trigger send. */
+  onPrefillComplete?: () => void;
+  /** How to display prefill: instant (brief pause) or typewriter (char-by-char). Default instant. */
+  prefillMode?: "instant" | "typewriter";
 }
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -56,6 +62,9 @@ function validateFile(file: File): { valid: boolean; error?: string } {
   return { valid: true };
 }
 
+const PREFILL_INSTANT_DELAY_MS = 180;
+const PREFILL_TYPEWRITER_INTERVAL_MS = 20;
+
 export function ChatInput({
   onSend,
   isStreaming,
@@ -65,15 +74,53 @@ export function ChatInput({
   mode,
   onModeToggle,
   textareaMaxHeight = 120,
+  prefillMessage,
+  onPrefillComplete,
+  prefillMode = "instant",
 }: ChatInputProps) {
   const [message, setMessage] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [prefillDisplayText, setPrefillDisplayText] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const isPrefillActive = prefillMessage != null && prefillMessage.length > 0;
+  const displayedValue = isPrefillActive ? prefillDisplayText : message;
+
+  // Prefill logic: show message (instant or typewriter), then call onPrefillComplete
+  useEffect(() => {
+    if (!prefillMessage) {
+      setPrefillDisplayText("");
+      return;
+    }
+    if (!onPrefillComplete) return;
+
+    if (prefillMode === "instant") {
+      setPrefillDisplayText(prefillMessage);
+      const timer = setTimeout(() => {
+        onPrefillComplete();
+      }, PREFILL_INSTANT_DELAY_MS);
+      return () => clearTimeout(timer);
+    }
+
+    // typewriter mode
+    setPrefillDisplayText("");
+    let idx = 0;
+    const interval = setInterval(() => {
+      idx += 1;
+      setPrefillDisplayText(prefillMessage.slice(0, idx));
+      if (idx >= prefillMessage.length) {
+        clearInterval(interval);
+        onPrefillComplete();
+      }
+    }, PREFILL_TYPEWRITER_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [prefillMessage, prefillMode]); // eslint-disable-line react-hooks/exhaustive-deps -- onPrefillComplete intentionally excluded
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isPrefillActive) return;
     if ((!message.trim() && files.length === 0) || isStreaming || disabled) return;
     
     onSend(message.trim(), files.length > 0 ? files : undefined);
@@ -198,10 +245,11 @@ export function ChatInput({
         </Button>
         <Textarea
           ref={textareaRef}
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
+          value={displayedValue}
+          onChange={(e) => !isPrefillActive && setMessage(e.target.value)}
           placeholder={isDragging ? "Drop files here..." : "Ask a question..."}
           disabled={isStreaming || disabled}
+          readOnly={isPrefillActive}
           className="min-h-[44px] resize-none bg-background/50 border-border/50 flex-1 min-w-0"
           style={{ maxHeight: `${textareaMaxHeight}px` }}
           onKeyDown={(e) => {
@@ -230,7 +278,7 @@ export function ChatInput({
         )}
         <Button
           type="submit"
-          disabled={(!message.trim() && files.length === 0) || isStreaming || disabled}
+          disabled={isPrefillActive || ((!message.trim() && files.length === 0) || isStreaming || disabled)}
           size="icon"
           className="h-[44px] w-[44px] shrink-0 flex-shrink-0"
         >

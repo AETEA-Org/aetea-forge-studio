@@ -625,7 +625,12 @@ Set `context` to help the AI understand what the user is looking at:
 
 ### Auto-populated Messages
 
-Some UI actions auto-populate the chat input:
+Some UI actions trigger an auto-send flow via `triggerAutoSend` (from `useAutoMessage`):
+
+1. Message appears in the chat input (instant or typewriter effect)
+2. After a brief display, the message is auto-sent
+3. AI response streams in the chat panel
+4. Overlay (blur + "AETEA is modifying campaign...") appears only when the backend sends `campaign_modifying` via SSE
 
 | Action | Auto-populated message |
 |---|---|

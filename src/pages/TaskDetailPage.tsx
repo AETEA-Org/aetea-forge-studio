@@ -1,11 +1,12 @@
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import { Loader2, ArrowLeft, FileText, Image, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getCampaignTask, sendChatMessage } from "@/services/api";
+import { getCampaignTask } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 import { useModification } from "@/hooks/useModification";
+import { useAutoMessage } from "@/hooks/useAutoMessage";
 import { useToast } from "@/hooks/use-toast";
 import { Markdown } from "@/components/ui/markdown";
 import { ModificationOverlay } from "@/components/app/ModificationOverlay";
@@ -46,8 +47,10 @@ export default function TaskDetailPage() {
 
   const { user } = useAuth();
   const { setIsModifying } = useModification();
+  const { triggerAutoSend } = useAutoMessage();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [isCompleting, setIsCompleting] = useState(false);
 
   const { data: task, isLoading, error, refetch } = useQuery({
     queryKey: ['campaign-task', taskId, user?.email],
@@ -70,26 +73,20 @@ export default function TaskDetailPage() {
   };
 
   const handleCompleteTask = async () => {
-    if (!user?.email || !chatId || !taskId || task?.status !== 'todo') return;
-    setIsModifying(true, 'creative');
+    if (!user?.email || !chatId || !taskId || task?.status !== 'todo' || isCompleting) return;
+    setIsCompleting(true);
     try {
-      await sendChatMessage(
-        user.email,
-        chatId,
-        'Complete task',
-        'campaign',
-        `task:${taskId}`,
-        undefined,
-        () => {},
-        () => {},
-        (eventName: string) => {
+      await triggerAutoSend('Complete task', {
+        context: `task:${taskId}`,
+        onEvent: (eventName: string) => {
           if (eventName === 'campaign_modified') {
             queryClient.invalidateQueries({ queryKey: ['campaign-task', taskId, user.email] });
             refetch();
           }
         },
-        () => {
+        onComplete: () => {
           setIsModifying(false, null);
+          setIsCompleting(false);
           refetch().then(({ data }) => {
             if (data?.status === 'todo') {
               toast({
@@ -100,13 +97,15 @@ export default function TaskDetailPage() {
             }
           });
         },
-        (msg: string) => {
+        onError: (msg: string) => {
           setIsModifying(false, null);
+          setIsCompleting(false);
           toast({ title: 'Error', description: msg, variant: 'destructive' });
-        }
-      );
+        },
+      });
     } catch (e) {
       setIsModifying(false, null);
+      setIsCompleting(false);
       toast({
         title: 'Error',
         description: e instanceof Error ? e.message : 'Failed to complete task',
@@ -180,8 +179,8 @@ export default function TaskDetailPage() {
 
         <div className="pt-4">
           {showCompleteButton ? (
-            <Button onClick={handleCompleteTask} disabled={isModifying} size="lg">
-              {isModifying ? (
+            <Button onClick={handleCompleteTask} disabled={isCompleting} size="lg">
+              {isCompleting ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   Completing task...

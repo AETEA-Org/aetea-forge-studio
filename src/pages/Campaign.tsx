@@ -73,10 +73,16 @@ export default function Campaign({ outletContext: outletContextProp }: CampaignP
   }
 
   const renderTabContent = () => {
-    // Check if modification applies to current view
-    const isCurrentViewModifying = 
-      isModifying && 
-      (modifyingContext === activeTab);
+    // Check if modification applies to current view.
+    // modifyingContext can be 'tab:creative', 'tab:brief', etc. (API context) or 'task:xyz' (task under creative)
+    const contextTab =
+      modifyingContext?.startsWith('tab:')
+        ? modifyingContext.slice(5)
+        : modifyingContext?.startsWith('task:')
+          ? 'creative'
+          : modifyingContext;
+    const isCurrentViewModifying =
+      isModifying && contextTab != null && contextTab === activeTab;
     
     const commonProps = {
       isModifying: isCurrentViewModifying,
