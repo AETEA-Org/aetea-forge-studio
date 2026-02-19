@@ -168,7 +168,11 @@ export default function ChatView() {
     setUpdateMessage(null);
     setIsStreaming(true);
     consumeAgentStream(reader, {
-      onContent: (content) => setStreamingContent(content),
+      onUpdate: (content) => setUpdateMessage(content),
+      onContent: (content) => {
+        setUpdateMessage(null);
+        setStreamingContent(content);
+      },
       onComplete: async () => {
         setUpdateMessage(null);
         await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
