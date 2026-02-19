@@ -51,35 +51,46 @@ export function AssetsTab({ chatId, isModifying }: AssetsTabProps) {
     return (now - fetchedAt) >= URL_EXPIRATION_MS;
   }, []);
   
-  // Get valid download URL (refresh if expired) for open/download action
-  const getValidDownloadUrl = useCallback(async (asset: Asset): Promise<string> => {
-    const fetchedAt = (data as { _fetchedAt?: number })?._fetchedAt;
+  const getValidUrl = useCallback(
+    async (asset: Asset, urlKey: 'view_url' | 'download_url'): Promise<string> => {
+      const fetchedAt = (data as { _fetchedAt?: number })?._fetchedAt;
+      const existingUrl = urlKey === 'view_url' ? asset.view_url : asset.download_url;
 
-    if (!isUrlExpired(fetchedAt)) return asset.download_url;
-    if (refreshingUrls.has(asset.id)) return asset.download_url;
+      if (!isUrlExpired(fetchedAt)) return existingUrl;
+      if (refreshingUrls.has(asset.id)) return existingUrl;
 
-    try {
-      setRefreshingUrls((prev) => new Set(prev).add(asset.id));
-      const result = await refreshAssetUrls(asset.id, user!.email!);
-      return result.download_url;
-    } catch (err) {
-      console.error('Failed to refresh asset URL:', err);
-      return asset.download_url;
-    } finally {
-      setRefreshingUrls((prev) => {
-        const next = new Set(prev);
-        next.delete(asset.id);
-        return next;
-      });
-    }
-  }, [data, isUrlExpired, refreshingUrls, user]);
+      try {
+        setRefreshingUrls((prev) => new Set(prev).add(asset.id));
+        const result = await refreshAssetUrls(asset.id, user!.email!);
+        return result[urlKey];
+      } catch (err) {
+        console.error('Failed to refresh asset URL:', err);
+        return existingUrl;
+      } finally {
+        setRefreshingUrls((prev) => {
+          const next = new Set(prev);
+          next.delete(asset.id);
+          return next;
+        });
+      }
+    },
+    [data, isUrlExpired, refreshingUrls, user]
+  );
 
-  const handleAssetAction = useCallback(
+  const handleView = useCallback(
     async (asset: Asset) => {
-      const url = await getValidDownloadUrl(asset);
+      const url = await getValidUrl(asset, 'view_url');
       window.open(url, '_blank');
     },
-    [getValidDownloadUrl]
+    [getValidUrl]
+  );
+
+  const handleDownload = useCallback(
+    async (asset: Asset) => {
+      const url = await getValidUrl(asset, 'download_url');
+      window.open(url, '_blank');
+    },
+    [getValidUrl]
   );
 
   if (isLoading) {
@@ -182,7 +193,7 @@ export function AssetsTab({ chatId, isModifying }: AssetsTabProps) {
                 <div className="aspect-square mb-3 bg-muted rounded-md flex items-center justify-center overflow-hidden">
                   {isImageAsset(asset) ? (
                     <img
-                      src={asset.view_url}
+                      src={asset.download_url}
                       alt={asset.file_name}
                       className="w-full h-full object-cover"
                       onError={(e) => {
@@ -219,7 +230,7 @@ export function AssetsTab({ chatId, isModifying }: AssetsTabProps) {
                     variant="outline"
                     size="icon"
                     className="h-8 w-8 shrink-0"
-                    onClick={() => handleAssetAction(asset)}
+                    onClick={() => handleView(asset)}
                     title="View"
                     disabled={refreshingUrls.has(asset.id)}
                   >
@@ -229,7 +240,7 @@ export function AssetsTab({ chatId, isModifying }: AssetsTabProps) {
                     variant="outline"
                     size="icon"
                     className="h-8 w-8 shrink-0"
-                    onClick={() => handleAssetAction(asset)}
+                    onClick={() => handleDownload(asset)}
                     title="Download"
                     disabled={refreshingUrls.has(asset.id)}
                   >
@@ -273,7 +284,7 @@ export function AssetsTab({ chatId, isModifying }: AssetsTabProps) {
                           <div className="flex-shrink-0">
                             {isImageAsset(asset) ? (
                               <img
-                                src={asset.view_url}
+                                src={asset.download_url}
                                 alt={asset.file_name}
                                 className="h-8 w-8 object-cover rounded"
                                 onError={(e) => {
@@ -313,7 +324,7 @@ export function AssetsTab({ chatId, isModifying }: AssetsTabProps) {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8"
-                            onClick={() => handleAssetAction(asset)}
+                            onClick={() => handleView(asset)}
                             title="View"
                             disabled={refreshingUrls.has(asset.id)}
                           >
@@ -323,7 +334,7 @@ export function AssetsTab({ chatId, isModifying }: AssetsTabProps) {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8"
-                            onClick={() => handleAssetAction(asset)}
+                            onClick={() => handleDownload(asset)}
                             title="Download"
                             disabled={refreshingUrls.has(asset.id)}
                           >

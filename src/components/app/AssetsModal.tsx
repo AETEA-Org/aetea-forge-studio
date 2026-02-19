@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Loader2, File, Image, Download, Folder } from "lucide-react";
+import { Loader2, File, Image, Download, Eye, Folder } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -40,18 +40,20 @@ export function AssetsModal({ chatId, open, onOpenChange }: AssetsModalProps) {
     return Date.now() - fetchedAt >= URL_EXPIRATION_MS;
   }, []);
 
-  const getValidDownloadUrl = useCallback(
-    async (asset: Asset): Promise<string> => {
+  const getValidUrl = useCallback(
+    async (asset: Asset, urlKey: "view_url" | "download_url"): Promise<string> => {
       const fetchedAt = (data as { _fetchedAt?: number })?._fetchedAt;
-      if (!isUrlExpired(fetchedAt)) return asset.download_url;
-      if (refreshingUrls.has(asset.id)) return asset.download_url;
+      const existingUrl =
+        urlKey === "view_url" ? asset.view_url : asset.download_url;
+      if (!isUrlExpired(fetchedAt)) return existingUrl;
+      if (refreshingUrls.has(asset.id)) return existingUrl;
       try {
         setRefreshingUrls((prev) => new Set(prev).add(asset.id));
         const result = await refreshAssetUrls(asset.id, user!.email!);
-        return result.download_url;
+        return result[urlKey];
       } catch (err) {
         console.error("Failed to refresh asset URL:", err);
-        return asset.download_url;
+        return existingUrl;
       } finally {
         setRefreshingUrls((prev) => {
           const next = new Set(prev);
@@ -63,12 +65,22 @@ export function AssetsModal({ chatId, open, onOpenChange }: AssetsModalProps) {
     [data, isUrlExpired, refreshingUrls, user]
   );
 
-  const handleAssetClick = useCallback(
-    async (asset: Asset) => {
-      const url = await getValidDownloadUrl(asset);
+  const handleView = useCallback(
+    async (e: React.MouseEvent, asset: Asset) => {
+      e.stopPropagation();
+      const url = await getValidUrl(asset, "view_url");
       window.open(url, "_blank");
     },
-    [getValidDownloadUrl]
+    [getValidUrl]
+  );
+
+  const handleDownload = useCallback(
+    async (e: React.MouseEvent, asset: Asset) => {
+      e.stopPropagation();
+      const url = await getValidUrl(asset, "download_url");
+      window.open(url, "_blank");
+    },
+    [getValidUrl]
   );
 
   const assets = data?.assets ?? [];
@@ -104,20 +116,17 @@ export function AssetsModal({ chatId, open, onOpenChange }: AssetsModalProps) {
               {assets.map((asset) => {
                 const FileIcon = getFileIcon(asset);
                 return (
-                  <button
+                  <div
                     key={asset.id}
-                    type="button"
-                    onClick={() => handleAssetClick(asset)}
-                    disabled={refreshingUrls.has(asset.id)}
                     className={cn(
-                      "border border-border rounded-lg p-3 hover:bg-muted/50 transition-colors text-left flex flex-col min-w-0",
+                      "border border-border rounded-lg p-3 flex flex-col min-w-0",
                       refreshingUrls.has(asset.id) && "opacity-60"
                     )}
                   >
                     <div className="aspect-square mb-2 bg-muted rounded flex items-center justify-center overflow-hidden">
                       {isImageAsset(asset) ? (
                         <img
-                          src={asset.view_url}
+                          src={asset.download_url}
                           alt={asset.file_name}
                           className="w-full h-full object-cover"
                         />
@@ -125,14 +134,35 @@ export function AssetsModal({ chatId, open, onOpenChange }: AssetsModalProps) {
                         <FileIcon className="h-10 w-10 text-muted-foreground" />
                       )}
                     </div>
-                    <span className="text-sm font-medium truncate" title={asset.file_name}>
+                    <span
+                      className="text-sm font-medium truncate mb-2"
+                      title={asset.file_name}
+                    >
                       {asset.file_name}
                     </span>
-                    <span className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                      <Download className="h-3 w-3" />
-                      Download
-                    </span>
-                  </button>
+                    <div className="flex gap-2 mt-auto">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 h-8 text-xs"
+                        onClick={(e) => handleView(e, asset)}
+                        disabled={refreshingUrls.has(asset.id)}
+                      >
+                        <Eye className="h-3 w-3 mr-1" />
+                        View
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 h-8 text-xs"
+                        onClick={(e) => handleDownload(e, asset)}
+                        disabled={refreshingUrls.has(asset.id)}
+                      >
+                        <Download className="h-3 w-3 mr-1" />
+                        Download
+                      </Button>
+                    </div>
+                  </div>
                 );
               })}
             </div>

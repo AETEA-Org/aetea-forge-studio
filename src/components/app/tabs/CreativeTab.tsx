@@ -43,12 +43,12 @@ export function CreativeTab({ campaignId, chatId, isModifying }: CreativeTabProp
   const { data: tasksData, isLoading: tasksLoading } = useCampaignTasks(campaignId);
   const tasks = tasksData?.tasks ?? [];
 
-  // Fetch fresh view URL for key visual (signed URLs expire; refreshAssetUrls returns valid view_url and download_url).
+  // Fetch fresh download URL for key visual (works in img; view_url has CORS issues for embedding).
   const keyVisualAssetId = creativeState?.key_visual_asset_id ?? null;
-  const { data: keyVisualViewUrl } = useQuery({
+  const { data: keyVisualUrl } = useQuery({
     queryKey: ['asset-urls', keyVisualAssetId, user?.email],
     queryFn: () =>
-      refreshAssetUrls(keyVisualAssetId!, user!.email!).then((r) => r.view_url),
+      refreshAssetUrls(keyVisualAssetId!, user!.email!).then((r) => r.download_url),
     enabled: !!keyVisualAssetId && !!user?.email,
     staleTime: 50 * 60 * 1000, // 50 min (URLs often expire in ~1h)
   });
@@ -282,10 +282,10 @@ export function CreativeTab({ campaignId, chatId, isModifying }: CreativeTabProp
         <section className="mt-8 pt-6 border-t border-border">
           <h3 className="text-lg font-semibold mb-4 text-left">Key Visual</h3>
           <div className="flex justify-center w-full">
-            {keyVisualViewUrl ? (
+            {keyVisualUrl ? (
               <div className="rounded-lg border border-border overflow-hidden bg-muted/30 max-w-2xl w-full flex justify-center">
                 <img
-                  src={keyVisualViewUrl}
+                  src={keyVisualUrl}
                   alt="Key visual"
                   className="max-w-full h-auto object-contain"
                 />

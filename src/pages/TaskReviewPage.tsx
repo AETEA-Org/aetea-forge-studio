@@ -161,14 +161,14 @@ export default function TaskReviewPage() {
                 {currentPreview?.mime_type.startsWith('video/') ? (
                   <video
                     key={currentPreview.id}
-                    src={currentPreview.view_url}
+                    src={currentPreview.download_url}
                     controls
                     className="max-w-full max-h-[400px]"
                   />
                 ) : (
                   <img
                     key={currentPreview?.id}
-                    src={currentPreview?.view_url ?? ''}
+                    src={currentPreview?.download_url ?? ''}
                     alt={currentPreview?.file_name ?? ''}
                     className="max-w-full max-h-[400px] object-contain"
                   />
