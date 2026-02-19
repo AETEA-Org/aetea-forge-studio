@@ -107,7 +107,7 @@ export function ResearchTab({ campaignId, isModifying }: ResearchTabProps) {
 
           <div>
             <p className="text-xs text-muted-foreground mb-2">Market Context</p>
-            <Markdown className="text-sm text-muted-foreground">{research.market_category.market_context}</Markdown>
+            <Markdown className="text-sm">{research.market_category.market_context}</Markdown>
           </div>
 
           <div>
