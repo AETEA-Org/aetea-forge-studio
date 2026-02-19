@@ -70,6 +70,14 @@ export default function App() {
   };
 
   const handleSubmit = async () => {
+    if (!briefText.trim() && files.length === 0) {
+      toast({
+        title: "Brief required",
+        description: "Add files or describe your campaign to get started.",
+        variant: "destructive",
+      });
+      return;
+    }
     await createProject(briefText, files);
   };
 
@@ -78,6 +86,14 @@ export default function App() {
       toast({
         title: "Sign in required",
         description: "Please sign in to start brainstorming.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!briefText.trim()) {
+      toast({
+        title: "Description required",
+        description: "Add some text to describe your ideas before starting brainstorming.",
         variant: "destructive",
       });
       return;
@@ -193,7 +209,7 @@ export default function App() {
 
           {/* Text Brief */}
           <Textarea
-            placeholder="Describe your campaign goals, target audience, deliverables, timeline, and any other relevant details..."
+            placeholder="Describe your campaign goals, ideas, target audience, deliverables, timeline, or any other relevant details..."
             value={briefText}
             onChange={(e) => {
               setBriefText(e.target.value);
@@ -213,21 +229,8 @@ export default function App() {
           {/* Submit Buttons */}
           <div className="flex gap-3">
             <Button
-              onClick={handleSubmit}
-              disabled={isSubmitting || showLoadingScreen || (!briefText.trim() && files.length === 0)}
-              className="flex-1"
-              size="lg"
-            >
-              {isSubmitting ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Sparkles className="h-4 w-4 mr-2" />
-              )}
-              {isSubmitting ? "Processing..." : "Analyze Brief"}
-            </Button>
-            <Button
               onClick={handleStartBrainstorming}
-              disabled={isSubmitting || showLoadingScreen || !briefText.trim() || isStartingBrainstorm}
+              disabled={isSubmitting || showLoadingScreen || isStartingBrainstorm}
               className="flex-1"
               size="lg"
             >
@@ -237,6 +240,19 @@ export default function App() {
                 <Lightbulb className="h-4 w-4 mr-2" />
               )}
               {isStartingBrainstorm ? "Opening..." : "Start Brainstorming"}
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={isSubmitting || showLoadingScreen}
+              className="flex-1"
+              size="lg"
+            >
+              {isSubmitting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4 mr-2" />
+              )}
+              {isSubmitting ? "Processing..." : "Start Campaign"}
             </Button>
           </div>
         </div>
