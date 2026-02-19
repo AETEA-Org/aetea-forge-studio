@@ -23,7 +23,7 @@ const tabs: { id: CampaignTab; label: string; icon: React.ElementType; comingSoo
   { id: 'strategy', label: 'Strategy', icon: Target },
   { id: 'creative', label: 'Creative', icon: Palette },
   { id: 'analytics', label: 'Analytics', icon: BarChart3, comingSoon: true },
-  { id: 'settings', label: 'Settings', icon: Settings, comingSoon: true },
+  { id: 'settings', label: 'Controls', icon: Settings, comingSoon: true },
 ];
 
 export function CampaignTabs({ activeTab, onTabChange }: CampaignTabsProps) {
