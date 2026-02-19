@@ -35,28 +35,31 @@ export function CreativeTaskCard({ task, chatId }: CreativeTaskCardProps) {
     <Link
       to={`/app/chat/${chatId}/task/${task.id}`}
       className={cn(
-        "flex items-start gap-3 rounded-lg border border-border bg-card p-4 block",
-        "transition-colors hover:bg-muted/50"
+        "flex flex-col rounded-lg border border-border bg-card p-4 min-w-0 overflow-hidden",
+        "transition-colors hover:bg-muted/50 h-full"
       )}
     >
-      <div className="mt-0.5 text-muted-foreground">
-        <TypeIcon type={task.type} />
-      </div>
-      <div className="min-w-0 flex-1 space-y-1">
-        <p className="font-medium text-foreground truncate" title={task.title}>
+      <div className="flex items-start gap-3 mb-3">
+        <div className="shrink-0 text-muted-foreground">
+          <TypeIcon type={task.type} />
+        </div>
+        <p
+          className="font-medium text-foreground line-clamp-3 break-words min-h-0"
+          title={task.title}
+        >
           {task.title}
         </p>
-        <div className="flex flex-wrap items-center gap-2">
-          <span
-            className={cn(
-              "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium",
-              status.className
-            )}
-          >
-            {status.label}
-          </span>
-          <span className="text-xs text-muted-foreground capitalize">{task.type}</span>
-        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 mt-auto">
+        <span
+          className={cn(
+            "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium",
+            status.className
+          )}
+        >
+          {status.label}
+        </span>
+        <span className="text-xs text-muted-foreground capitalize">{task.type}</span>
       </div>
     </Link>
   );

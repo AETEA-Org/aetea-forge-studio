@@ -29,7 +29,7 @@ export function useChatContext({
     strategy: 'Strategy',
     creative: 'Creative',
     analytics: 'Analytics',
-    settings: 'Settings',
+    settings: 'Controls',
   };
   return {
     context: `tab:${tab}`,

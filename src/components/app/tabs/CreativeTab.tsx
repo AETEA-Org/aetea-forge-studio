@@ -315,7 +315,7 @@ export function CreativeTab({ campaignId, chatId, isModifying }: CreativeTabProp
         ) : tasks.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4">No tasks yet.</p>
         ) : (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {tasks.map((task) => (
               <CreativeTaskCard key={task.id} task={task} chatId={chatId} />
             ))}
