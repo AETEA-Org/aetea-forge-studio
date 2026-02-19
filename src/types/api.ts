@@ -284,6 +284,7 @@ export interface Asset {
   task_id: string | null;
   folder_path: string;
   file_name: string;
+  view_url: string;
   download_url: string;
   mime_type: string;
   created_at: string;

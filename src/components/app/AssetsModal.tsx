@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useAssets } from "@/hooks/useAssets";
-import { refreshAssetDownloadUrl } from "@/services/api";
+import { refreshAssetUrls } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import type { Asset } from "@/types/api";
@@ -40,14 +40,14 @@ export function AssetsModal({ chatId, open, onOpenChange }: AssetsModalProps) {
     return Date.now() - fetchedAt >= URL_EXPIRATION_MS;
   }, []);
 
-  const getValidAssetUrl = useCallback(
+  const getValidDownloadUrl = useCallback(
     async (asset: Asset): Promise<string> => {
       const fetchedAt = (data as { _fetchedAt?: number })?._fetchedAt;
       if (!isUrlExpired(fetchedAt)) return asset.download_url;
       if (refreshingUrls.has(asset.id)) return asset.download_url;
       try {
         setRefreshingUrls((prev) => new Set(prev).add(asset.id));
-        const result = await refreshAssetDownloadUrl(asset.id, user!.email!);
+        const result = await refreshAssetUrls(asset.id, user!.email!);
         return result.download_url;
       } catch (err) {
         console.error("Failed to refresh asset URL:", err);
@@ -65,10 +65,10 @@ export function AssetsModal({ chatId, open, onOpenChange }: AssetsModalProps) {
 
   const handleAssetClick = useCallback(
     async (asset: Asset) => {
-      const url = await getValidAssetUrl(asset);
+      const url = await getValidDownloadUrl(asset);
       window.open(url, "_blank");
     },
-    [getValidAssetUrl]
+    [getValidDownloadUrl]
   );
 
   const assets = data?.assets ?? [];
@@ -117,7 +117,7 @@ export function AssetsModal({ chatId, open, onOpenChange }: AssetsModalProps) {
                     <div className="aspect-square mb-2 bg-muted rounded flex items-center justify-center overflow-hidden">
                       {isImageAsset(asset) ? (
                         <img
-                          src={asset.download_url}
+                          src={asset.view_url}
                           alt={asset.file_name}
                           className="w-full h-full object-cover"
                         />

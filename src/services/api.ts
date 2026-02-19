@@ -360,23 +360,23 @@ export async function getAssets(
   return response.json();
 }
 
-// Refresh asset download URL (returns JSON with download_url)
-export async function refreshAssetDownloadUrl(
+// Refresh asset URLs (GET /assets/{id}/ returns view_url and download_url)
+export async function refreshAssetUrls(
   assetId: string,
   userEmail: string
-): Promise<{ download_url: string }> {
+): Promise<{ view_url: string; download_url: string }> {
   const response = await fetch(
-    buildUrl(`/assets/${assetId}/download`, { user_id: userEmail }),
+    buildUrl(`/assets/${assetId}`, { user_id: userEmail }),
     {
       headers: getHeaders(),
     }
   );
-  
+
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.detail || 'Failed to refresh asset URL');
+    throw new Error(error.detail || 'Failed to refresh asset URLs');
   }
-  
+
   return response.json();
 }
 

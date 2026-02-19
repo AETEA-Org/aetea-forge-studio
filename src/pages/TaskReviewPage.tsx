@@ -3,7 +3,7 @@ import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import { Loader2, ArrowLeft, ChevronLeft, ChevronRight, Download, FileText, Image, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getCampaignTask, getCampaignTaskAssets, patchCampaignTask, refreshAssetDownloadUrl } from "@/services/api";
+import { getCampaignTask, getCampaignTaskAssets, patchCampaignTask, refreshAssetUrls } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 import { Markdown } from "@/components/ui/markdown";
 import { cn } from "@/lib/utils";
@@ -82,7 +82,7 @@ export default function TaskReviewPage() {
     async (asset: Asset) => {
       if (!user?.email) return;
       try {
-        const result = await refreshAssetDownloadUrl(asset.id, user.email);
+        const result = await refreshAssetUrls(asset.id, user.email);
         window.open(result.download_url, '_blank');
       } catch {
         window.open(asset.download_url, '_blank');
@@ -161,14 +161,14 @@ export default function TaskReviewPage() {
                 {currentPreview?.mime_type.startsWith('video/') ? (
                   <video
                     key={currentPreview.id}
-                    src={currentPreview.download_url}
+                    src={currentPreview.view_url}
                     controls
                     className="max-w-full max-h-[400px]"
                   />
                 ) : (
                   <img
                     key={currentPreview?.id}
-                    src={currentPreview?.download_url ?? ''}
+                    src={currentPreview?.view_url ?? ''}
                     alt={currentPreview?.file_name ?? ''}
                     className="max-w-full max-h-[400px] object-contain"
                   />

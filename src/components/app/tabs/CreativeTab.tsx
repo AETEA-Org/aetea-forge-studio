@@ -15,7 +15,7 @@ import { VisualDirectionCard } from "./VisualDirectionCard";
 import { GenerateKeyVisualButton } from "./GenerateKeyVisualButton";
 import { CreativeTaskCard } from "./CreativeTaskCard";
 import { ModificationOverlay } from "@/components/app/ModificationOverlay";
-import { refreshAssetDownloadUrl } from "@/services/api";
+import { refreshAssetUrls } from "@/services/api";
 import { cn } from "@/lib/utils";
 
 interface CreativeTabProps {
@@ -43,14 +43,12 @@ export function CreativeTab({ campaignId, chatId, isModifying }: CreativeTabProp
   const { data: tasksData, isLoading: tasksLoading } = useCampaignTasks(campaignId);
   const tasks = tasksData?.tasks ?? [];
 
-  // Fetch fresh download URL for key visual (signed URLs expire; refreshAssetDownloadUrl returns a valid one).
+  // Fetch fresh view URL for key visual (signed URLs expire; refreshAssetUrls returns valid view_url and download_url).
   const keyVisualAssetId = creativeState?.key_visual_asset_id ?? null;
-  const { data: keyVisualDownloadUrl } = useQuery({
-    queryKey: ['asset-download', keyVisualAssetId, user?.email],
+  const { data: keyVisualViewUrl } = useQuery({
+    queryKey: ['asset-urls', keyVisualAssetId, user?.email],
     queryFn: () =>
-      refreshAssetDownloadUrl(keyVisualAssetId!, user!.email!).then(
-        (r) => r.download_url
-      ),
+      refreshAssetUrls(keyVisualAssetId!, user!.email!).then((r) => r.view_url),
     enabled: !!keyVisualAssetId && !!user?.email,
     staleTime: 50 * 60 * 1000, // 50 min (URLs often expire in ~1h)
   });
@@ -139,9 +137,13 @@ export function CreativeTab({ campaignId, chatId, isModifying }: CreativeTabProp
     setIsGenerating(true);
 
     try {
-      // Build message with reference image file names
+      // Build message with style name (when available) and reference image file names
+      const selectedStyle = styleCards.find((s) => s.id === selectedStyleId);
+      const styleNamePart = selectedStyle?.name
+        ? ` Use the style named "${selectedStyle.name}".`
+        : '';
       const imageNames = referenceImages.map((f) => f.name).join(', ');
-      const message = `Generate a key visual using the selected style.${
+      const message = `Generate a key visual using the selected style.${styleNamePart}${
         imageNames ? ` Reference images: ${imageNames}` : ''
       }`;
 
@@ -168,7 +170,7 @@ export function CreativeTab({ campaignId, chatId, isModifying }: CreativeTabProp
             queryClient.invalidateQueries({
               queryKey: ['campaign', campaignId, 'tasks', user.email],
             });
-            queryClient.invalidateQueries({ queryKey: ['asset-download'] });
+            queryClient.invalidateQueries({ queryKey: ['asset-urls'] });
             queryClient.invalidateQueries({
               queryKey: ['assets', chatId, user.email],
             });
@@ -201,6 +203,7 @@ export function CreativeTab({ campaignId, chatId, isModifying }: CreativeTabProp
     }
   }, [
     selectedStyleId,
+    styleCards,
     referenceImages,
     user,
     chatId,
@@ -279,10 +282,10 @@ export function CreativeTab({ campaignId, chatId, isModifying }: CreativeTabProp
         <section className="mt-8 pt-6 border-t border-border">
           <h3 className="text-lg font-semibold mb-4 text-left">Key Visual</h3>
           <div className="flex justify-center w-full">
-            {keyVisualDownloadUrl ? (
+            {keyVisualViewUrl ? (
               <div className="rounded-lg border border-border overflow-hidden bg-muted/30 max-w-2xl w-full flex justify-center">
                 <img
-                  src={keyVisualDownloadUrl}
+                  src={keyVisualViewUrl}
                   alt="Key visual"
                   className="max-w-full h-auto object-contain"
                 />

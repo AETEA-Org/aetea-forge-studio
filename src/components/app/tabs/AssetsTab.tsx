@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { Loader2, Folder, File, Download, Eye, Image, Grid3x3, List } from "lucide-react";
 import { useAssets } from "@/hooks/useAssets";
-import { refreshAssetDownloadUrl } from "@/services/api";
+import { refreshAssetUrls } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -51,28 +51,19 @@ export function AssetsTab({ chatId, isModifying }: AssetsTabProps) {
     return (now - fetchedAt) >= URL_EXPIRATION_MS;
   }, []);
   
-  // Get valid asset URL (refresh if expired)
-  const getValidAssetUrl = useCallback(async (asset: Asset): Promise<string> => {
-    const fetchedAt = (data as any)?._fetchedAt;
-    
-    // If URL is not expired, use the existing download_url
-    if (!isUrlExpired(fetchedAt)) {
-      return asset.download_url;
-    }
-    
-    // If already refreshing this asset, return existing URL (will be updated when refresh completes)
-    if (refreshingUrls.has(asset.id)) {
-      return asset.download_url;
-    }
-    
-    // URL expired, refresh it
+  // Get valid download URL (refresh if expired) for open/download action
+  const getValidDownloadUrl = useCallback(async (asset: Asset): Promise<string> => {
+    const fetchedAt = (data as { _fetchedAt?: number })?._fetchedAt;
+
+    if (!isUrlExpired(fetchedAt)) return asset.download_url;
+    if (refreshingUrls.has(asset.id)) return asset.download_url;
+
     try {
       setRefreshingUrls((prev) => new Set(prev).add(asset.id));
-      const result = await refreshAssetDownloadUrl(asset.id, user!.email!);
+      const result = await refreshAssetUrls(asset.id, user!.email!);
       return result.download_url;
     } catch (err) {
       console.error('Failed to refresh asset URL:', err);
-      // Fallback to existing URL if refresh fails
       return asset.download_url;
     } finally {
       setRefreshingUrls((prev) => {
@@ -82,12 +73,14 @@ export function AssetsTab({ chatId, isModifying }: AssetsTabProps) {
       });
     }
   }, [data, isUrlExpired, refreshingUrls, user]);
-  
-  // Handle view/download action
-  const handleAssetAction = useCallback(async (asset: Asset) => {
-    const validUrl = await getValidAssetUrl(asset);
-    window.open(validUrl, '_blank');
-  }, [getValidAssetUrl]);
+
+  const handleAssetAction = useCallback(
+    async (asset: Asset) => {
+      const url = await getValidDownloadUrl(asset);
+      window.open(url, '_blank');
+    },
+    [getValidDownloadUrl]
+  );
 
   if (isLoading) {
     return (
@@ -189,7 +182,7 @@ export function AssetsTab({ chatId, isModifying }: AssetsTabProps) {
                 <div className="aspect-square mb-3 bg-muted rounded-md flex items-center justify-center overflow-hidden">
                   {isImageAsset(asset) ? (
                     <img
-                      src={asset.download_url}
+                      src={asset.view_url}
                       alt={asset.file_name}
                       className="w-full h-full object-cover"
                       onError={(e) => {
@@ -280,7 +273,7 @@ export function AssetsTab({ chatId, isModifying }: AssetsTabProps) {
                           <div className="flex-shrink-0">
                             {isImageAsset(asset) ? (
                               <img
-                                src={asset.download_url}
+                                src={asset.view_url}
                                 alt={asset.file_name}
                                 className="h-8 w-8 object-cover rounded"
                                 onError={(e) => {
