@@ -25,9 +25,9 @@ export function HeroSection() {
 
       <div className="container relative z-10 px-6 lg:px-12 py-32 md:py-40 flex justify-center">
         <div className="max-w-[1100px] w-full flex flex-col items-center text-center">
-          {/* Logo - 1060px width (960 + 100) */}
+          {/* Logo */}
           <div
-            className="w-[1060px] max-w-full mx-auto mb-4 opacity-0 animate-fade-in flex justify-center"
+            className="w-[800px] max-w-full mx-auto mb-4 opacity-0 animate-fade-in flex justify-center"
             style={{ animationDelay: '0.1s' }}
           >
             <img
