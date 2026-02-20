@@ -24,10 +24,10 @@ export function HeroSection() {
       <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-primary/10 rounded-full blur-[150px] animate-glow-pulse" style={{ animationDelay: '1.5s' }} />
 
       <div className="container relative z-10 px-6 lg:px-12 py-32 md:py-40 flex justify-center">
-        <div className="max-w-5xl w-full flex flex-col items-center text-center">
-          {/* Logo - slightly reduced size, centered */}
+        <div className="max-w-[1100px] w-full flex flex-col items-center text-center">
+          {/* Logo - 1060px width (960 + 100) */}
           <div
-            className="w-full max-w-[min(70vw,480px)] mx-auto mb-16 opacity-0 animate-fade-in flex justify-center"
+            className="w-[1060px] max-w-full mx-auto mb-4 opacity-0 animate-fade-in flex justify-center"
             style={{ animationDelay: '0.1s' }}
           >
             <img
@@ -38,10 +38,10 @@ export function HeroSection() {
             />
           </div>
 
-          {/* Headline */}
+          {/* Headline - 70px font size, arrows inherit and scale with text */}
           <h1
-            className="font-display text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[0.95] mb-8 opacity-0 animate-fade-in"
-            style={{ animationDelay: '0.2s' }}
+            className="font-display font-bold tracking-tight leading-[0.95] mb-8 opacity-0 animate-fade-in"
+            style={{ fontSize: '70px', animationDelay: '0.2s' }}
           >
             <span className="text-foreground">All you need.</span>
             <br />
@@ -104,7 +104,7 @@ export function HeroSection() {
         </div>
       </div>
 
-      {/* Scroll indicator */}
+      {/* Scroll indicator - outside grid div so opacity isn't inherited */}
       <div className="absolute bottom-12 left-1/2 -translate-x-1/2 opacity-0 animate-fade-in" style={{ animationDelay: '1.2s' }}>
         <div className="w-6 h-10 rounded-full border border-foreground/20 flex items-start justify-center p-2">
           <div className="w-1 h-2 rounded-full bg-foreground/40 animate-bounce" />
