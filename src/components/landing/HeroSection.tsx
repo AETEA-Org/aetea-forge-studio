@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import logo from "@/assets/aetea-logo-white.png";
+import heroLogo from "@/assets/AETEA-logo-blue-transparent.png";
 
 export function HeroSection() {
   return (
@@ -23,22 +23,23 @@ export function HeroSection() {
       <div className="absolute top-1/3 left-1/4 w-[500px] h-[500px] bg-primary/15 rounded-full blur-[180px] animate-glow-pulse" />
       <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-primary/10 rounded-full blur-[150px] animate-glow-pulse" style={{ animationDelay: '1.5s' }} />
 
-      <div className="container relative z-10 px-6 lg:px-12 py-32 md:py-40">
-        <div className="max-w-5xl mx-auto">
-          {/* Logo - larger and prominent */}
-          <div 
-            className="mb-16 opacity-0 animate-fade-in"
+      <div className="container relative z-10 px-6 lg:px-12 py-32 md:py-40 flex justify-center">
+        <div className="max-w-5xl w-full flex flex-col items-center text-center">
+          {/* Logo - slightly reduced size, centered */}
+          <div
+            className="w-full max-w-[min(70vw,480px)] mx-auto mb-16 opacity-0 animate-fade-in flex justify-center"
             style={{ animationDelay: '0.1s' }}
           >
-            <img 
-              src={logo} 
-              alt="AETEA" 
-              className="h-14 md:h-20 w-auto" 
+            <img
+              src={heroLogo}
+              alt="AETEA"
+              className="w-full h-auto object-contain"
+              style={{ aspectRatio: '683 / 253' }}
             />
           </div>
 
           {/* Headline */}
-          <h1 
+          <h1
             className="font-display text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[0.95] mb-8 opacity-0 animate-fade-in"
             style={{ animationDelay: '0.2s' }}
           >
@@ -52,16 +53,16 @@ export function HeroSection() {
           </h1>
 
           {/* Subline */}
-          <p 
-            className="text-lg sm:text-xl md:text-2xl text-foreground/70 max-w-2xl leading-relaxed mb-12 opacity-0 animate-fade-in"
+          <p
+            className="text-lg sm:text-xl md:text-2xl text-foreground/70 max-w-2xl leading-relaxed mb-12 opacity-0 animate-fade-in mx-auto"
             style={{ animationDelay: '0.4s' }}
           >
             One creative intelligence, backed by everything required to envision, execute and excel.
           </p>
 
           {/* CTAs */}
-          <div 
-            className="flex flex-col sm:flex-row items-start gap-4 mb-20 opacity-0 animate-fade-in"
+          <div
+            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20 opacity-0 animate-fade-in"
             style={{ animationDelay: '0.6s' }}
           >
             <Link to="/auth">
@@ -85,8 +86,8 @@ export function HeroSection() {
           </div>
 
           {/* Proof Points */}
-          <div 
-            className="flex flex-wrap gap-x-8 gap-y-4 opacity-0 animate-fade-in"
+          <div
+            className="flex flex-wrap justify-center items-center gap-x-8 gap-y-4 opacity-0 animate-fade-in"
             style={{ animationDelay: '0.8s' }}
           >
             {[
