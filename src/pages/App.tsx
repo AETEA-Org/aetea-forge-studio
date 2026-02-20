@@ -239,7 +239,7 @@ export default function App() {
               ) : (
                 <Lightbulb className="h-4 w-4 mr-2" />
               )}
-              {isStartingBrainstorm ? "Opening..." : "Start Brainstorming"}
+              {isStartingBrainstorm ? "Opening..." : "Brainstorm"}
             </Button>
             <Button
               onClick={handleSubmit}
@@ -252,7 +252,7 @@ export default function App() {
               ) : (
                 <Sparkles className="h-4 w-4 mr-2" />
               )}
-              {isSubmitting ? "Processing..." : "Start Campaign"}
+              {isSubmitting ? "Processing..." : "Campaign"}
             </Button>
           </div>
         </div>
