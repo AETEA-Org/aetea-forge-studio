@@ -35,7 +35,7 @@ export function Navbar() {
               <img
                 src="/favicon.png"
                 alt="AETEA"
-                className="h-10 w-10 object-contain transition-opacity hover:opacity-80"
+                className="h-[30px] w-[30px] object-contain transition-opacity hover:opacity-80"
               />
             </Link>
             {/* Desktop Nav - left aligned with favicon */}
