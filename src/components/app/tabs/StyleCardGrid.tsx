@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { Loader2, Check } from "lucide-react";
+import { Loader2, Check, ChevronDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { StyleCard } from "@/types/api";
 
@@ -80,15 +81,17 @@ export function StyleCardGrid({
     <div className="space-y-4">
       <div
         ref={gridRef}
-        className="max-h-[400px] overflow-y-auto custom-scrollbar"
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 120px))',
-          gap: '16px',
-          justifyContent: 'start',
-        }}
+        className="max-h-[400px] overflow-y-auto custom-scrollbar flex flex-col gap-4"
       >
-        {styleCards.map((card) => {
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 120px))',
+            gap: '16px',
+            justifyContent: 'start',
+          }}
+        >
+          {styleCards.map((card) => {
           const isSelected = selectedStyleId === card.id;
 
           return (
@@ -138,13 +141,30 @@ export function StyleCardGrid({
             </div>
           );
         })}
-      </div>
-
-      {isLoadingMore && (
-        <div className="flex items-center justify-center py-4">
-          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
-      )}
+
+        {hasMore && (
+          <div className="flex justify-center pb-2 shrink-0">
+            <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setIsLoadingMore(true);
+              onLoadMore();
+            }}
+            disabled={isLoading}
+            className="gap-2"
+          >
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
+            Load more
+          </Button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

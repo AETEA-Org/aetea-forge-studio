@@ -81,7 +81,10 @@ export function CreativeTab({ campaignId, chatId, isModifying }: CreativeTabProp
 
   const styleCards = shouldLoadStyleCards ? accumulatedStyleCards : [];
   const totalStyleCards = styleCardsData?.total ?? 0;
-  const hasMoreStyleCards = totalStyleCards > styleCards.length;
+  // When API omits total (null), infer hasMore from full-page response (30 cards = possibly more)
+  const hasMoreStyleCards =
+    totalStyleCards > styleCards.length ||
+    (totalStyleCards === 0 && (styleCardsData?.style_cards?.length ?? 0) >= 30);
 
   const selectedStyleId = creativeState?.selected_style_id || null;
 
