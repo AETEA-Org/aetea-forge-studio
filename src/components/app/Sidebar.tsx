@@ -48,7 +48,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           )}
         >
           <Plus className="h-4 w-4" />
-          {!collapsed && <span>New Chat</span>}
+          {!collapsed && <span>New Project</span>}
         </Button>
       </div>
 

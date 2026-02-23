@@ -64,7 +64,7 @@ export function ChatList({ projectId, activeChatId, onChatSelect, onNewChat }: C
           size="sm"
         >
           <MessageSquare className="h-4 w-4" />
-          New Chat
+          New Project
         </Button>
       </div>
 
