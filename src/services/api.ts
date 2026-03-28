@@ -18,10 +18,11 @@ import type {
   StyleCardsResponse,
   CampaignTasksResponse,
   CampaignTask,
+  DeliverablesResponse,
 } from "@/types/api";
 
 // Direct API base URL (bypassing Supabase Edge Function)
-const API_BASE_URL = 'https://m-abdur2024-aetea-ai.hf.space';
+const API_BASE_URL = 'https://aetea-ai.onrender.com';
 const API_TOKEN = import.meta.env.VITE_AETEA_API_TOKEN;
 
 // Helper to build URL with params
@@ -255,6 +256,7 @@ export async function createCampaignViaChat(
   formData.append('chat_id', chatId);
   formData.append('message', message);
   formData.append('mode', 'campaign');
+  formData.append('branch_id', 'main');
   
   if (files && files.length > 0) {
     files.forEach((file) => {
@@ -406,7 +408,9 @@ export async function updateCreativeState(
   userEmail: string,
   updates: {
     selected_style_id?: string | null;
-    visual_direction?: { reference_image_ids: string[] } | null;
+    creative_truth?: CreativeState['creative_truth'] | null;
+    creative_tone?: CreativeState['creative_tone'] | null;
+    key_visual_asset_id?: string | null;
   }
 ): Promise<CreativeState> {
   const response = await fetch(
@@ -527,7 +531,8 @@ export async function sendChatMessage(
   onContent?: (content: string) => void,
   onEvent?: (eventName: string) => void,
   onComplete?: (content: string) => void,
-  onError?: (message: string) => void
+  onError?: (message: string) => void,
+  branchId: string = 'main'
 ): Promise<void> {
   const url = buildUrl('/ai/chat');
   
@@ -536,6 +541,7 @@ export async function sendChatMessage(
   formData.append('chat_id', chatId);
   formData.append('message', message);
   formData.append('mode', mode);
+  formData.append('branch_id', branchId);
   
   if (context) {
     formData.append('context', context);
@@ -622,6 +628,7 @@ export async function startBrainstormFirstMessage(
   formData.append('chat_id', chatId);
   formData.append('message', message);
   formData.append('mode', 'brainstorm');
+  formData.append('branch_id', 'main');
   if (files && files.length > 0) {
     files.forEach((file) => formData.append('files', file));
   }
@@ -716,10 +723,11 @@ export async function listChats(
 // Get messages for a chat
 export async function getChatMessages(
   chatId: string,
-  userEmail: string
+  userEmail: string,
+  branchId: string = 'main'
 ): Promise<ChatMessagesResponse> {
   const response = await fetch(
-    buildUrl(`/chats/${chatId}/messages`, { user_id: userEmail }),
+    buildUrl(`/chats/${chatId}/messages`, { user_id: userEmail, branch_id: branchId }),
     {
       headers: getHeaders(),
     }
@@ -730,6 +738,21 @@ export async function getChatMessages(
     throw new Error(error.detail || 'Failed to fetch messages');
   }
   
+  return response.json();
+}
+
+export async function getCampaignTaskDeliverables(
+  taskId: string,
+  userEmail: string
+): Promise<DeliverablesResponse> {
+  const response = await fetch(
+    buildUrl(`/campaigns/tasks/${taskId}/deliverables`, { user_id: userEmail }),
+    { headers: getHeaders() }
+  );
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.detail || 'Failed to fetch task deliverables');
+  }
   return response.json();
 }
 

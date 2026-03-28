@@ -9,6 +9,7 @@ interface ChatMessagesProps {
   streamingContent?: string;
   isStreaming?: boolean;
   updateMessage?: string | null;
+  showEmptyState?: boolean;
 }
 
 export function ChatMessages({
@@ -16,6 +17,7 @@ export function ChatMessages({
   streamingContent,
   isStreaming,
   updateMessage,
+  showEmptyState = true,
 }: ChatMessagesProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const prevMessageCountRef = useRef<number>(0);
@@ -60,6 +62,13 @@ export function ChatMessages({
     prevFirstMessageIdRef.current = firstMessageId;
   }, [messages, streamingContent, updateMessage, isStreaming]);
 
+  const truncatedUpdateMessage = (() => {
+    if (!updateMessage) return null;
+    const words = updateMessage.trim().split(/\s+/).filter(Boolean);
+    if (words.length <= 10) return updateMessage;
+    return `${words.slice(0, 10).join(" ")}...`;
+  })();
+
   return (
     <div className="flex-1 h-full overflow-y-auto overflow-x-hidden custom-scrollbar" ref={scrollRef}>
       <div className="p-4 space-y-4 min-w-0">
@@ -80,7 +89,7 @@ export function ChatMessages({
               )}
               style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
             >
-              <Markdown className="text-sm leading-relaxed break-words" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+              <Markdown className="text-sm leading-relaxed break-words">
                 {message.content}
               </Markdown>
             </div>
@@ -91,10 +100,10 @@ export function ChatMessages({
         ))}
 
         {/* Update message (temporary, lighter color) */}
-        {updateMessage && (
+        {truncatedUpdateMessage && (
           <div className="flex flex-col gap-1 items-start">
             <div className="max-w-[80%] rounded-lg px-4 py-2.5 bg-muted/50 text-muted-foreground break-words" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-              <p className="text-sm italic break-words" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{updateMessage}</p>
+              <p className="text-sm italic break-words" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{truncatedUpdateMessage}</p>
             </div>
           </div>
         )}
@@ -103,7 +112,7 @@ export function ChatMessages({
         {isStreaming && streamingContent && (
           <div className="flex flex-col gap-1 items-start">
             <div className="max-w-[80%] rounded-lg px-4 py-2.5 bg-muted text-foreground break-words" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-              <Markdown className="text-sm leading-relaxed break-words" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+              <Markdown className="text-sm leading-relaxed break-words">
                 {streamingContent}
               </Markdown>
             </div>
@@ -113,7 +122,7 @@ export function ChatMessages({
           </div>
         )}
 
-        {messages.length === 0 && !isStreaming && !updateMessage && (
+        {showEmptyState && messages.length === 0 && !isStreaming && !updateMessage && (
           <div className="flex items-center justify-center h-full text-center py-12">
             <div className="space-y-2 max-w-sm">
               <img src="/favicon.png" alt="AETEA" className="h-8 w-8 mx-auto" />

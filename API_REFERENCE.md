@@ -1,63 +1,99 @@
-# AETEA Creative OS -- API Reference
+# AETEA Creative OS API Reference
 
-Complete API documentation for frontend developers.
+Code-accurate API documentation for frontend clients and AI agents.
 
-**Base URL:** `http://localhost:8000` (development) or your deployed URL.
+## Quick Facts
 
-**Content Types:**
-- `application/json` -- standard responses
-- `multipart/form-data` -- file uploads (`POST /ai/chat`)
-- `text/event-stream` -- SSE streaming (`POST /ai/chat`)
+- **Base URL:** `http://localhost:8000` (dev) or your deployed host.
+- **Auth:** no auth middleware is enforced at router level right now; endpoints require `user_id` in query/form/body.
+- **Content types:**
+  - `application/json` for most endpoints
+  - `multipart/form-data` for `POST /ai/chat`
+  - `text/event-stream` response from `POST /ai/chat`
+
+## Conventions
+
+- **ID fields:** `chat_id`, `campaign_id`, `task_id`, `asset_id` are UUID-like strings.
+- **Mode values:** `brainstorm` or `campaign`.
+- **Branch values:** `main` or `task:<task_id>`.
+- **Folder values:** `User-Uploaded` or `AETEA-Generated`.
+- **Error body format:** `{"detail": "..."}` for most HTTP errors.
+
+## Endpoint Index
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/` | Redirect to docs |
+| GET | `/health` | Health probe |
+| GET | `/chats` | List chats |
+| POST | `/chats` | Create chat |
+| GET | `/chats/{chat_id}` | Get one chat |
+| GET | `/chats/{chat_id}/messages` | Get branch messages |
+| DELETE | `/chats/{chat_id}` | Delete chat and linked data |
+| POST | `/ai/chat` | Stream orchestrated AI reply |
+| GET | `/campaigns/style-cards` | Paginated style card list |
+| GET | `/campaigns` | Get campaign by chat |
+| GET | `/campaigns/{campaign_id}` | Get campaign by id |
+| GET | `/campaigns/{campaign_id}/creative` | Get creative state |
+| PATCH | `/campaigns/{campaign_id}/creative` | Update creative state |
+| GET | `/campaigns/{campaign_id}/tasks` | List campaign tasks |
+| GET | `/campaigns/tasks/{task_id}` | Get one task |
+| PATCH | `/campaigns/tasks/{task_id}` | Update task fields |
+| GET | `/campaigns/tasks/{task_id}/assets` | List task-linked assets |
+| GET | `/campaigns/tasks/{task_id}/deliverables` | List structured deliverables |
+| POST | `/campaigns/tasks/{task_id}/deliverables` | Create deliverable item |
+| PATCH | `/campaigns/tasks/{task_id}/deliverables/{item_id}` | Update deliverable item |
+| DELETE | `/campaigns/tasks/{task_id}/deliverables/{item_id}` | Delete deliverable item |
+| POST | `/campaigns/tasks/{task_id}/deliverables/{item_id}/components` | Create deliverable component |
+| PATCH | `/campaigns/tasks/{task_id}/deliverables/{item_id}/components/{component_id}` | Update deliverable component |
+| DELETE | `/campaigns/tasks/{task_id}/deliverables/{item_id}/components/{component_id}` | Delete deliverable component |
+| GET | `/assets` | List assets by chat/task |
+| GET | `/assets/{asset_id}` | Get signed view/download URLs |
+| DELETE | `/assets/{asset_id}` | Delete asset |
 
 ---
 
-## Table of Contents
+## System Endpoints
 
-- [Health Check](#health-check)
-- [Chats](#chats)
-- [AI Chat (SSE)](#ai-chat-sse)
-- [Campaigns](#campaigns)
-- [Creative State](#creative-state)
-- [Style Cards](#style-cards)
-- [Tasks](#tasks)
-- [Assets](#assets)
-- [SSE Event Reference](#sse-event-reference)
-- [Using AI Chat for Specific Tasks](#using-ai-chat-for-specific-tasks)
-- [Error Handling](#error-handling)
+### `GET /`
 
----
+**Plain English:** Opens interactive API docs by redirecting to `/docs`.
 
-## Health Check
+**Technical:**
+- Response: `302` redirect.
 
 ### `GET /health`
 
-Returns API health status.
+**Plain English:** Lightweight health check for uptime monitoring.
 
-**Response** `200`:
+**Technical:**
+- Response `200`:
 ```json
 { "status": "healthy" }
 ```
 
 ---
 
-## Chats
+## Chats API
 
 ### `GET /chats`
 
-List all chats for a user (most recent first).
+**Plain English:** Returns all chats for one user, newest first, so the UI can render the sidebar/history.
 
-| Query Param | Type | Required | Description |
-|---|---|---|---|
-| `user_id` | string | Yes | User email |
+**Technical:**
+- Query:
+  - `user_id` (required string)
+- Response model: `ChatListResponse`
+- Returns `500` on database errors.
 
-**Response** `200`:
+**Example response (`200`):**
 ```json
 {
   "chats": [
     {
-      "chat_id": "uuid",
+      "chat_id": "f8e8f3f0-6c6d-4f68-8a76-84f2a26ad9b7",
       "title": "Summer Campaign Ideas",
-      "last_modified": "2026-02-15T10:30:00",
+      "last_modified": "2026-03-01T10:30:00Z",
       "mode": "brainstorm",
       "campaign_id": null
     }
@@ -67,537 +103,387 @@ List all chats for a user (most recent first).
 
 ### `POST /chats`
 
-Create a new chat.
+**Plain English:** Creates a new chat container before or during a conversation.
 
-**Request body** (`application/json`):
-```json
-{
-  "user_id": "user@example.com",
-  "mode": "brainstorm"
-}
-```
-
-| Field | Type | Required | Values | Default |
-|---|---|---|---|---|
-| `user_id` | string | Yes | any email | -- |
-| `mode` | string | No | `"brainstorm"`, `"campaign"` | `"brainstorm"` |
-
-**Response** `200`:
-```json
-{
-  "chat_id": "uuid",
-  "title": "New Chat",
-  "last_modified": "2026-02-15T10:30:00"
-}
-```
+**Technical:**
+- Body (`application/json`):
+  - `user_id` (required string)
+  - `mode` (optional: `brainstorm` or `campaign`, default `brainstorm`)
+- Response model: `ChatCreateResponse`
+- Returns `500` on database errors.
 
 ### `GET /chats/{chat_id}`
 
-Get a single chat (useful for loading current mode and checking if campaign exists).
+**Plain English:** Loads one chat and its mode/campaign linkage, used when opening a specific chat.
 
-| Query Param | Type | Required |
-|---|---|---|
-| `user_id` | string | Yes |
-
-**Response** `200`:
-```json
-{
-  "chat_id": "uuid",
-  "title": "My Campaign",
-  "last_modified": "2026-02-15T10:30:00",
-  "mode": "campaign",
-  "campaign_id": "campaign-uuid-or-null"
-}
-```
+**Technical:**
+- Path:
+  - `chat_id` (required)
+- Query:
+  - `user_id` (required string)
+- Response model: `ChatResponse`
+- `404` if chat not found.
 
 ### `GET /chats/{chat_id}/messages`
 
-Get all messages for a chat.
+**Plain English:** Fetches stored message history for one branch, so chat replay works for main and task branches.
 
-| Query Param | Type | Required |
-|---|---|---|
-| `user_id` | string | Yes |
-
-**Response** `200`:
-```json
-{
-  "messages": [
-    {
-      "message_id": "uuid",
-      "role": "user",
-      "content": "Create a campaign for Nike",
-      "timestamp": "2026-02-15T10:30:00"
-    },
-    {
-      "message_id": "uuid",
-      "role": "assistant",
-      "content": "I'll create a campaign...",
-      "timestamp": "2026-02-15T10:30:05"
-    }
-  ]
-}
-```
+**Technical:**
+- Path:
+  - `chat_id` (required)
+- Query:
+  - `user_id` (required)
+  - `branch_id` (optional, default `main`)
+- Response model: `ChatMessagesResponse`
+- Includes assistant `thinking` field when available.
 
 ### `DELETE /chats/{chat_id}`
 
-Delete a chat and all related data (messages, campaign, sections, tasks, assets).
+**Plain English:** Deletes a chat and all records connected to it (messages and linked campaign data) for that user scope.
 
-| Query Param | Type | Required |
-|---|---|---|
-| `user_id` | string | Yes |
-
-**Response** `200`:
-```json
-{
-  "message": "Chat and all related data deleted successfully",
-  "chat_id": "uuid"
-}
-```
+**Technical:**
+- Path:
+  - `chat_id`
+- Query:
+  - `user_id` (required)
+- Response model: `DeleteChatResponse`
+- `404` if chat not found.
 
 ---
 
-## AI Chat (SSE)
+## AI Chat API (SSE)
 
 ### `POST /ai/chat`
 
-Send a message to AETEA agent. Returns Server-Sent Events stream.
+**Plain English:** Sends a user message to the orchestrator agent. The backend streams progress updates and generated text in real time, while also handling optional file uploads and persistence.
 
-**Content-Type:** `multipart/form-data`
+**Technical:**
+- Content-Type: `multipart/form-data`
+- Form fields:
+  - `user_id` (required)
+  - `chat_id` (required)
+  - `message` (required)
+  - `mode` (optional, default `brainstorm`)
+  - `branch_id` (optional, default `main`)
+  - `context` (optional; campaign-only hint)
+  - `files` (optional array of uploaded files)
+- Response: `text/event-stream` (SSE frames as `data: <json>\n\n`)
 
-| Field | Type | Required | Description |
-|---|---|---|---|
-| `user_id` | string | Yes | User email |
-| `chat_id` | string | Yes | Chat UUID |
-| `message` | string | Yes | User message |
-| `mode` | string | No | `"brainstorm"` or `"campaign"` (default: `"brainstorm"`) |
-| `context` | string | No | Optional context hint (campaign mode only, see below) |
-| `files` | File[] | No | File uploads (PDF, DOCX, PPTX, images) |
+**Context hints (`context`):**
+- `tab:brief`
+- `tab:research`
+- `tab:strategy`
+- `tab:creative`
+- `task:<task_id>`
 
-**Context parameter** (campaign mode only):
-- `tab:brief` / `tab:research` / `tab:strategy` / `tab:creative` -- tells the agent which tab the user is viewing.
-- `task:<task_id>` -- tells the agent the user is viewing a specific task.
+**What happens under the hood:**
+1. Ensures chat exists (creates if missing).
+2. Uploads files to `User-Uploaded` and creates asset rows.
+3. Builds message history (up to last 16 messages for the branch).
+4. Creates orchestrator + `AgentContext` and streams execution.
+5. Emits SSE `content`, `update`, `event`, and final `complete`.
+6. Saves user and assistant messages to DB (including assistant thinking transcript).
+7. Updates chat last-modified timestamp; generates a title on first message.
 
-**SSE stream format:**
-
-Each message is a JSON object prefixed by `data: ` and followed by `\n\n`.
-
-```typescript
-interface AgentStreamMessage {
-  status: "content" | "update" | "event" | "complete" | "error";
-  content: string;
+**SSE payload schema:**
+```json
+{
+  "status": "content | update | event | complete | error",
+  "content": "string"
 }
 ```
 
-| Status | When | Content field contains |
-|---|---|---|
-| `content` | Agent is generating text | Text token (append to response) |
-| `update` | Tool progress | Human-readable progress message (e.g. "Creating image") |
-| `event` | Named event for UI | Event name (see [SSE Event Reference](#sse-event-reference)) |
-| `complete` | Stream finished successfully | Full accumulated response text |
-| `error` | Stream failed | Error description |
+**SSE status meaning:**
+- `content`: token chunk of assistant text.
+- `update`: tool/progress/thinking line.
+- `event`: named event for UI transitions.
+- `complete`: full final assistant response.
+- `error`: stream-level failure detail.
 
-**File uploads:**
-- Uploaded files are stored in the `Uploaded` folder in Supabase Storage.
-- File names are appended to the message so the agent knows about them.
-- Do NOT set `Content-Type` header manually -- the browser will set it with the boundary.
+**Common event names observed in code paths:**
+- `campaign_creation_started`
+- `campaign_modifying`
+- `campaign_modified`
 
 ---
 
-## Campaigns
-
-### `GET /campaigns`
-
-Get campaign for a chat (one campaign per chat). Returns campaign metadata and all sections.
-
-| Query Param | Type | Required |
-|---|---|---|
-| `chat_id` | string | Yes |
-| `user_id` | string | Yes |
-
-**Response** `200`:
-```json
-{
-  "campaign": {
-    "id": "campaign-uuid",
-    "chat_id": "chat-uuid",
-    "user_id": "user@example.com",
-    "title": "Nike Summer 2026",
-    "created_at": "2026-02-15T10:30:00",
-    "updated_at": "2026-02-15T10:30:00"
-  },
-  "sections": {
-    "brief": { "campaign_goals": {...}, "brand_information": {...}, "project_brief": {...} },
-    "research": { "market_category": {...}, "audience_culture": {...}, "competitors_positioning": {...}, "swot": {...} },
-    "strategy": { "doctrine": [...], "campaign_pillars": [...], "kpis": [...], "audience_mapping": {...}, "channel_strategy": {...} }
-  }
-}
-```
-
-### `GET /campaigns/{campaign_id}`
-
-Get campaign by ID with sections. Same response schema as above.
-
-| Query Param | Type | Required |
-|---|---|---|
-| `user_id` | string | Yes |
-
----
-
-## Creative State
-
-### `GET /campaigns/{campaign_id}/creative`
-
-Get creative state for a campaign. Auto-creates empty state if none exists.
-
-| Query Param | Type | Required |
-|---|---|---|
-| `user_id` | string | Yes |
-
-**Response** `200`:
-```json
-{
-  "id": "state-uuid",
-  "campaign_id": "campaign-uuid",
-  "creative_truth": {
-    "claims_rtbs": ["Claim 1", "Claim 2"],
-    "ctas_specs": ["CTA 1", "CTA 2"]
-  },
-  "creative_tone": {
-    "concept": "Bold authenticity...",
-    "headline_sample": "Just Own It",
-    "body_copy_sample": "Every step you take..."
-  },
-  "visual_direction": {
-    "reference_image_ids": ["asset-uuid-1"]
-  },
-  "selected_style_id": "style-card-uuid-or-null",
-  "key_visual_asset_id": "asset-uuid-or-null",
-  "created_at": "2026-02-15T10:30:00",
-  "updated_at": "2026-02-15T10:30:00"
-}
-```
-
-### `PATCH /campaigns/{campaign_id}/creative`
-
-Update creative state from frontend (style selection, reference images).
-
-| Query Param | Type | Required |
-|---|---|---|
-| `user_id` | string | Yes |
-
-**Request body:**
-```json
-{
-  "selected_style_id": "style-card-uuid",
-  "visual_direction": {
-    "reference_image_ids": ["asset-uuid-1", "asset-uuid-2"]
-  }
-}
-```
-
-All fields are optional -- only provided fields are updated.
-
-| Field | Type | Description |
-|---|---|---|
-| `selected_style_id` | string \| null | Style card UUID the user selected |
-| `visual_direction` | object \| null | Object with `reference_image_ids` array (max 3) |
-
-**Response** `200`: Same schema as `GET` (full creative state).
-
----
-
-## Style Cards
+## Campaigns API
 
 ### `GET /campaigns/style-cards`
 
-List available style cards with pagination and preview URLs.
+**Plain English:** Lists style cards used on the creative side, including signed preview URLs when available.
 
-| Query Param | Type | Required | Default | Range |
-|---|---|---|---|---|
-| `limit` | int | No | 30 | 1-100 |
-| `offset` | int | No | 0 | >= 0 |
+**Technical:**
+- Query:
+  - `limit` (optional int, default `30`, min `1`, max `100`)
+  - `offset` (optional int, default `0`, min `0`)
+- Response model: `StyleCardListResponse`
 
-**Response** `200`:
-```json
-{
-  "style_cards": [
-    {
-      "id": "card-uuid",
-      "name": "Photorealistic",
-      "storage_path": "style_cards/photorealistic.png",
-      "thumbnail_path": "style_cards/thumbs/photorealistic.png",
-      "preview_url": "https://signed-url..."
-    }
-  ],
-  "total": null
-}
-```
+### `GET /campaigns`
 
-`preview_url` is a signed URL valid for 1 hour. May be `null` if signing fails.
+**Plain English:** Fetches the campaign linked to a chat, plus current section JSON (brief/research/strategy/creative state where present).
 
----
+**Technical:**
+- Query:
+  - `chat_id` (required)
+  - `user_id` (required)
+- Response model: `CampaignWithSectionsResponse`
+- `404` if no campaign exists for the chat.
 
-## Tasks
+### `GET /campaigns/{campaign_id}`
+
+**Plain English:** Same as above, but directly by campaign id.
+
+**Technical:**
+- Path:
+  - `campaign_id`
+- Query:
+  - `user_id`
+- Response model: `CampaignWithSectionsResponse`
+
+### `GET /campaigns/{campaign_id}/creative`
+
+**Plain English:** Returns creative state (truth, tone, selected style, key visual). If missing, backend attempts to create an empty state first.
+
+**Technical:**
+- Path:
+  - `campaign_id`
+- Query:
+  - `user_id`
+- Response model: `CreativeStateResponse`
+
+### `PATCH /campaigns/{campaign_id}/creative`
+
+**Plain English:** Applies partial updates to creative state from the frontend (for example: selected style card or key visual linkage).
+
+**Technical:**
+- Path:
+  - `campaign_id`
+- Query:
+  - `user_id`
+- Body fields (all optional):
+  - `selected_style_id`
+  - `creative_truth`
+  - `creative_tone`
+  - `key_visual_asset_id`
+- Response model: `CreativeStateResponse`
 
 ### `GET /campaigns/{campaign_id}/tasks`
 
-List all tasks for a campaign.
+**Plain English:** Lists all tasks in a campaign so the UI can render the campaign workboard.
 
-| Query Param | Type | Required |
-|---|---|---|
-| `user_id` | string | Yes |
+**Technical:**
+- Path:
+  - `campaign_id`
+- Query:
+  - `user_id`
+- Response model: `TaskListResponse`
 
-**Response** `200`:
-```json
-{
-  "tasks": [
-    {
-      "id": "task-uuid",
-      "campaign_id": "campaign-uuid",
-      "type": "image",
-      "subtype": "social_post",
-      "title": "Instagram carousel for product launch",
-      "description": "Create a 5-slide carousel...",
-      "status": "todo",
-      "body_copy": null,
-      "created_at": "2026-02-15T10:30:00",
-      "updated_at": "2026-02-15T10:30:00"
-    }
-  ]
-}
-```
+---
 
-**Task type values:** `"text"`, `"image"`, `"video"`
-
-**Task status values:**
-
-| Status | Meaning |
-|---|---|
-| `todo` | Not started |
-| `in_progress` | Currently being worked on |
-| `under_review` | AI completed, awaiting user review |
-| `done` | User marked as complete |
+## Task + Deliverables API
 
 ### `GET /campaigns/tasks/{task_id}`
 
-Get a single task by ID.
+**Plain English:** Fetches one task row by id.
 
-| Query Param | Type | Required |
-|---|---|---|
-| `user_id` | string | Yes |
-
-**Response** `200`: Single `TaskResponse` object (same schema as items in task list).
+**Technical:**
+- Query: `user_id` (required)
+- Response model: `TaskResponse`
+- `404` when missing.
 
 ### `PATCH /campaigns/tasks/{task_id}`
 
-Update task status and/or body_copy directly from frontend.
+**Plain English:** Updates task fields directly (usually status transitions like `todo` -> `under_review` -> `done`).
 
-| Query Param | Type | Required |
-|---|---|---|
-| `user_id` | string | Yes |
-
-**Request body:**
-```json
-{
-  "status": "done",
-  "body_copy": null
-}
-```
-
-| Field | Type | Description |
-|---|---|---|
-| `status` | string \| null | New status value |
-| `body_copy` | string \| null | Markdown body copy |
-
-Both fields are optional.
-
-**Response** `200`: Updated `TaskResponse` object.
+**Technical:**
+- Query: `user_id` (required)
+- Body (all optional):
+  - `status`
+  - `title`
+  - `description`
+- Response model: `TaskResponse`
 
 ### `GET /campaigns/tasks/{task_id}/assets`
 
-List all assets linked to a task (produced during task completion).
+**Plain English:** Lists files currently linked to that task, with signed view/download URLs.
 
-| Query Param | Type | Required |
-|---|---|---|
-| `user_id` | string | Yes |
+**Technical:**
+- Query: `user_id` (required)
+- Response model: `AssetListResponse`
 
-**Response** `200`:
+### `GET /campaigns/tasks/{task_id}/deliverables`
+
+**Plain English:** Returns structured outputs for task completion (items and nested components), which is the render-ready task output model.
+
+**Technical:**
+- Query: `user_id`
+- Response model: `DeliverableListResponse`
+
+### `POST /campaigns/tasks/{task_id}/deliverables`
+
+**Plain English:** Creates a new deliverable item (for example, a carousel slide entry).
+
+**Technical:**
+- Query: `user_id`
+- Body:
+  - `item_index` (required int)
+  - `title` (optional)
+  - `status` (optional, default `active`)
+- Response model: `DeliverableItemResponse`
+
+### `PATCH /campaigns/tasks/{task_id}/deliverables/{item_id}`
+
+**Plain English:** Updates title/status for an existing deliverable item.
+
+**Technical:**
+- Query: `user_id`
+- Body:
+  - `title` (optional)
+  - `status` (optional)
+- Response model: `DeliverableItemResponse`
+
+### `DELETE /campaigns/tasks/{task_id}/deliverables/{item_id}`
+
+**Plain English:** Removes one deliverable item from a task.
+
+**Technical:**
+- Query: `user_id`
+- Response:
 ```json
 {
-  "assets": [
-    {
-      "id": "asset-uuid",
-      "user_id": "user@example.com",
-      "chat_id": "chat-uuid",
-      "task_id": "task-uuid",
-      "folder_path": "Completed tasks",
-      "file_name": "hero_image.png",
-      "download_url": "https://signed-url...",
-      "mime_type": "image/png",
-      "created_at": "2026-02-15T10:30:00"
-    }
-  ]
+  "message": "Deliverable item deleted",
+  "item_id": "..."
+}
+```
+
+### `POST /campaigns/tasks/{task_id}/deliverables/{item_id}/components`
+
+**Plain English:** Adds one component under a deliverable item. A component can be text or an asset reference.
+
+**Technical:**
+- Query: `user_id`
+- Body:
+  - `component_type` (required string)
+  - `asset_id` (optional)
+  - `text_content` (optional)
+  - `order_index` (optional, default `1`)
+- Response model: `DeliverableComponentResponse`
+
+### `PATCH /campaigns/tasks/{task_id}/deliverables/{item_id}/components/{component_id}`
+
+**Plain English:** Updates a deliverable component's linked asset/text/order.
+
+**Technical:**
+- Query: `user_id`
+- Body (all optional):
+  - `asset_id`
+  - `text_content`
+  - `order_index`
+- Response model: `DeliverableComponentResponse`
+
+### `DELETE /campaigns/tasks/{task_id}/deliverables/{item_id}/components/{component_id}`
+
+**Plain English:** Deletes one component from a deliverable item.
+
+**Technical:**
+- Query: `user_id`
+- Response:
+```json
+{
+  "message": "Deliverable component deleted",
+  "component_id": "..."
 }
 ```
 
 ---
 
-## Assets
+## Assets API
 
 ### `GET /assets`
 
-List assets by chat. Optionally filter by folder or task.
+**Plain English:** Lists assets for a chat, optionally narrowed to a folder or task.
 
-| Query Param | Type | Required | Description |
-|---|---|---|---|
-| `user_id` | string | Yes | User email |
-| `chat_id` | string | Yes | Chat UUID |
-| `folder_path` | string | No | Filter by folder (e.g. `"Uploaded"`, `"Key visual"`) |
-| `task_id` | string | No | Filter by task UUID (overrides folder filter) |
+**Technical:**
+- Query:
+  - `user_id` (required)
+  - `chat_id` (required)
+  - `folder_path` (optional: `User-Uploaded` or `AETEA-Generated`)
+  - `task_id` (optional; if provided, task listing path is used)
+- Response model: `AssetListResponse`
 
-**Folder values:** `"Uploaded"`, `"AETEA Generated"`, `"Key visual"`, `"Completed tasks"`
+### `GET /assets/{asset_id}`
 
-**Response** `200`: `AssetListResponse` (same schema as task assets above).
+**Plain English:** Returns signed URLs for viewing and downloading one asset.
 
-### `GET /assets/{asset_id}/download`
-
-Download an asset. Redirects (302) to a signed URL.
-
-| Query Param | Type | Required |
-|---|---|---|
-| `user_id` | string | Yes |
+**Technical:**
+- Path:
+  - `asset_id`
+- Query:
+  - `user_id`
+- Response (`200`):
+```json
+{
+  "view_url": "https://...",
+  "download_url": "https://..."
+}
+```
 
 ### `DELETE /assets/{asset_id}`
 
-Delete an asset (database row + storage file).
+**Plain English:** Deletes asset metadata and the backing storage object.
 
-| Query Param | Type | Required |
-|---|---|---|
-| `user_id` | string | Yes |
-
-**Response** `200`:
+**Technical:**
+- Query: `user_id`
+- Response (`200`):
 ```json
 {
   "message": "Asset deleted",
-  "asset_id": "asset-uuid"
+  "asset_id": "..."
 }
 ```
 
 ---
 
-## SSE Event Reference
+## Response Models (Important Fields)
 
-Events are SSE messages with `status: "event"`. The `content` field contains the event name.
+### `AgentStreamMessage`
+- `status`: `content | update | event | complete | error`
+- `content`: payload text or event name
 
-| Event Name | When Emitted | Frontend Action |
-|---|---|---|
-| `campaign_creation_started` | Campaign creation pipeline begins | Switch to loading screen |
-| `campaign_modifying` | AI is about to modify campaign/task/creative | Blur campaign UI, show "AETEA is modifying..." |
-| `campaign_modified` | AI finished modifying campaign/task/creative | Refetch current page data |
+### `TaskResponse`
+- `type`: free string (`text`, `image`, `video` are common)
+- `status`: free string (`todo`, `in_progress`, `under_review`, `done` commonly used)
+- `subtype`, `title`, `description`, `created_at`, `updated_at`
 
-**Note:** The `complete` status event (not `event` type) signals the entire AI response is finished. Use this to exit loading screens after campaign creation.
+### `AssetResponse`
+- includes both `view_url` and `download_url` signed links (when signing succeeds)
+- includes `folder_path`, `description`, `mime_type`
 
-### SSE Stream Lifecycle
-
-```
-POST /ai/chat
-  ↓
-[status=event, content="campaign_creation_started"]  ← show loading screen
-[status=update, content="Analyzing your brief..."]   ← update loading text
-[status=update, content="Researching market..."]     ← update loading text
-[status=update, content="Developing strategy..."]    ← update loading text
-[status=content, content="Your campaign..."]         ← agent response tokens
-[status=complete, content="full response"]           ← exit loading, show campaign
-```
-
-For campaign modifications:
-```
-POST /ai/chat (e.g. "Update the brief goals")
-  ↓
-[status=event, content="campaign_modifying"]    ← blur campaign
-[status=update, content="Reading brief..."]     ← optional progress
-[status=content, content="I've updated..."]     ← agent response
-[status=event, content="campaign_modified"]     ← refetch data
-[status=complete, content="full response"]      ← done
-```
-
----
-
-## Using AI Chat for Specific Tasks
-
-### Creating a Campaign
-
-1. Set `mode` to `"campaign"`.
-2. Prefix user message: `"Create a campaign for me using the following details: {user_message}"`.
-3. Optionally attach brief documents as `files`.
-4. Listen for `campaign_creation_started` event -> show loading screen.
-5. Display `update` messages as loading progress text.
-6. On `complete` -> exit loading, fetch campaign data via `GET /campaigns?chat_id=...`.
-
-### Generating a Key Visual
-
-1. Frontend should have already set `selected_style_id` and `visual_direction` (reference images) via `PATCH /campaigns/{id}/creative`.
-2. Send message like: `"Generate a key visual using the selected style. Reference images: image1.png, image2.png"`.
-3. Set `context` to `"tab:creative"`.
-4. Listen for `campaign_modifying` -> blur creative tab.
-5. On `campaign_modified` -> refetch creative state to get `key_visual_asset_id`.
-6. On `complete` -> unblur.
-
-### Completing a Task
-
-1. Send message: `"Complete task"`.
-2. Set `context` to `"task:<task_id>"`.
-3. The AI will read the task, gather campaign context, generate required assets/copy, and update the task status to `under_review`.
-4. Listen for `campaign_modifying` / `campaign_modified` events.
-5. On `complete` -> refetch task via `GET /campaigns/tasks/{task_id}`.
-6. If `status` is `under_review`, show "Review Completed Task" button.
-7. User can mark as done via `PATCH /campaigns/tasks/{task_id}` with `{"status": "done"}`.
-
-### Re-doing a Task
-
-1. Send feedback message like: `"The copy is too formal, make it more casual and add humor"`.
-2. Set `context` to `"task:<task_id>"`.
-3. AI re-reads the task, incorporates feedback, generates new content.
-4. Same event flow as task completion.
-
-### Brainstorm Conversation
-
-1. Set `mode` to `"brainstorm"`.
-2. Send any message. AI can search the web, generate media, and discuss ideas.
-3. No campaign structure -- just conversation and asset generation.
-4. If user wants to create a campaign, AI will suggest switching to campaign mode.
+### `CampaignWithSectionsResponse`
+- `campaign`: metadata (`id`, `chat_id`, `title`, timestamps)
+- `sections`: arbitrary JSON keyed by section name
 
 ---
 
 ## Error Handling
 
-All errors use this format:
-```json
-{
-  "detail": "Error description"
-}
-```
-
-| Code | Meaning |
-|---|---|
-| `200` | Success |
-| `400` | Bad request (invalid parameters) |
-| `404` | Resource not found |
-| `500` | Server error |
+- `400`: currently used by app-level exception mapping (for document load failures).
+- `404`: resource not found (chat, campaign, task, asset, deliverable item/component).
+- `500`: database/internal errors.
+- SSE route (`POST /ai/chat`) may stream a final `status=error` frame instead of returning a different HTTP status.
 
 ---
 
-## Guidelines for Frontend Developers
+## Integration Notes for AI Agents and Clients
 
-1. **User ID:** Currently any string (typically email). Passed as query param or form field, not via auth headers.
-2. **UUIDs:** All IDs (`chat_id`, `campaign_id`, `task_id`, `asset_id`) are UUIDs. Generate `chat_id` on the frontend when creating a new chat via `POST /ai/chat`.
-3. **SSE parsing:** Do not use `EventSource` (doesn't support POST). Use `fetch()` with `ReadableStream`. Parse `data: {...}\n\n` format.
-4. **Signed URLs:** Download URLs expire after 1 hour. Refetch if expired.
-5. **CORS:** Enabled for all origins. No additional configuration needed.
-6. **Markdown content:** Task descriptions, body_copy, and AI responses contain markdown. Use a renderer like `react-markdown`.
-7. **Polling vs. events:** Prefer SSE events over polling. Only refetch data after receiving relevant events (`campaign_modified`, `complete`).
+1. **`POST /ai/chat` is multipart + SSE:** do not use `EventSource` for this POST flow; use streamed `fetch`.
+2. **Persisted chat state is branch-aware:** pass `branch_id` when replaying task branches.
+3. **Campaign mode gating exists in agent tools:** if not in campaign mode, delegated campaign operations return guard text rather than mutating state.
+4. **Asset URLs are signed and temporary:** refresh by calling asset endpoints again if links expire.
+5. **Useful refetch moments:** after SSE `event` values like `campaign_modified`, and after SSE `complete`.
 
 ---
 
-**Last Updated:** 2026-02-16
-**API Version:** 1.0.0
+**Last updated:** 2026-03-28  
+**Source of truth:** router implementations under `app/router/` and schema files under `app/schemas/`.

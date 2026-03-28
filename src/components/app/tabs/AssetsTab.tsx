@@ -16,10 +16,8 @@ interface AssetsTabProps {
 
 const FOLDERS = [
   { id: 'all', label: 'All Assets', path: undefined },
-  { id: 'uploaded', label: 'Uploaded', path: 'Uploaded' },
-  { id: 'generated', label: 'AETEA Generated', path: 'AETEA Generated' },
-  { id: 'key-visual', label: 'Key visual', path: 'Key visual' },
-  { id: 'completed-tasks', label: 'Completed tasks', path: 'Completed tasks' },
+  { id: 'uploaded', label: 'User Uploaded', path: 'User-Uploaded' },
+  { id: 'generated', label: 'AETEA Generated', path: 'AETEA-Generated' },
 ];
 
 function isImageAsset(asset: Asset): boolean {

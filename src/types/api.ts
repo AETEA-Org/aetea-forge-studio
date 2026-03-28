@@ -342,12 +342,34 @@ export interface CampaignTask {
   description: string;
   status: CampaignTaskStatus;
   body_copy: string | null;
+  deadline: string | null;
   created_at: string;
   updated_at: string;
 }
 
 export interface CampaignTasksResponse {
   tasks: CampaignTask[];
+}
+
+export interface DeliverableComponent {
+  id: string;
+  component_type: string;
+  asset_id?: string | null;
+  text_content?: string | null;
+  order_index?: number;
+}
+
+export interface DeliverableItem {
+  id: string;
+  item_index: number;
+  title?: string | null;
+  status?: string | null;
+  components?: DeliverableComponent[];
+}
+
+export interface DeliverablesResponse {
+  deliverables?: DeliverableItem[];
+  items?: DeliverableItem[];
 }
 
 // Creative State types

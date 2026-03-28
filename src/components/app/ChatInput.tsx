@@ -25,6 +25,10 @@ interface ChatInputProps {
   onPrefillComplete?: () => void;
   /** How to display prefill: instant (brief pause) or typewriter (char-by-char). Default instant. */
   prefillMode?: "instant" | "typewriter";
+  /** Optional custom placeholder for chat textarea. */
+  inputPlaceholder?: string;
+  /** Visual style variant for container. */
+  variant?: "default" | "floating";
 }
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -77,6 +81,8 @@ export function ChatInput({
   prefillMessage,
   onPrefillComplete,
   prefillMode = "instant",
+  inputPlaceholder = "Ask a question...",
+  variant = "default",
 }: ChatInputProps) {
   const [message, setMessage] = useState("");
   const [files, setFiles] = useState<File[]>([]);
@@ -192,7 +198,9 @@ export function ChatInput({
   return (
     <div 
       className={cn(
-        "border-t border-border bg-background p-4 space-y-3 min-w-0 overflow-x-hidden",
+        variant === "floating"
+          ? "rounded-2xl border border-border/50 bg-background/90 backdrop-blur-md shadow-2xl p-3 space-y-2 min-w-0 overflow-x-hidden"
+          : "border-t border-border bg-background p-4 space-y-3 min-w-0 overflow-x-hidden",
         isDragging && "bg-primary/5 border-primary/50"
       )}
       onDragOver={handleDragOver}
@@ -239,7 +247,10 @@ export function ChatInput({
           size="icon"
           onClick={() => fileInputRef.current?.click()}
           disabled={isStreaming || disabled}
-          className="h-[44px] w-[44px] shrink-0 flex-shrink-0"
+          className={cn(
+            "h-[44px] w-[44px] shrink-0 flex-shrink-0",
+            variant === "floating" && "rounded-xl"
+          )}
         >
           <Paperclip className="h-4 w-4" />
         </Button>
@@ -247,10 +258,13 @@ export function ChatInput({
           ref={textareaRef}
           value={displayedValue}
           onChange={(e) => !isPrefillActive && setMessage(e.target.value)}
-          placeholder={isDragging ? "Drop files here..." : "Ask a question..."}
+          placeholder={isDragging ? "Drop files here..." : inputPlaceholder}
           disabled={isStreaming || disabled}
           readOnly={isPrefillActive}
-          className="min-h-[44px] resize-none bg-background/50 border-border/50 flex-1 min-w-0"
+          className={cn(
+            "min-h-[44px] resize-none bg-background/50 border-border/50 flex-1 min-w-0",
+            variant === "floating" && "rounded-xl bg-background/70"
+          )}
           style={{ maxHeight: `${textareaMaxHeight}px` }}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
@@ -280,7 +294,10 @@ export function ChatInput({
           type="submit"
           disabled={isPrefillActive || ((!message.trim() && files.length === 0) || isStreaming || disabled)}
           size="icon"
-          className="h-[44px] w-[44px] shrink-0 flex-shrink-0"
+          className={cn(
+            "h-[44px] w-[44px] shrink-0 flex-shrink-0",
+            variant === "floating" && "rounded-xl"
+          )}
         >
           {isStreaming ? (
             <Loader2 className="h-4 w-4 animate-spin" />

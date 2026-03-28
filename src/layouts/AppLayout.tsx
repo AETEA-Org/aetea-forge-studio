@@ -19,7 +19,7 @@ export function AppLayout() {
   const [activeTab, setActiveTab] = useState<CampaignTab>('brief');
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   
-  const { chatId } = useParams<{ chatId?: string }>();
+  const { chatId, taskId } = useParams<{ chatId?: string; taskId?: string }>();
   const { user } = useAuth();
   const { data: chatData } = useQuery({
     queryKey: ["chat", chatId, user?.email],
@@ -74,7 +74,7 @@ export function AppLayout() {
         </main>
 
         {/* Right AI Panel - Only show when chat is open and has a campaign (Campaign view) */}
-        {chatId && hasCampaign && (
+        {chatId && hasCampaign && !taskId && (
           <AICopilotPanel 
             chatId={chatId}
             activeTab={activeTab}

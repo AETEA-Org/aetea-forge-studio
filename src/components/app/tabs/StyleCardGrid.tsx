@@ -99,7 +99,7 @@ export function StyleCardGrid({
               <button
                 onClick={() => onSelect(card.id)}
                 className={cn(
-                  "relative w-[120px] h-[120px] shrink-0 rounded-lg border-2 overflow-hidden transition-all hover:scale-105 hover:shadow-md bg-card",
+                  "relative w-[120px] h-[120px] shrink-0 rounded-lg border-2 overflow-hidden transition-all hover:shadow-md bg-card",
                   isSelected
                     ? "border-primary shadow-md ring-2 ring-primary/30"
                     : "border-border hover:border-primary/50"

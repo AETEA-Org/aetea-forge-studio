@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Upload, X } from "lucide-react";
 import { useCreativeState, useUpdateCreativeState } from "@/hooks/useCreativeState";
 import { useStyleCards } from "@/hooks/useStyleCards";
 import { useCampaignTasks } from "@/hooks/useCampaignTasks";
@@ -17,6 +17,16 @@ import { CreativeTaskCard } from "./CreativeTaskCard";
 import { ModificationOverlay } from "@/components/app/ModificationOverlay";
 import { refreshAssetUrls } from "@/services/api";
 import { cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 interface CreativeTabProps {
   campaignId: string;
@@ -32,8 +42,14 @@ export function CreativeTab({ campaignId, chatId, isModifying }: CreativeTabProp
   const { toast } = useToast();
   
   const [flippedCards, setFlippedCards] = useState<Set<'truth' | 'tone' | 'visual'>>(new Set());
-  const [referenceImages, setReferenceImages] = useState<File[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isKeyVisualDialogOpen, setIsKeyVisualDialogOpen] = useState(false);
+  const [keyVisualDetails, setKeyVisualDetails] = useState("");
+  const [referenceImages, setReferenceImages] = useState<File[]>([]);
+  const [isDraggingImages, setIsDraggingImages] = useState(false);
+
+  const MAX_REFERENCE_IMAGES = 3;
+  const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
 
   // Fetch creative state
   const { data: creativeState, isLoading, error } = useCreativeState(campaignId);
@@ -120,19 +136,62 @@ export function CreativeTab({ campaignId, chatId, isModifying }: CreativeTabProp
     }
   }, [campaignId, updateCreativeStateMutation, toast]);
 
-  const handleReferenceImageAdd = useCallback((files: File[]) => {
-    setReferenceImages(files);
-  }, []);
-
-  const handleReferenceImageRemove = useCallback((index: number) => {
-    setReferenceImages((prev) => prev.filter((_, i) => i !== index));
-  }, []);
-
   const handleLoadMoreStyleCards = useCallback(() => {
     if (!isLoadingStyleCards && hasMoreStyleCards) {
       setStyleCardPage((p) => p + 1);
     }
   }, [isLoadingStyleCards, hasMoreStyleCards]);
+
+  const resetKeyVisualDialog = useCallback(() => {
+    setKeyVisualDetails("");
+    setReferenceImages([]);
+    setIsDraggingImages(false);
+  }, []);
+
+  const handleReferenceFiles = useCallback((files: FileList | null) => {
+    if (!files) return;
+
+    const validImages: File[] = [];
+    const errors: string[] = [];
+    const slotsRemaining = MAX_REFERENCE_IMAGES - referenceImages.length;
+
+    if (slotsRemaining <= 0) {
+      toast({
+        title: "Image limit reached",
+        description: `You can upload up to ${MAX_REFERENCE_IMAGES} images.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    Array.from(files).forEach((file) => {
+      if (!file.type.startsWith("image/")) {
+        errors.push(`${file.name} is not an image file.`);
+        return;
+      }
+      if (file.size > MAX_IMAGE_SIZE_BYTES) {
+        errors.push(`${file.name} exceeds 10MB.`);
+        return;
+      }
+      validImages.push(file);
+    });
+
+    if (errors.length > 0) {
+      toast({
+        title: "Some files were skipped",
+        description: errors[0],
+        variant: "destructive",
+      });
+    }
+
+    if (validImages.length > 0) {
+      setReferenceImages((prev) => [...prev, ...validImages].slice(0, MAX_REFERENCE_IMAGES));
+    }
+  }, [referenceImages.length, toast]);
+
+  const handleRemoveReferenceImage = useCallback((index: number) => {
+    setReferenceImages((prev) => prev.filter((_, i) => i !== index));
+  }, []);
 
   const handleGenerateKeyVisual = useCallback(async () => {
     if (!selectedStyleId || !user?.email || isGenerating) return;
@@ -140,30 +199,30 @@ export function CreativeTab({ campaignId, chatId, isModifying }: CreativeTabProp
     setIsGenerating(true);
 
     try {
-      // Build message with style name (when available) and reference image file names
+      const normalizedDetails = keyVisualDetails.trim();
+      const filesToSend = [...referenceImages];
+      const imageNames = filesToSend.map((file) => file.name).join(", ");
       const selectedStyle = styleCards.find((s) => s.id === selectedStyleId);
-      const styleNamePart = selectedStyle?.name
-        ? ` Use the style named "${selectedStyle.name}".`
-        : '';
-      const imageNames = referenceImages.map((f) => f.name).join(', ');
-      const message = `Generate a key visual using the selected style.${styleNamePart}${
-        imageNames ? ` Reference images: ${imageNames}` : ''
-      }`;
+      const styleLine = selectedStyle?.name
+        ? `selected style is named ${selectedStyle.name}`
+        : `selected style is named ${selectedStyleId}`;
 
-      // Send PATCH request to update visual_direction (with empty reference_image_ids for now)
-      await updateCreativeStateMutation.mutateAsync({
-        campaignId,
-        updates: {
-          visual_direction: {
-            reference_image_ids: [], // Backend will associate files from POST /ai/chat
-          },
-        },
-      });
+      const messageParts = [
+        "Generate a key visual using the selected style and following details:",
+        normalizedDetails,
+        styleLine,
+        imageNames ? `reference images ${imageNames}` : "",
+      ].filter(Boolean);
+      const message = messageParts.join("\n");
+
+      // Close dialog immediately after submit, while generation continues in background.
+      setIsKeyVisualDialogOpen(false);
+      resetKeyVisualDialog();
 
       // Trigger auto-send: message appears in chatbox, then auto-sends and streams in AICopilotPanel
       // Overlay driven only by backend campaign_modifying event
       await triggerAutoSend(message, {
-        files: referenceImages.length > 0 ? referenceImages : undefined,
+        files: filesToSend.length > 0 ? filesToSend : undefined,
         context: 'tab:creative',
         onEvent: (eventName: string) => {
           if (eventName === 'campaign_modified') {
@@ -182,7 +241,6 @@ export function CreativeTab({ campaignId, chatId, isModifying }: CreativeTabProp
         onComplete: () => {
           setIsModifying(false, null);
           setIsGenerating(false);
-          setReferenceImages([]);
         },
         onError: (errorMsg: string) => {
           setIsModifying(false, null);
@@ -207,6 +265,7 @@ export function CreativeTab({ campaignId, chatId, isModifying }: CreativeTabProp
   }, [
     selectedStyleId,
     styleCards,
+    keyVisualDetails,
     referenceImages,
     user,
     chatId,
@@ -217,6 +276,7 @@ export function CreativeTab({ campaignId, chatId, isModifying }: CreativeTabProp
     setIsModifying,
     queryClient,
     toast,
+    resetKeyVisualDialog,
   ]);
 
   if (isLoading) {
@@ -269,9 +329,6 @@ export function CreativeTab({ campaignId, chatId, isModifying }: CreativeTabProp
             onFlip={() => toggleFlip('visual')}
             selectedStyleId={selectedStyleId}
             onStyleSelect={handleStyleSelect}
-            referenceImages={referenceImages}
-            onReferenceImageAdd={handleReferenceImageAdd}
-            onReferenceImageRemove={handleReferenceImageRemove}
             styleCards={styleCards}
             isLoadingStyleCards={isLoadingStyleCards && styleCardPage === 0}
             hasMoreStyleCards={hasMoreStyleCards}
@@ -306,10 +363,130 @@ export function CreativeTab({ campaignId, chatId, isModifying }: CreativeTabProp
       <section className="mt-8 pt-6 border-t border-border">
         <GenerateKeyVisualButton
           disabled={!selectedStyleId || isGenerating}
-          onClick={handleGenerateKeyVisual}
+          onClick={() => setIsKeyVisualDialogOpen(true)}
           isGenerating={isGenerating}
         />
       </section>
+
+      <Dialog
+        open={isKeyVisualDialogOpen}
+        onOpenChange={(open) => {
+          setIsKeyVisualDialogOpen(open);
+          if (!open && !isGenerating) {
+            resetKeyVisualDialog();
+          }
+        }}
+      >
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Generate Key Visual</DialogTitle>
+            <DialogDescription>
+              Add optional details to guide generation. You can submit with or without these fields.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form
+            className="space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleGenerateKeyVisual();
+            }}
+          >
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground" htmlFor="key-visual-details">
+                Additional details (optional)
+              </label>
+              <Input
+                id="key-visual-details"
+                placeholder="Describe mood, composition, lighting, or any direction..."
+                value={keyVisualDetails}
+                onChange={(e) => setKeyVisualDetails(e.target.value)}
+                disabled={isGenerating}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                Reference images (optional)
+              </label>
+              <div
+                className={cn(
+                  "border-2 border-dashed rounded-lg p-5 text-center transition-colors cursor-pointer",
+                  isDraggingImages ? "border-primary bg-primary/5" : "border-border hover:border-primary/50",
+                  isGenerating && "pointer-events-none opacity-60"
+                )}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDraggingImages(true);
+                }}
+                onDragLeave={(e) => {
+                  e.preventDefault();
+                  setIsDraggingImages(false);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setIsDraggingImages(false);
+                  handleReferenceFiles(e.dataTransfer.files);
+                }}
+                onClick={() => {
+                  if (isGenerating) return;
+                  const input = document.getElementById("key-visual-file-input") as HTMLInputElement | null;
+                  input?.click();
+                }}
+              >
+                <Upload className="h-7 w-7 mx-auto mb-2 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  {isDraggingImages ? "Drop images here" : "Click or drag images to upload"}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Up to {MAX_REFERENCE_IMAGES} images, max 10MB each
+                </p>
+              </div>
+              <input
+                id="key-visual-file-input"
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={(e) => handleReferenceFiles(e.target.files)}
+                disabled={isGenerating}
+              />
+
+              {referenceImages.length > 0 && (
+                <div className="space-y-2">
+                  {referenceImages.map((file, index) => (
+                    <div key={`${file.name}-${index}`} className="flex items-center justify-between rounded-md border border-border px-3 py-2">
+                      <span className="text-sm truncate pr-2">{file.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveReferenceImage(index)}
+                        className="p-1 rounded hover:bg-muted"
+                        disabled={isGenerating}
+                        aria-label={`Remove ${file.name}`}
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button type="submit" disabled={isGenerating}>
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  "Submit"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Tasks - list of campaign tasks (task detail page later) */}
       <section className="mt-8 pt-6 border-t border-border">

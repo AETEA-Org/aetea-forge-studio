@@ -23,13 +23,13 @@ export function useChats(projectId: string | undefined) {
   });
 }
 
-export function useChatMessages(chatId: string | undefined) {
+export function useChatMessages(chatId: string | undefined, branchId: string = 'main') {
   const { user } = useAuth();
   const userEmail = user?.email;
 
   return useQuery({
-    queryKey: ['chat-messages', chatId, userEmail],
-    queryFn: () => getChatMessages(chatId!, userEmail!),
+    queryKey: ['chat-messages', chatId, branchId, userEmail],
+    queryFn: () => getChatMessages(chatId!, userEmail!, branchId),
     enabled: !!chatId && !!userEmail,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });

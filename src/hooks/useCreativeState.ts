@@ -26,7 +26,16 @@ export function useUpdateCreativeState() {
       campaignId: string;
       updates: {
         selected_style_id?: string | null;
-        visual_direction?: { reference_image_ids: string[] } | null;
+        creative_truth?: {
+          claims_rtbs: string[];
+          ctas_specs: string[];
+        } | null;
+        creative_tone?: {
+          concept: string;
+          headline_sample: string;
+          body_copy_sample: string;
+        } | null;
+        key_visual_asset_id?: string | null;
       };
     }) => {
       if (!user?.email) {
