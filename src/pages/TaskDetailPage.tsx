@@ -1,6 +1,19 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, useNavigate, useOutletContext } from "react-router-dom";
-import { Loader2, ArrowLeft, FileText, Image, Video, ListChecks, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  Loader2,
+  ArrowLeft,
+  FileText,
+  Image,
+  Video,
+  ListChecks,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  ChevronUp,
+  Download,
+  ExternalLink,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getCampaignTask, getCampaignTaskDeliverables, sendChatMessage } from "@/services/api";
@@ -13,7 +26,13 @@ import { ChatMessages } from "@/components/app/ChatMessages";
 import { ChatInput } from "@/components/app/ChatInput";
 import { useChatMessages } from "@/hooks/useChats";
 import { cn } from "@/lib/utils";
-import type { CampaignTaskStatus, CampaignTaskType, ChatMessage, DeliverableItem } from "@/types/api";
+import type {
+  CampaignTaskStatus,
+  CampaignTaskType,
+  ChatMessage,
+  DeliverableComponent,
+  DeliverableItem,
+} from "@/types/api";
 import {
   Dialog,
   DialogContent,
@@ -28,6 +47,42 @@ const statusConfig: Record<CampaignTaskStatus, { label: string; className: strin
   under_review: { label: 'Under review', className: 'bg-amber-500/20 text-amber-600 dark:text-amber-400' },
   done: { label: 'Done', className: 'bg-green-500/20 text-green-600 dark:text-green-400' },
 };
+
+function classifyDeliverableComponent(c: DeliverableComponent): "media" | "text" | "pdf" | "other" {
+  const t = (c.component_type || "").toLowerCase();
+  const m = (c.mime_type || "").toLowerCase();
+  if (t === "pdf" || m === "application/pdf") return "pdf";
+  if (t === "image" || t === "video" || m.startsWith("image/") || m.startsWith("video/")) return "media";
+  if (t === "text") {
+    return c.text_content?.trim() ? "text" : "other";
+  }
+  if (c.text_content?.trim()) return "text";
+  return "other";
+}
+
+function partitionDeliverableComponents(components: DeliverableComponent[]) {
+  let media: DeliverableComponent | undefined;
+  let text: DeliverableComponent | undefined;
+  let pdf: DeliverableComponent | undefined;
+  const other: DeliverableComponent[] = [];
+  for (const c of components) {
+    const kind = classifyDeliverableComponent(c);
+    if (kind === "pdf") {
+      if (!pdf) pdf = c;
+      else other.push(c);
+    } else if (kind === "media") {
+      if (!media) media = c;
+      else other.push(c);
+    } else if (kind === "text") {
+      if (!text) text = c;
+      else other.push(c);
+    } else {
+      other.push(c);
+    }
+  }
+  other.sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
+  return { media, text, pdf, other };
+}
 
 function TypeIcon({ type }: { type: CampaignTaskType }) {
   switch (type) {
@@ -203,8 +258,11 @@ export default function TaskDetailPage() {
 
   const status = statusConfig[task.status];
   const taskDeadline = task.deadline ? new Date(task.deadline).toLocaleDateString() : null;
-  const sortedComponents = [...(selectedDeliverable?.components ?? [])].sort(
-    (a, b) => (a.order_index ?? 0) - (b.order_index ?? 0)
+  const { media, text, pdf, other } = partitionDeliverableComponents(
+    selectedDeliverable?.components ?? []
+  );
+  const hasPreviewContent = Boolean(
+    media || pdf || other.length || text?.text_content?.trim()
   );
 
   return (
@@ -371,24 +429,154 @@ export default function TaskDetailPage() {
                   </div>
                 </div>
 
-                {sortedComponents.length === 0 ? (
+                {!hasPreviewContent ? (
                   <p className="text-sm text-muted-foreground">No components in this deliverable.</p>
                 ) : (
-                  <div className="space-y-3 overflow-y-auto pr-1">
-                    {sortedComponents.map((component) => (
-                      <div key={component.id} className="rounded-md border border-border p-3">
-                        <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
-                          {component.component_type}
-                        </p>
-                        {component.text_content ? (
-                          <Markdown className="text-sm">{component.text_content}</Markdown>
-                        ) : component.asset_id ? (
-                          <p className="text-sm text-muted-foreground">Asset reference: {component.asset_id}</p>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">No content.</p>
-                        )}
-                      </div>
-                    ))}
+                  <div className="space-y-4 overflow-y-auto pr-1 flex flex-col min-h-0">
+                    {media && (
+                      <section className="min-w-0">
+                        <h4 className="text-xs font-medium text-muted-foreground mb-2">Preview</h4>
+                        <div className="rounded-lg border border-border bg-card overflow-hidden flex flex-col items-center justify-center min-h-[200px] p-2">
+                          {(() => {
+                            const url = media.view_url || media.download_url || "";
+                            const isVideo =
+                              media.component_type?.toLowerCase() === "video" ||
+                              media.mime_type?.toLowerCase().startsWith("video/");
+                            const alt = media.file_name || media.description || "Deliverable visual";
+                            if (!url) {
+                              return (
+                                <p className="text-sm text-muted-foreground text-center px-2">
+                                  Preview unavailable
+                                  {media.asset_id ? ` · ${media.asset_id}` : ""}
+                                </p>
+                              );
+                            }
+                            if (isVideo) {
+                              return (
+                                <video
+                                  key={media.id}
+                                  src={url}
+                                  controls
+                                  className="max-w-full max-h-[400px] rounded-md"
+                                />
+                              );
+                            }
+                            return (
+                              <img
+                                key={media.id}
+                                src={url}
+                                alt={alt}
+                                className="max-w-full max-h-[400px] object-contain rounded-md"
+                              />
+                            );
+                          })()}
+                        </div>
+                      </section>
+                    )}
+
+                    {text?.text_content?.trim() && (
+                      <section className="min-w-0">
+                        <h4 className="text-xs font-medium text-muted-foreground mb-2">Copy</h4>
+                        <div className="rounded-lg border border-border bg-card p-4">
+                          <Markdown className="text-sm">{text.text_content}</Markdown>
+                        </div>
+                      </section>
+                    )}
+
+                    {pdf && (
+                      <section className="min-w-0">
+                        <h4 className="text-xs font-medium text-muted-foreground mb-2">Document</h4>
+                        <div className="rounded-lg border border-border bg-card p-4 flex flex-col gap-3">
+                          <div className="flex items-start gap-3">
+                            <FileText className="h-10 w-10 shrink-0 text-muted-foreground" aria-hidden />
+                            <div className="min-w-0 flex-1 space-y-1">
+                              <p className="font-medium text-sm truncate">
+                                {pdf.file_name?.trim() || "PDF"}
+                              </p>
+                              {pdf.description?.trim() ? (
+                                <p className="text-sm text-muted-foreground">{pdf.description}</p>
+                              ) : null}
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {pdf.view_url ? (
+                              <Button variant="outline" size="sm" asChild>
+                                <a href={pdf.view_url} target="_blank" rel="noopener noreferrer">
+                                  <ExternalLink className="h-4 w-4 mr-2" />
+                                  Open
+                                </a>
+                              </Button>
+                            ) : null}
+                            {pdf.download_url ? (
+                              <Button variant="outline" size="sm" asChild>
+                                <a href={pdf.download_url} download={pdf.file_name || true}>
+                                  <Download className="h-4 w-4 mr-2" />
+                                  Download
+                                </a>
+                              </Button>
+                            ) : null}
+                            {!pdf.view_url && !pdf.download_url ? (
+                              <p className="text-sm text-muted-foreground">
+                                Links unavailable
+                                {pdf.asset_id ? ` · ${pdf.asset_id}` : ""}
+                              </p>
+                            ) : null}
+                          </div>
+                        </div>
+                      </section>
+                    )}
+
+                    {other.length > 0 && (
+                      <section className="min-w-0">
+                        <h4 className="text-xs font-medium text-muted-foreground mb-2">Other</h4>
+                        <div className="space-y-2">
+                          {other.map((component) => (
+                            <div
+                              key={component.id}
+                              className="rounded-md border border-border p-3 space-y-2"
+                            >
+                              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                                {component.component_type}
+                              </p>
+                              {component.text_content?.trim() ? (
+                                <Markdown className="text-sm">{component.text_content}</Markdown>
+                              ) : null}
+                              {component.view_url || component.download_url ? (
+                                <div className="flex flex-wrap gap-2">
+                                  {component.view_url ? (
+                                    <Button variant="outline" size="sm" asChild>
+                                      <a
+                                        href={component.view_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                      >
+                                        Open
+                                      </a>
+                                    </Button>
+                                  ) : null}
+                                  {component.download_url ? (
+                                    <Button variant="outline" size="sm" asChild>
+                                      <a
+                                        href={component.download_url}
+                                        download={component.file_name || true}
+                                      >
+                                        Download
+                                      </a>
+                                    </Button>
+                                  ) : null}
+                                </div>
+                              ) : component.asset_id ? (
+                                <p className="text-sm text-muted-foreground">
+                                  Asset reference: {component.asset_id}
+                                </p>
+                              ) : (
+                                <p className="text-sm text-muted-foreground">No preview.</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </section>
+                    )}
                   </div>
                 )}
               </div>

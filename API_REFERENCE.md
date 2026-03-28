@@ -314,11 +314,59 @@ Code-accurate API documentation for frontend clients and AI agents.
 
 ### `GET /campaigns/tasks/{task_id}/deliverables`
 
-**Plain English:** Returns structured outputs for task completion (items and nested components), which is the render-ready task output model.
+**Plain English:** Returns structured outputs for task completion (items and nested components), which is the render-ready task output model. Each component that references an asset includes **embedded asset fields** (file name, MIME type, description, and signed `view_url` / `download_url`) so clients can render previews without a separate assets list or per-asset `GET` calls.
 
 **Technical:**
 - Query: `user_id`
 - Response model: `DeliverableListResponse`
+- Response body shape: `{ "items": [ ... ] }` is the primary key. Some clients may also accept `deliverables` as an alias for the same array; prefer `items` when implementing new clients.
+
+**Signed URLs:** Links are time-limited. Refresh by calling this endpoint again (or `GET /assets/{asset_id}`) when previews fail or after long-lived UI sessions—see Integration Notes #4.
+
+#### Deliverable component constraints (per item)
+
+The backend enforces at most:
+
+- **One visual:** either **one** `image` **or** **one** `video` (not both); or neither.
+- **One copy block:** at most **one** text component.
+- **One document:** at most **one** `pdf`.
+
+Clients should not assume arbitrary numbers of components per slot.
+
+**Example** (`view_url` / `download_url` truncated):
+
+```json
+{
+  "items": [
+    {
+      "id": "...",
+      "task_id": "...",
+      "item_index": 1,
+      "title": "Example deliverable",
+      "status": "active",
+      "components": [
+        {
+          "id": "...",
+          "deliverable_item_id": "...",
+          "component_type": "image",
+          "asset_id": "...",
+          "text_content": null,
+          "order_index": 1,
+          "file_name": "hero.png",
+          "description": "Optional caption",
+          "mime_type": "image/png",
+          "view_url": "https://...",
+          "download_url": "https://...",
+          "created_at": "2026-03-28T22:47:31.291266+00:00",
+          "updated_at": "2026-03-28T22:47:31.291266+00:00"
+        }
+      ],
+      "created_at": "...",
+      "updated_at": "..."
+    }
+  ]
+}
+```
 
 ### `POST /campaigns/tasks/{task_id}/deliverables`
 
@@ -459,6 +507,17 @@ Code-accurate API documentation for frontend clients and AI agents.
 ### `AssetResponse`
 - includes both `view_url` and `download_url` signed links (when signing succeeds)
 - includes `folder_path`, `description`, `mime_type`
+
+### `DeliverableListResponse`
+- `items`: array of deliverable item rows (see below). May also appear as `deliverables` in some responses; treat as equivalent to `items` when present.
+
+**Deliverable item (read shape):**
+- `id`, `task_id`, `item_index`, `title`, `status`, `created_at`, `updated_at`
+- `components`: array of component rows (see below)
+
+**Deliverable component (read shape):**
+- Identity and structure: `id`, `deliverable_item_id`, `component_type`, `asset_id`, `text_content`, `order_index`, `created_at`, `updated_at`
+- When the component references an asset, the response also includes embedded file metadata and signed URLs: `file_name`, `description`, `mime_type`, `view_url`, `download_url` (may be omitted if signing fails)
 
 ### `CampaignWithSectionsResponse`
 - `campaign`: metadata (`id`, `chat_id`, `title`, timestamps)

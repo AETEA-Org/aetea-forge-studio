@@ -353,18 +353,29 @@ export interface CampaignTasksResponse {
 
 export interface DeliverableComponent {
   id: string;
+  deliverable_item_id?: string | null;
   component_type: string;
   asset_id?: string | null;
   text_content?: string | null;
   order_index?: number;
+  file_name?: string | null;
+  description?: string | null;
+  mime_type?: string | null;
+  view_url?: string | null;
+  download_url?: string | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface DeliverableItem {
   id: string;
+  task_id?: string;
   item_index: number;
   title?: string | null;
   status?: string | null;
   components?: DeliverableComponent[];
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface DeliverablesResponse {
