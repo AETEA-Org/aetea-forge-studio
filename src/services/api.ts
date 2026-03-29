@@ -22,7 +22,7 @@ import type {
 } from "@/types/api";
 
 // Direct API base URL (bypassing Supabase Edge Function)
-const API_BASE_URL = 'https://aetea-ai.onrender.com';
+const API_BASE_URL = 'https://m-abdur2024-aetea.hf.space';
 const API_TOKEN = import.meta.env.VITE_AETEA_API_TOKEN;
 
 // Helper to build URL with params
