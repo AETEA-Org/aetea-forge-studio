@@ -16,8 +16,9 @@ import {
   getAndClearPendingBrainstormStream,
   consumeAgentStream,
   deleteChatById,
+  resolveStreamAssetHints,
 } from "@/services/api";
-import type { ChatMessage } from "@/types/api";
+import type { ChatMessage, ChatRenderableAsset, StreamAssetHint } from "@/types/api";
 import { AssetsModal } from "@/components/app/AssetsModal";
 
 export default function ChatView() {
@@ -36,6 +37,7 @@ export default function ChatView() {
   const [showCampaignLoading, setShowCampaignLoading] = useState(false);
   const [campaignProgress, setCampaignProgress] = useState("");
   const [assetsOpen, setAssetsOpen] = useState(false);
+  const [streamingAssets, setStreamingAssets] = useState<ChatRenderableAsset[]>([]);
 
   const { data: chatData } = useQuery({
     queryKey: ["chat", chatId, user?.email],
@@ -47,6 +49,16 @@ export default function ChatView() {
   const serverMessages: ChatMessage[] = messagesData?.messages ?? [];
   const messages = [...serverMessages, ...optimisticMessages];
   const chatTitle = chatData?.title ?? "Chat";
+
+  const mergeStreamAssets = useCallback(async (hints: StreamAssetHint[]) => {
+    if (!user?.email || hints.length === 0) return;
+    const resolved = await resolveStreamAssetHints(user.email, hints);
+    setStreamingAssets((prev) => {
+      const m = new Map(prev.map((a) => [a.id, a]));
+      resolved.forEach((a) => m.set(a.id, a));
+      return Array.from(m.values());
+    });
+  }, [user?.email]);
 
   const handleSendMessage = useCallback(
     async (message: string, files?: File[]) => {
@@ -67,6 +79,7 @@ export default function ChatView() {
       };
       setOptimisticMessages([optimisticMessage]);
       setStreamingContent("");
+      setStreamingAssets([]);
       setUpdateMessage(null);
       setIsStreaming(true);
 
@@ -92,12 +105,16 @@ export default function ChatView() {
               setIsStreaming(false);
             }
           },
+          (hints: StreamAssetHint[]) => {
+            mergeStreamAssets(hints).catch(() => {});
+          },
           async () => {
             setShowCampaignLoading(false);
             setUpdateMessage(null);
             await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
             queryClient.invalidateQueries({ queryKey: ["chat", chatId, user?.email] });
             setStreamingContent("");
+            setStreamingAssets([]);
             setIsStreaming(false);
             setOptimisticMessages([]);
 
@@ -117,6 +134,7 @@ export default function ChatView() {
             setShowCampaignLoading(false);
             setUpdateMessage(null);
             setStreamingContent("");
+            setStreamingAssets([]);
             setIsStreaming(false);
             setOptimisticMessages([]);
             toast({
@@ -130,6 +148,7 @@ export default function ChatView() {
         setShowCampaignLoading(false);
         setUpdateMessage(null);
         setStreamingContent("");
+        setStreamingAssets([]);
         setIsStreaming(false);
         setOptimisticMessages([]);
         toast({
@@ -139,11 +158,12 @@ export default function ChatView() {
         });
       }
     },
-    [chatId, mode, user, queryClient, toast, showCampaignLoading]
+    [chatId, mode, user, queryClient, toast, showCampaignLoading, mergeStreamAssets]
   );
 
   useEffect(() => {
     setStreamingContent("");
+    setStreamingAssets([]);
     setUpdateMessage(null);
     setOptimisticMessages([]);
     setShowCampaignLoading(false);
@@ -165,6 +185,7 @@ export default function ChatView() {
     };
     setOptimisticMessages([optimisticMessage]);
     setStreamingContent("");
+    setStreamingAssets([]);
     setUpdateMessage(null);
     setIsStreaming(true);
     consumeAgentStream(reader, {
@@ -173,17 +194,22 @@ export default function ChatView() {
         setUpdateMessage(null);
         setStreamingContent(content);
       },
+      onAssets: (hints) => {
+        mergeStreamAssets(hints).catch(() => {});
+      },
       onComplete: async () => {
         setUpdateMessage(null);
         await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
         queryClient.invalidateQueries({ queryKey: ["chats"] });
         queryClient.invalidateQueries({ queryKey: ["chat", chatId, user?.email] });
         setStreamingContent("");
+        setStreamingAssets([]);
         setIsStreaming(false);
         setOptimisticMessages([]);
       },
       onError: () => {
         setStreamingContent("");
+        setStreamingAssets([]);
         setIsStreaming(false);
         setOptimisticMessages([]);
         deleteChatById(chatId, user.email).catch(() => {});
@@ -206,7 +232,7 @@ export default function ChatView() {
         variant: "destructive",
       });
     });
-  }, [chatId, user?.email, queryClient, navigate, toast]);
+  }, [chatId, user?.email, queryClient, navigate, toast, mergeStreamAssets]);
 
   if (!chatId) {
     return (
@@ -240,6 +266,8 @@ export default function ChatView() {
       <div className="flex-1 min-h-0 flex flex-col">
         <ChatMessages
           messages={messages}
+          threadAssets={messagesData?.assets ?? []}
+          streamingAssets={streamingAssets}
           streamingContent={streamingContent}
           isStreaming={isStreaming}
           updateMessage={updateMessage}

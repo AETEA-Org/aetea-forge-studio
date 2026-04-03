@@ -8,11 +8,11 @@ import { useChatMessages } from "@/hooks/useChats";
 import { useChatContext } from "@/hooks/useChatContext";
 import { useModification } from "@/hooks/useModification";
 import { useAutoMessage } from "@/hooks/useAutoMessage";
-import { sendChatMessage } from "@/services/api";
+import { sendChatMessage, resolveStreamAssetHints } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import type { ChatMessage } from "@/types/api";
+import type { ChatMessage, ChatRenderableAsset, StreamAssetHint } from "@/types/api";
 import type { CampaignTab } from "./CampaignTabs";
 import type { AutoSendOptions } from "@/contexts/AutoMessageContext";
 
@@ -35,6 +35,7 @@ export function AICopilotPanel({
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
   const [optimisticMessages, setOptimisticMessages] = useState<ChatMessage[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [streamingAssets, setStreamingAssets] = useState<ChatRenderableAsset[]>([]);
   const [panelWidth, setPanelWidth] = useState(450); // Default 450px (increased from 384px)
   const [isResizing, setIsResizing] = useState(false);
   const panelRef = useRef<HTMLElement>(null);
@@ -65,6 +66,16 @@ export function AICopilotPanel({
     resolve: () => void;
     reject: (err: unknown) => void;
   } | null>(null);
+
+  const mergeStreamAssets = useCallback(async (hints: StreamAssetHint[]) => {
+    if (!user?.email || hints.length === 0) return;
+    const resolved = await resolveStreamAssetHints(user.email, hints);
+    setStreamingAssets((prev) => {
+      const m = new Map(prev.map((a) => [a.id, a]));
+      resolved.forEach((a) => m.set(a.id, a));
+      return Array.from(m.values());
+    });
+  }, [user?.email]);
 
   // Auto-load chat on page load
   const { data: messagesData } = useChatMessages(chatId);
@@ -110,6 +121,7 @@ export function AICopilotPanel({
       setOptimisticMessages([optimisticMessage]);
       
       setStreamingContent("");
+      setStreamingAssets([]);
       setUpdateMessage(null);
       setIsStreaming(true);
       setError(null);
@@ -174,6 +186,9 @@ export function AICopilotPanel({
             }
             override?.onEvent?.(eventName);
           },
+          (hints: StreamAssetHint[]) => {
+            mergeStreamAssets(hints).catch(() => {});
+          },
           // onComplete
           async (content: string) => {
             console.log('✅ Complete');
@@ -192,6 +207,7 @@ export function AICopilotPanel({
             
             // Now clear streaming state after messages are loaded
             setStreamingContent("");
+            setStreamingAssets([]);
             setIsStreaming(false);
             setOptimisticMessages([]);
 
@@ -212,6 +228,7 @@ export function AICopilotPanel({
             }
             setUpdateMessage(null);
             setStreamingContent("");
+            setStreamingAssets([]);
             setIsStreaming(false);
             setOptimisticMessages([]);
             setError(errorMsg);
@@ -235,6 +252,7 @@ export function AICopilotPanel({
         }
         setUpdateMessage(null);
         setStreamingContent("");
+        setStreamingAssets([]);
         setIsStreaming(false);
         setOptimisticMessages([]);
         setError(errorMsg);
@@ -249,7 +267,7 @@ export function AICopilotPanel({
         override?.onError?.(errorMsg);
       }
     },
-    [chatId, context, contextLabel, user, setIsModifying, queryClient, toast]
+    [chatId, context, contextLabel, user, setIsModifying, queryClient, toast, mergeStreamAssets]
   );
 
   // Auto-send: ref to read pending data in onPrefillComplete (avoids stale closure)
@@ -313,6 +331,7 @@ export function AICopilotPanel({
       updateClearTimeoutRef.current = null;
     }
     setStreamingContent("");
+    setStreamingAssets([]);
     setUpdateMessage(null);
     setOptimisticMessages([]);
     setError(null);
@@ -430,6 +449,8 @@ export function AICopilotPanel({
         <div className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden">
           <ChatMessages
             messages={messages}
+            threadAssets={messagesData?.assets ?? []}
+            streamingAssets={streamingAssets}
             streamingContent={streamingContent}
             isStreaming={isStreaming}
             updateMessage={updateMessage}

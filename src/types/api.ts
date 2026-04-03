@@ -246,8 +246,23 @@ export type SectionName = 'overview' | 'brief' | 'research' | 'strategy';
 
 // Chat types
 export interface AgentStreamMessage {
-  status: 'content' | 'update' | 'event' | 'complete' | 'error';
+  status: 'content' | 'update' | 'event' | 'assets' | 'complete' | 'error';
   content: string;
+}
+
+/** Payload inside SSE `assets` frame (`content` is JSON string). */
+export interface StreamAssetHint {
+  id: string;
+  mime_type: string;
+}
+
+/** Minimal asset data for inline chat previews (history or resolved stream). */
+export interface ChatRenderableAsset {
+  id: string;
+  mime_type: string;
+  view_url: string;
+  download_url: string;
+  file_name?: string;
 }
 
 export interface ChatListItem {
@@ -265,10 +280,16 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
+  branch_id?: string;
+  thinking?: string | null;
+  /** Asset ids attached to this message; resolve via top-level `assets` on the response. */
+  assets?: string[];
 }
 
 export interface ChatMessagesResponse {
   messages: ChatMessage[];
+  /** Deduplicated full asset rows for ids referenced in messages (signed URLs). */
+  assets?: Asset[];
 }
 
 export interface DeleteChatResponse {

@@ -11,6 +11,8 @@ import type {
   SectionName,
   SSEMessage,
   AgentStreamMessage,
+  StreamAssetHint,
+  ChatRenderableAsset,
   ChatMessagesResponse,
   DeleteChatResponse,
   AssetListResponse,
@@ -336,6 +338,8 @@ export async function createCampaignViaChat(
             onUpdate?.(data.content);
           } else if (data.status === 'event') {
             onEvent?.(data.content);
+          } else if (data.status === 'assets') {
+            /* campaign creation stream may emit asset hints; no UI consumer yet */
           } else if (data.status === 'complete') {
             onComplete?.();
           } else if (data.status === 'error') {
@@ -551,6 +555,61 @@ export async function getStyleCards(
   return response.json();
 }
 
+function parseSSEAssetPayload(content: string): StreamAssetHint[] {
+  try {
+    const parsed = JSON.parse(content) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter(
+        (x): x is { id: string; mime_type?: string } =>
+          x !== null &&
+          typeof x === 'object' &&
+          typeof (x as { id?: unknown }).id === 'string'
+      )
+      .map((x) => ({
+        id: x.id,
+        mime_type:
+          typeof x.mime_type === 'string' ? x.mime_type : 'application/octet-stream',
+      }));
+  } catch {
+    return [];
+  }
+}
+
+/** Resolve SSE asset hints to signed URLs via GET /assets/{id}. Dedupes by id. */
+export async function resolveStreamAssetHints(
+  userEmail: string,
+  hints: StreamAssetHint[]
+): Promise<ChatRenderableAsset[]> {
+  const seen = new Set<string>();
+  const unique = hints.filter((h) => {
+    if (seen.has(h.id)) return false;
+    seen.add(h.id);
+    return true;
+  });
+  const results = await Promise.all(
+    unique.map(async (h) => {
+      try {
+        const urls = await refreshAssetUrls(h.id, userEmail);
+        return {
+          id: h.id,
+          mime_type: h.mime_type,
+          view_url: urls.view_url,
+          download_url: urls.download_url,
+        } satisfies ChatRenderableAsset;
+      } catch {
+        return {
+          id: h.id,
+          mime_type: h.mime_type,
+          view_url: '',
+          download_url: '',
+        } satisfies ChatRenderableAsset;
+      }
+    })
+  );
+  return results;
+}
+
 // Chat functions
 export async function sendChatMessage(
   userEmail: string,
@@ -562,6 +621,7 @@ export async function sendChatMessage(
   onUpdate?: (content: string) => void,
   onContent?: (content: string) => void,
   onEvent?: (eventName: string) => void,
+  onAssets?: (items: StreamAssetHint[]) => void,
   onComplete?: (content: string) => void,
   onError?: (message: string) => void,
   branchId: string = 'main'
@@ -627,6 +687,9 @@ export async function sendChatMessage(
             onContent?.(accumulatedContent);
           } else if (data.status === 'event') {
             onEvent?.(data.content);
+          } else if (data.status === 'assets') {
+            const hints = parseSSEAssetPayload(data.content);
+            if (hints.length) onAssets?.(hints);
           } else if (data.status === 'complete') {
             onComplete?.(accumulatedContent || data.content);
           } else if (data.status === 'error') {
@@ -700,6 +763,7 @@ export async function consumeAgentStream(
     onUpdate?: (content: string) => void;
     onContent?: (content: string) => void;
     onEvent?: (eventName: string) => void;
+    onAssets?: (items: StreamAssetHint[]) => void;
     onComplete?: (content: string) => void;
     onError?: (message: string) => void;
   }
@@ -707,7 +771,7 @@ export async function consumeAgentStream(
   const decoder = new TextDecoder();
   let buffer = '';
   let accumulatedContent = '';
-  const { onUpdate, onContent, onEvent, onComplete, onError } = callbacks;
+  const { onUpdate, onContent, onEvent, onAssets, onComplete, onError } = callbacks;
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -722,8 +786,11 @@ export async function consumeAgentStream(
         else if (data.status === 'content') {
           accumulatedContent += data.content;
           onContent?.(accumulatedContent);
-        } else if (data.status === 'event') onEvent?.(data.content);
-        else if (data.status === 'complete') onComplete?.(accumulatedContent || data.content);
+        }         else if (data.status === 'event') onEvent?.(data.content);
+        else if (data.status === 'assets') {
+          const hints = parseSSEAssetPayload(data.content);
+          if (hints.length) onAssets?.(hints);
+        } else if (data.status === 'complete') onComplete?.(accumulatedContent || data.content);
         else if (data.status === 'error') onError?.(data.content);
       } catch (e) {
         console.error('Failed to parse SSE message:', line, e);

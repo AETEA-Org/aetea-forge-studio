@@ -16,7 +16,12 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getCampaignTask, getCampaignTaskDeliverables, sendChatMessage } from "@/services/api";
+import {
+  getCampaignTask,
+  getCampaignTaskDeliverables,
+  sendChatMessage,
+  resolveStreamAssetHints,
+} from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 import { useModification } from "@/hooks/useModification";
 import { useToast } from "@/hooks/use-toast";
@@ -30,8 +35,10 @@ import type {
   CampaignTaskStatus,
   CampaignTaskType,
   ChatMessage,
+  ChatRenderableAsset,
   DeliverableComponent,
   DeliverableItem,
+  StreamAssetHint,
 } from "@/types/api";
 import {
   Dialog,
@@ -122,6 +129,7 @@ export default function TaskDetailPage() {
   const [isDetailsCollapsed, setIsDetailsCollapsed] = useState(true);
   const [deliverablesOpen, setDeliverablesOpen] = useState(false);
   const [selectedDeliverableId, setSelectedDeliverableId] = useState<string | null>(null);
+  const [streamingAssets, setStreamingAssets] = useState<ChatRenderableAsset[]>([]);
 
   const { data: task, isLoading, error, refetch } = useQuery({
     queryKey: ['campaign-task', taskId, user?.email],
@@ -168,6 +176,16 @@ export default function TaskDetailPage() {
     navigate(`/app/chat/${chatId}`);
   }, [chatId, navigate, setActiveTab]);
 
+  const mergeStreamAssets = useCallback(async (hints: StreamAssetHint[]) => {
+    if (!user?.email || hints.length === 0) return;
+    const resolved = await resolveStreamAssetHints(user.email, hints);
+    setStreamingAssets((prev) => {
+      const m = new Map(prev.map((a) => [a.id, a]));
+      resolved.forEach((a) => m.set(a.id, a));
+      return Array.from(m.values());
+    });
+  }, [user?.email]);
+
   const handleSendTaskMessage = useCallback(async (message: string, files?: File[]) => {
     if (!user?.email || !chatId || !taskId || isStreaming) return;
 
@@ -179,6 +197,7 @@ export default function TaskDetailPage() {
     };
     setOptimisticMessages([optimisticMessage]);
     setStreamingContent("");
+    setStreamingAssets([]);
     setUpdateMessage(null);
     setIsStreaming(true);
 
@@ -203,12 +222,16 @@ export default function TaskDetailPage() {
             queryClient.invalidateQueries({ queryKey: ['campaign-task-deliverables', taskId, user.email] });
           }
         },
+        (hints: StreamAssetHint[]) => {
+          mergeStreamAssets(hints).catch(() => {});
+        },
         async () => {
           await queryClient.refetchQueries({ queryKey: ['chat-messages', chatId, branchId] });
           queryClient.invalidateQueries({ queryKey: ['campaign-task', taskId, user.email] });
           queryClient.invalidateQueries({ queryKey: ['campaign-task-deliverables', taskId, user.email] });
           setIsModifying(false, null);
           setStreamingContent("");
+          setStreamingAssets([]);
           setUpdateMessage(null);
           setOptimisticMessages([]);
           setIsStreaming(false);
@@ -216,6 +239,7 @@ export default function TaskDetailPage() {
         (errorMsg: string) => {
           setIsModifying(false, null);
           setStreamingContent("");
+          setStreamingAssets([]);
           setUpdateMessage(null);
           setOptimisticMessages([]);
           setIsStreaming(false);
@@ -226,6 +250,7 @@ export default function TaskDetailPage() {
     } catch (e) {
       setIsModifying(false, null);
       setStreamingContent("");
+      setStreamingAssets([]);
       setUpdateMessage(null);
       setOptimisticMessages([]);
       setIsStreaming(false);
@@ -235,7 +260,7 @@ export default function TaskDetailPage() {
         variant: 'destructive',
       });
     }
-  }, [branchId, chatId, isStreaming, queryClient, setIsModifying, taskId, toast, user?.email]);
+  }, [branchId, chatId, isStreaming, mergeStreamAssets, queryClient, setIsModifying, taskId, toast, user?.email]);
 
   if (isLoading) {
     return (
@@ -333,6 +358,8 @@ export default function TaskDetailPage() {
           <div className="flex-1 min-h-0">
             <ChatMessages
               messages={messages}
+              threadAssets={messagesData?.assets ?? []}
+              streamingAssets={streamingAssets}
               streamingContent={streamingContent}
               isStreaming={isStreaming}
               updateMessage={updateMessage}
