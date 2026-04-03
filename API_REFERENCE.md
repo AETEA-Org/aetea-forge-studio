@@ -5,7 +5,8 @@ Code-accurate API documentation for frontend clients and AI agents.
 ## Quick Facts
 
 - **Base URL:** `http://localhost:8000` (dev) or your deployed host.
-- **Auth:** no auth middleware is enforced at router level right now; endpoints require `user_id` in query/form/body.
+- **Auth:** no auth middleware is enforced at router level right now; almost all endpoints require `user_id` in query, form, or JSON body. **Exception:** `GET /campaigns/style-cards` takes only pagination query params (`limit`, `offset`).
+- **Interactive API:** `GET /` redirects to `/docs` (Swagger UI). FastAPI also serves `/redoc` and `/openapi.json` by default.
 - **Content types:**
   - `application/json` for most endpoints
   - `multipart/form-data` for `POST /ai/chat`
@@ -16,8 +17,9 @@ Code-accurate API documentation for frontend clients and AI agents.
 - **ID fields:** `chat_id`, `campaign_id`, `task_id`, `asset_id` are UUID-like strings.
 - **Mode values:** `brainstorm` or `campaign`.
 - **Branch values:** `main` or `task:<task_id>`.
-- **Folder values:** `User-Uploaded` or `AETEA-Generated`.
+- **Folder values:** `User-Uploaded` or `AETEA-Generated` (see `app.core` / `normalize_asset_folder` for exact strings).
 - **Error body format:** `{"detail": "..."}` for most HTTP errors.
+- **Database:** Chat message persistence expects a `messages.assets` column (`jsonb`, default `[]`). Apply the migration under `supabase/migrations/` (or equivalent) before relying on `POST /ai/chat` or `GET /chats/{chat_id}/messages` with asset data.
 
 ## Endpoint Index
 
@@ -28,10 +30,11 @@ Code-accurate API documentation for frontend clients and AI agents.
 | GET | `/chats` | List chats |
 | POST | `/chats` | Create chat |
 | GET | `/chats/{chat_id}` | Get one chat |
+| PATCH | `/chats/{chat_id}` | Update chat title and/or mode |
 | GET | `/chats/{chat_id}/messages` | Get branch messages |
 | DELETE | `/chats/{chat_id}` | Delete chat and linked data |
 | POST | `/ai/chat` | Stream orchestrated AI reply |
-| GET | `/campaigns/style-cards` | Paginated style card list |
+| GET | `/campaigns/style-cards` | Paginated style card list (no `user_id`) |
 | GET | `/campaigns` | Get campaign by chat |
 | GET | `/campaigns/{campaign_id}` | Get campaign by id |
 | GET | `/campaigns/{campaign_id}/creative` | Get creative state |
@@ -100,6 +103,7 @@ Code-accurate API documentation for frontend clients and AI agents.
   ]
 }
 ```
+`ChatSummary` always includes `mode` and `campaign_id` (null when no campaign is linked).
 
 ### `POST /chats`
 
@@ -109,7 +113,7 @@ Code-accurate API documentation for frontend clients and AI agents.
 - Body (`application/json`):
   - `user_id` (required string)
   - `mode` (optional: `brainstorm` or `campaign`, default `brainstorm`)
-- Response model: `ChatCreateResponse`
+- Response model: `ChatCreateResponse` (`chat_id`, `title`, `last_modified`)
 - Returns `500` on database errors.
 
 ### `GET /chats/{chat_id}`
@@ -124,9 +128,25 @@ Code-accurate API documentation for frontend clients and AI agents.
 - Response model: `ChatResponse`
 - `404` if chat not found.
 
+### `PATCH /chats/{chat_id}`
+
+**Plain English:** Renames a chat and/or changes its mode (`brainstorm` vs `campaign`) without sending an AI message.
+
+**Technical:**
+- Path:
+  - `chat_id` (required)
+- Query:
+  - `user_id` (required string)
+- Body (`application/json`), `ChatPatchRequest` — include at least one field:
+  - `title` (optional string)
+  - `mode` (optional: `brainstorm` or `campaign`)
+- Response model: `ChatResponse` (includes updated `last_modified`)
+- `404` if chat not found or access denied.
+- Returns `422` if the body omits both `title` and `mode`.
+
 ### `GET /chats/{chat_id}/messages`
 
-**Plain English:** Fetches stored message history for one branch, so chat replay works for main and task branches.
+**Plain English:** Fetches stored message history for one branch, so chat replay works for main and task branches. Each message can reference **asset ids** (user uploads or assistant-generated media); the response also includes a **deduplicated list of full asset records** (with freshly signed URLs) for all ids referenced on any message in the branch.
 
 **Technical:**
 - Path:
@@ -135,7 +155,26 @@ Code-accurate API documentation for frontend clients and AI agents.
   - `user_id` (required)
   - `branch_id` (optional, default `main`)
 - Response model: `ChatMessagesResponse`
-- Includes assistant `thinking` field when available.
+- `messages[]`: each `ChatMessage` includes `message_id`, `role`, `branch_id`, `content`, optional `thinking`, `assets` (array of asset id strings), and `timestamp` (ISO string from `created_at`).
+- `assets` (top-level): array of `AssetResponse` — one entry per **unique** id referenced across all `messages[].assets` (order preserved by first appearance; missing or deleted ids are skipped). This is separate from each message’s `assets` id list: messages carry stable ids; this array is the joined lookup with fresh signed URLs.
+
+**Example response (`200`) shape:**
+```json
+{
+  "messages": [
+    {
+      "message_id": "...",
+      "role": "user",
+      "branch_id": "main",
+      "content": "Hello",
+      "thinking": null,
+      "assets": [],
+      "timestamp": "2026-04-01T12:00:00Z"
+    }
+  ],
+  "assets": []
+}
+```
 
 ### `DELETE /chats/{chat_id}`
 
@@ -146,7 +185,7 @@ Code-accurate API documentation for frontend clients and AI agents.
   - `chat_id`
 - Query:
   - `user_id` (required)
-- Response model: `DeleteChatResponse`
+- Response model: `DeleteChatResponse` (`message`, `chat_id`)
 - `404` if chat not found.
 
 ---
@@ -181,14 +220,14 @@ Code-accurate API documentation for frontend clients and AI agents.
 2. Uploads files to `User-Uploaded` and creates asset rows.
 3. Builds message history (up to last 16 messages for the branch).
 4. Creates orchestrator + `AgentContext` and streams execution.
-5. Emits SSE `content`, `update`, `event`, and final `complete`.
-6. Saves user and assistant messages to DB (including assistant thinking transcript).
+5. Emits SSE `content`, `update`, `event`, `assets` (when production saves image/video), and final `complete`.
+6. Saves user and assistant messages to DB (including assistant thinking transcript and per-message `assets` id lists).
 7. Updates chat last-modified timestamp; generates a title on first message.
 
 **SSE payload schema:**
 ```json
 {
-  "status": "content | update | event | complete | error",
+  "status": "content | update | event | assets | complete | error",
   "content": "string"
 }
 ```
@@ -196,7 +235,8 @@ Code-accurate API documentation for frontend clients and AI agents.
 **SSE status meaning:**
 - `content`: token chunk of assistant text.
 - `update`: tool/progress/thinking line.
-- `event`: named event for UI transitions.
+- `event`: named event for UI transitions (`content` holds the event name string).
+- `assets`: JSON **string** in `content` parsing to an array of `{"id", "mime_type"}` objects for image/video assets saved during this turn (no signed URLs; use asset ids with `GET /assets` or the messages response `assets` list).
 - `complete`: full final assistant response.
 - `error`: stream-level failure detail.
 
@@ -205,19 +245,24 @@ Code-accurate API documentation for frontend clients and AI agents.
 - `campaign_modifying`
 - `campaign_modified`
 
+**Optional / advanced:** The stream parser can also emit extra `status=event` frames if a tool `ToolMessage` body contains a marker of the form `[AETEA_EVENTS:event_one,event_two]` (same wire format as named events). There is no guarantee tools emit this in current builds; treat as reserved for future or rare paths.
+
 ---
 
 ## Campaigns API
+
+**Routing:** Paths `/campaigns/style-cards` and `/campaigns/tasks/...` are registered **before** `/campaigns/{campaign_id}` so they are not captured as a campaign id. Task-scoped routes live under `/campaigns/tasks/{task_id}/...` (not under `/campaigns/{campaign_id}/tasks/...`).
 
 ### `GET /campaigns/style-cards`
 
 **Plain English:** Lists style cards used on the creative side, including signed preview URLs when available.
 
 **Technical:**
+- No `user_id` (or other auth) query parameter; style cards are global catalog rows.
 - Query:
   - `limit` (optional int, default `30`, min `1`, max `100`)
   - `offset` (optional int, default `0`, min `0`)
-- Response model: `StyleCardListResponse`
+- Response model: `StyleCardListResponse` (`style_cards`, `total`)
 
 ### `GET /campaigns`
 
@@ -298,10 +343,11 @@ Code-accurate API documentation for frontend clients and AI agents.
 
 **Technical:**
 - Query: `user_id` (required)
-- Body (all optional):
+- Body (`TaskUpdateRequest` — all optional):
   - `status`
   - `title`
   - `description`
+  - `deadline` (string or null; format as stored by backend)
 - Response model: `TaskResponse`
 
 ### `GET /campaigns/tasks/{task_id}/assets`
@@ -314,59 +360,15 @@ Code-accurate API documentation for frontend clients and AI agents.
 
 ### `GET /campaigns/tasks/{task_id}/deliverables`
 
-**Plain English:** Returns structured outputs for task completion (items and nested components), which is the render-ready task output model. Each component that references an asset includes **embedded asset fields** (file name, MIME type, description, and signed `view_url` / `download_url`) so clients can render previews without a separate assets list or per-asset `GET` calls.
+**Plain English:** Returns structured outputs for task completion (items and nested components), which is the render-ready task output model.
 
 **Technical:**
 - Query: `user_id`
-- Response model: `DeliverableListResponse`
-- Response body shape: `{ "items": [ ... ] }` is the primary key. Some clients may also accept `deliverables` as an alias for the same array; prefer `items` when implementing new clients.
-
-**Signed URLs:** Links are time-limited. Refresh by calling this endpoint again (or `GET /assets/{asset_id}`) when previews fail or after long-lived UI sessions—see Integration Notes #4.
-
-#### Deliverable component constraints (per item)
-
-The backend enforces at most:
-
-- **One visual:** either **one** `image` **or** **one** `video` (not both); or neither.
-- **One copy block:** at most **one** text component.
-- **One document:** at most **one** `pdf`.
-
-Clients should not assume arbitrary numbers of components per slot.
-
-**Example** (`view_url` / `download_url` truncated):
-
-```json
-{
-  "items": [
-    {
-      "id": "...",
-      "task_id": "...",
-      "item_index": 1,
-      "title": "Example deliverable",
-      "status": "active",
-      "components": [
-        {
-          "id": "...",
-          "deliverable_item_id": "...",
-          "component_type": "image",
-          "asset_id": "...",
-          "text_content": null,
-          "order_index": 1,
-          "file_name": "hero.png",
-          "description": "Optional caption",
-          "mime_type": "image/png",
-          "view_url": "https://...",
-          "download_url": "https://...",
-          "created_at": "2026-03-28T22:47:31.291266+00:00",
-          "updated_at": "2026-03-28T22:47:31.291266+00:00"
-        }
-      ],
-      "created_at": "...",
-      "updated_at": "..."
-    }
-  ]
-}
-```
+- Response model: `DeliverableListResponse` — `{ "items": [ DeliverableItemResponse, ... ] }`
+- Per deliverable item cardinality:
+  - max one `image` or one `video` (never both)
+  - max one `text`
+  - max one `pdf`
 
 ### `POST /campaigns/tasks/{task_id}/deliverables`
 
@@ -412,11 +414,18 @@ Clients should not assume arbitrary numbers of components per slot.
 **Technical:**
 - Query: `user_id`
 - Body:
-  - `component_type` (required string)
+  - `component_type` (required string; one of `text`, `image`, `pdf`, `video`)
   - `asset_id` (optional)
   - `text_content` (optional)
   - `order_index` (optional, default `1`)
 - Response model: `DeliverableComponentResponse`
+- Cardinality constraints per item:
+  - only one of `image` or `video` is allowed
+  - at most one `text`
+  - at most one `pdf`
+- Example validation errors:
+  - `Deliverable item already has a text component.`
+  - `Deliverable item can include image or video, not both.`
 
 ### `PATCH /campaigns/tasks/{task_id}/deliverables/{item_id}/components/{component_id}`
 
@@ -429,6 +438,7 @@ Clients should not assume arbitrary numbers of components per slot.
   - `text_content`
   - `order_index`
 - Response model: `DeliverableComponentResponse`
+- The same per-item cardinality rules are enforced on update.
 
 ### `DELETE /campaigns/tasks/{task_id}/deliverables/{item_id}/components/{component_id}`
 
@@ -496,40 +506,60 @@ Clients should not assume arbitrary numbers of components per slot.
 ## Response Models (Important Fields)
 
 ### `AgentStreamMessage`
-- `status`: `content | update | event | complete | error`
-- `content`: payload text or event name
+- `status`: `content | update | event | assets | complete | error`
+- `content`: payload text, event name (when `status=event`), or JSON string (when `status=assets`)
+
+### `ChatMessage`
+- `message_id`, `role` (`user` | `assistant`), `branch_id`, `content`, optional `thinking`, `assets` (list of asset id strings), `timestamp`
+
+### `ChatMessagesResponse`
+- `messages`: list of `ChatMessage`
+- `assets`: deduplicated `AssetResponse` rows for ids referenced in `messages` (top-level key; not the same field as per-message id lists)
+
+### `ChatResponse` / `ChatSummary`
+- `chat_id`, `title`, `last_modified`, `mode`, `campaign_id` (nullable on `ChatResponse` and `ChatSummary`)
+
+### `ChatListResponse` / `ChatCreateResponse` / `DeleteChatResponse`
+- `ChatListResponse`: `{ "chats": [ ChatSummary, ... ] }`
+- `ChatCreateResponse`: `chat_id`, `title`, `last_modified`
+- `DeleteChatResponse`: `message`, `chat_id`
 
 ### `TaskResponse`
-- `type`: free string (`text`, `image`, `video` are common)
-- `status`: free string (`todo`, `in_progress`, `under_review`, `done` commonly used)
-- `subtype`, `title`, `description`, `created_at`, `updated_at`
+- `id`, `campaign_id`, `type`, optional `subtype`, `title`, `description`, `status`, optional `deadline`, `created_at`, `updated_at`
+
+### `TaskListResponse`
+- `{ "tasks": [ TaskResponse, ... ] }`
 
 ### `AssetResponse`
-- includes both `view_url` and `download_url` signed links (when signing succeeds)
-- includes `folder_path`, `description`, `mime_type`
+- `id`, `user_id`, optional `chat_id`, optional `task_id`, `folder_path`, `file_name`, optional `description`, optional `view_url`, optional `download_url`, `mime_type`, `created_at`
 
-### `DeliverableListResponse`
-- `items`: array of deliverable item rows (see below). May also appear as `deliverables` in some responses; treat as equivalent to `items` when present.
+### `AssetListResponse`
+- `{ "assets": [ AssetResponse, ... ] }`
 
-**Deliverable item (read shape):**
-- `id`, `task_id`, `item_index`, `title`, `status`, `created_at`, `updated_at`
-- `components`: array of component rows (see below)
+### `CampaignResponse` / `CampaignWithSectionsResponse`
+- `CampaignResponse`: `id`, `chat_id`, `user_id`, `title`, `created_at`, `updated_at`
+- `CampaignWithSectionsResponse`: `campaign` (`CampaignResponse`), `sections` (dict keyed by section name, values are section content objects)
 
-**Deliverable component (read shape):**
-- Identity and structure: `id`, `deliverable_item_id`, `component_type`, `asset_id`, `text_content`, `order_index`, `created_at`, `updated_at`
-- When the component references an asset, the response also includes embedded file metadata and signed URLs: `file_name`, `description`, `mime_type`, `view_url`, `download_url` (may be omitted if signing fails)
+### `CreativeStateResponse`
+- `id`, `campaign_id`, `creative_truth`, `creative_tone`, optional `selected_style_id`, optional `key_visual_asset_id`, `created_at`, `updated_at`
 
-### `CampaignWithSectionsResponse`
-- `campaign`: metadata (`id`, `chat_id`, `title`, timestamps)
-- `sections`: arbitrary JSON keyed by section name
+### `StyleCardListResponse` / `StyleCardResponse`
+- `StyleCardListResponse`: `style_cards`, `total` (total count for pagination)
+- `StyleCardResponse`: `id`, `name`, `storage_path`, optional `thumbnail_path`, optional `preview_url`
+
+### `DeliverableListResponse` / `DeliverableItemResponse` / `DeliverableComponentResponse`
+- `DeliverableListResponse`: `items` (not `deliverables`)
+- `DeliverableItemResponse`: `id`, `task_id`, `item_index`, optional `title`, `status`, `components`, timestamps
+- `DeliverableComponentResponse`: `id`, `deliverable_item_id`, `component_type`, optional `asset_id` / `text_content`, `order_index`, optional enriched fields (`file_name`, `description`, `mime_type`, `view_url`, `download_url`), timestamps
 
 ---
 
 ## Error Handling
 
-- `400`: currently used by app-level exception mapping (for document load failures).
+- `400`: `DocumentLoadError` and similar app-mapped failures (`{"detail": "..."}`).
 - `404`: resource not found (chat, campaign, task, asset, deliverable item/component).
-- `500`: database/internal errors.
+- `422`: request validation (FastAPI/Pydantic), e.g. `ChatPatchRequest` with both fields omitted.
+- `500`: `DatabaseError`, `ChainExecutionError`, `SearchError`, and other server failures (`{"detail": "..."}`).
 - SSE route (`POST /ai/chat`) may stream a final `status=error` frame instead of returning a different HTTP status.
 
 ---
@@ -539,10 +569,12 @@ Clients should not assume arbitrary numbers of components per slot.
 1. **`POST /ai/chat` is multipart + SSE:** do not use `EventSource` for this POST flow; use streamed `fetch`.
 2. **Persisted chat state is branch-aware:** pass `branch_id` when replaying task branches.
 3. **Campaign mode gating exists in agent tools:** if not in campaign mode, delegated campaign operations return guard text rather than mutating state.
-4. **Asset URLs are signed and temporary:** refresh by calling asset endpoints again if links expire.
-5. **Useful refetch moments:** after SSE `event` values like `campaign_modified`, and after SSE `complete`.
+4. **Asset URLs are signed and temporary:** refresh by calling `GET /assets`, `GET /assets/{asset_id}`, `GET /chats/{chat_id}/messages`, or task asset/deliverable endpoints again if links expire.
+5. **Useful refetch moments:** after SSE `event` values like `campaign_modified`, after SSE `assets` (new media saved), and after SSE `complete`.
+6. **Supabase schema:** ensure `messages.assets` exists (see Conventions) so new chats persist message rows with asset id lists.
+7. **CORS:** the app enables permissive CORS for development (`allow_origins=["*"]` in `app/main.py`); tighten for production deployments.
 
 ---
 
-**Last updated:** 2026-03-28  
-**Source of truth:** router implementations under `app/router/` and schema files under `app/schemas/`.
+**Last updated:** 2026-04-04  
+**Source of truth:** `app/main.py`, router modules under `app/router/`, and schemas under `app/schemas/` (including `app/schemas/api_models.py` and `app/schemas/chat.py`).
