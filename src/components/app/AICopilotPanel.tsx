@@ -3,7 +3,8 @@ import { ChevronLeft, ChevronRight, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ChatMessages } from "./ChatMessages";
-import { ChatInput } from "./ChatInput";
+import { ChatInput, type ChatInputHandle } from "./ChatInput";
+import { ChatPanelDropZone } from "./ChatPanelDropZone";
 import { useChatMessages } from "@/hooks/useChats";
 import { useChatContext } from "@/hooks/useChatContext";
 import { useModification } from "@/hooks/useModification";
@@ -39,6 +40,7 @@ export function AICopilotPanel({
   const [panelWidth, setPanelWidth] = useState(450); // Default 450px (increased from 384px)
   const [isResizing, setIsResizing] = useState(false);
   const panelRef = useRef<HTMLElement>(null);
+  const chatInputRef = useRef<ChatInputHandle>(null);
   
   // Refs to track modification state
   const isModifyingActiveRef = useRef(false);
@@ -445,8 +447,12 @@ export function AICopilotPanel({
           </div>
       </div>
 
-        {/* Chat Content */}
-        <div className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden">
+        {/* Chat Content + drag-and-drop attach */}
+        <ChatPanelDropZone
+          className="flex-1 min-h-0 min-w-0 overflow-hidden"
+          disabled={isStreaming}
+          onFilesDropped={(files) => chatInputRef.current?.addFiles(files)}
+        >
           <ChatMessages
             messages={messages}
             threadAssets={messagesData?.assets ?? []}
@@ -461,6 +467,7 @@ export function AICopilotPanel({
             </div>
           )}
           <ChatInput
+            ref={chatInputRef}
             onSend={handleSendMessage}
             isStreaming={isStreaming}
             contextLabel={contextLabel}
@@ -469,7 +476,7 @@ export function AICopilotPanel({
             onPrefillComplete={handlePrefillComplete}
             prefillMode={autoMessage?.prefillMode}
           />
-        </div>
+        </ChatPanelDropZone>
         </div>
     </aside>
     </>

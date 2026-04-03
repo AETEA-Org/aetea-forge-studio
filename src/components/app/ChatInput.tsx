@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from "react";
 import { Send, Loader2, Paperclip, X, Lightbulb, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ChatContextIndicator } from "./ChatContextIndicator";
 import { cn } from "@/lib/utils";
+import { partitionChatFiles, validateChatFile } from "@/lib/chatFileValidation";
 
 export type ChatMode = "brainstorm" | "campaign";
 
@@ -31,65 +32,51 @@ interface ChatInputProps {
   variant?: "default" | "floating";
 }
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-const ALLOWED_FILE_TYPES = [
-  'application/pdf',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // DOCX
-  'application/msword', // DOC
-  'application/vnd.ms-powerpoint', // PPT
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation', // PPTX
-  'image/jpeg',
-  'image/jpg',
-  'image/png',
-  'image/gif',
-  'image/webp',
-  'image/svg+xml',
-];
-
-const ALLOWED_EXTENSIONS = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
-
-function validateFile(file: File): { valid: boolean; error?: string } {
-  // Check file size
-  if (file.size > MAX_FILE_SIZE) {
-    return { valid: false, error: `${file.name} exceeds 10MB limit` };
-  }
-
-  // Check file type
-  const extension = file.name.split('.').pop()?.toLowerCase();
-  const isValidExtension = extension && ALLOWED_EXTENSIONS.includes(extension);
-  const isValidMimeType = ALLOWED_FILE_TYPES.includes(file.type);
-
-  if (!isValidExtension && !isValidMimeType) {
-    return { valid: false, error: `${file.name} is not a supported file type` };
-  }
-
-  return { valid: true };
+export interface ChatInputHandle {
+  /** Append validated files (same as picking via paperclip). */
+  addFiles: (files: File[]) => void;
 }
 
 const PREFILL_INSTANT_DELAY_MS = 180;
 const PREFILL_TYPEWRITER_INTERVAL_MS = 20;
 
-export function ChatInput({
-  onSend,
-  isStreaming,
-  contextLabel,
-  disabled,
-  showContextIndicator = true,
-  mode,
-  onModeToggle,
-  textareaMaxHeight = 120,
-  prefillMessage,
-  onPrefillComplete,
-  prefillMode = "instant",
-  inputPlaceholder = "Ask a question...",
-  variant = "default",
-}: ChatInputProps) {
+export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput(
+  {
+    onSend,
+    isStreaming,
+    contextLabel,
+    disabled,
+    showContextIndicator = true,
+    mode,
+    onModeToggle,
+    textareaMaxHeight = 120,
+    prefillMessage,
+    onPrefillComplete,
+    prefillMode = "instant",
+    inputPlaceholder = "Ask a question...",
+    variant = "default",
+  },
+  ref
+) {
   const [message, setMessage] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [prefillDisplayText, setPrefillDisplayText] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    addFiles: (incoming: File[]) => {
+      if (!incoming.length || isStreaming || disabled) return;
+      const valid: File[] = [];
+      incoming.forEach((file) => {
+        if (validateChatFile(file).valid) valid.push(file);
+      });
+      if (valid.length > 0) {
+        setFiles((prev) => [...prev, ...valid]);
+      }
+    },
+  }), [isStreaming, disabled]);
 
   const isPrefillActive = prefillMessage != null && prefillMessage.length > 0;
   const displayedValue = isPrefillActive ? prefillDisplayText : message;
@@ -142,25 +129,14 @@ export function ChatInput({
   const handleFileSelect = (selectedFiles: FileList | null) => {
     if (!selectedFiles) return;
 
-    const validFiles: File[] = [];
-    const errors: string[] = [];
-
-    Array.from(selectedFiles).forEach((file) => {
-      const validation = validateFile(file);
-      if (validation.valid) {
-        validFiles.push(file);
-      } else {
-        errors.push(validation.error || 'Invalid file');
-      }
-    });
+    const { accepted, errors } = partitionChatFiles(Array.from(selectedFiles));
 
     if (errors.length > 0) {
-      // Show errors (could use toast here)
-      console.error('File validation errors:', errors);
+      console.error("File validation errors:", errors);
     }
 
-    if (validFiles.length > 0) {
-      setFiles((prev) => [...prev, ...validFiles]);
+    if (accepted.length > 0) {
+      setFiles((prev) => [...prev, ...accepted]);
     }
   };
 
@@ -171,18 +147,30 @@ export function ChatInput({
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+  };
+
+  const handleDragEnterInput = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!Array.from(e.dataTransfer.types || []).includes("Files")) return;
+    dragDepthInputRef.current += 1;
     setIsDragging(true);
   };
 
+  const dragDepthInputRef = useRef(0);
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDragging(false);
+    dragDepthInputRef.current = Math.max(0, dragDepthInputRef.current - 1);
+    if (dragDepthInputRef.current === 0) {
+      setIsDragging(false);
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    dragDepthInputRef.current = 0;
     setIsDragging(false);
     handleFileSelect(e.dataTransfer.files);
   };
@@ -203,6 +191,7 @@ export function ChatInput({
           : "border-t border-border bg-background p-4 space-y-3 min-w-0 overflow-x-hidden",
         isDragging && "bg-primary/5 border-primary/50"
       )}
+      onDragEnter={handleDragEnterInput}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -308,4 +297,4 @@ export function ChatInput({
       </form>
     </div>
   );
-}
+});

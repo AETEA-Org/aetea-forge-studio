@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import {
   Loader2,
@@ -28,7 +28,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Markdown } from "@/components/ui/markdown";
 import { ModificationOverlay } from "@/components/app/ModificationOverlay";
 import { ChatMessages } from "@/components/app/ChatMessages";
-import { ChatInput } from "@/components/app/ChatInput";
+import { ChatInput, type ChatInputHandle } from "@/components/app/ChatInput";
+import { ChatPanelDropZone } from "@/components/app/ChatPanelDropZone";
 import { useChatMessages } from "@/hooks/useChats";
 import { cn } from "@/lib/utils";
 import type {
@@ -130,6 +131,7 @@ export default function TaskDetailPage() {
   const [deliverablesOpen, setDeliverablesOpen] = useState(false);
   const [selectedDeliverableId, setSelectedDeliverableId] = useState<string | null>(null);
   const [streamingAssets, setStreamingAssets] = useState<ChatRenderableAsset[]>([]);
+  const chatInputRef = useRef<ChatInputHandle>(null);
 
   const { data: task, isLoading, error, refetch } = useQuery({
     queryKey: ['campaign-task', taskId, user?.email],
@@ -354,7 +356,11 @@ export default function TaskDetailPage() {
           )}
         </div>
 
-        <div className="flex-1 min-h-0 flex flex-col">
+        <ChatPanelDropZone
+          className="flex-1 min-h-0"
+          disabled={isStreaming}
+          onFilesDropped={(files) => chatInputRef.current?.addFiles(files)}
+        >
           <div className="flex-1 min-h-0">
             <ChatMessages
               messages={messages}
@@ -369,6 +375,7 @@ export default function TaskDetailPage() {
           <div className="px-2 md:px-4 pb-2 md:pb-4">
             <div className="max-w-4xl mx-auto">
               <ChatInput
+                ref={chatInputRef}
                 onSend={handleSendTaskMessage}
                 isStreaming={isStreaming}
                 contextLabel="Task Execution"
@@ -378,7 +385,7 @@ export default function TaskDetailPage() {
               />
             </div>
           </div>
-        </div>
+        </ChatPanelDropZone>
       </div>
 
       <Dialog open={deliverablesOpen} onOpenChange={setDeliverablesOpen}>

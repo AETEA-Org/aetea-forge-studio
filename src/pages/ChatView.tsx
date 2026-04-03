@@ -3,7 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChatMessages } from "@/components/app/ChatMessages";
-import { ChatInput, type ChatMode } from "@/components/app/ChatInput";
+import { ChatInput, type ChatMode, type ChatInputHandle } from "@/components/app/ChatInput";
+import { ChatPanelDropZone } from "@/components/app/ChatPanelDropZone";
 import { BriefAnalysisLoading } from "@/components/app/BriefAnalysisLoading";
 import { useQuery } from "@tanstack/react-query";
 import { useChatMessages } from "@/hooks/useChats";
@@ -28,6 +29,7 @@ export default function ChatView() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const consumedPendingRef = useRef(false);
+  const chatInputRef = useRef<ChatInputHandle>(null);
 
   const [mode, setMode] = useState<ChatMode>("brainstorm");
   const [streamingContent, setStreamingContent] = useState("");
@@ -262,8 +264,11 @@ export default function ChatView() {
         </Button>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 min-h-0 flex flex-col">
+      {/* Messages + drag-and-drop attach */}
+      <ChatPanelDropZone
+        disabled={isStreaming}
+        onFilesDropped={(files) => chatInputRef.current?.addFiles(files)}
+      >
         <ChatMessages
           messages={messages}
           threadAssets={messagesData?.assets ?? []}
@@ -273,6 +278,7 @@ export default function ChatView() {
           updateMessage={updateMessage}
         />
         <ChatInput
+          ref={chatInputRef}
           onSend={handleSendMessage}
           isStreaming={isStreaming}
           contextLabel={mode === "brainstorm" ? "Brainstorm" : "Campaign"}
@@ -282,7 +288,7 @@ export default function ChatView() {
           onModeToggle={() => setMode((m) => (m === "brainstorm" ? "campaign" : "brainstorm"))}
           textareaMaxHeight={200}
         />
-      </div>
+      </ChatPanelDropZone>
 
       <AssetsModal
         chatId={chatId}
