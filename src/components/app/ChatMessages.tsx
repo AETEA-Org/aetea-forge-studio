@@ -61,33 +61,47 @@ export function ChatMessages({
     return out;
   };
 
+  const scrollToBottom = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+    setShowJumpToBottom(false);
+  }, []);
+
+  /** Only auto-scroll on first history paint or when switching chats — not while streaming. */
   useEffect(() => {
     if (!scrollRef.current) return;
 
     const currentMessageCount = messages.length;
     const prevMessageCount = prevMessageCountRef.current;
-    const messageCountIncreased = currentMessageCount > prevMessageCount;
-    const streamingContentChanged = streamingContent !== prevStreamingContentRef.current;
 
     const firstMessageId = messages.length > 0 ? messages[0].message_id : null;
     const chatSwitched = firstMessageId !== null && firstMessageId !== prevFirstMessageIdRef.current;
 
     const isInitialLoad = prevMessageCount === 0 && currentMessageCount > 0 && !isStreaming && !updateMessage;
 
-    const shouldAutoScroll =
-      (isInitialLoad || chatSwitched) ||
-      (messageCountIncreased && (isStreaming || updateMessage !== null)) ||
-      (isStreaming && streamingContentChanged && streamingContent) ||
-      (isStreaming && streamingAssets.length > 0);
+    const shouldAutoScroll = isInitialLoad || chatSwitched;
 
     if (shouldAutoScroll) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      setShowJumpToBottom(false);
     }
 
     prevMessageCountRef.current = currentMessageCount;
-    prevStreamingContentRef.current = streamingContent || "";
     prevFirstMessageIdRef.current = firstMessageId;
-  }, [messages, streamingContent, updateMessage, isStreaming, streamingAssets.length]);
+  }, [messages, isStreaming, updateMessage]);
+
+  /** Re-evaluate jump button when content grows (e.g. streaming) without a scroll event. */
+  useLayoutEffect(() => {
+    updateJumpVisibility();
+  }, [
+    messages,
+    streamingContent,
+    updateMessage,
+    isStreaming,
+    streamingAssets,
+    updateJumpVisibility,
+  ]);
 
   const truncatedUpdateMessage = (() => {
     if (!updateMessage) return null;
@@ -97,7 +111,12 @@ export function ChatMessages({
   })();
 
   return (
-    <div className="flex-1 h-full overflow-y-auto overflow-x-hidden custom-scrollbar" ref={scrollRef}>
+    <div className="relative flex-1 h-full min-h-0 flex flex-col">
+      <div
+        className="flex-1 h-full overflow-y-auto overflow-x-hidden custom-scrollbar"
+        ref={scrollRef}
+        onScroll={updateJumpVisibility}
+      >
       <div className="p-4 space-y-4 min-w-0">
         {messages.map((message) => {
           const msgAssets = resolveMessageAssets(message);
@@ -190,6 +209,23 @@ export function ChatMessages({
             </div>
           )}
       </div>
+      </div>
+
+      {showJumpToBottom && (
+        <button
+          type="button"
+          onClick={scrollToBottom}
+          className={cn(
+            "absolute bottom-3 right-3 z-10 flex h-9 w-9 items-center justify-center rounded-full",
+            "bg-zinc-500/90 dark:bg-zinc-600/95 border border-white/10 shadow-md",
+            "text-white hover:bg-zinc-500 hover:brightness-110",
+            "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          )}
+          aria-label="Scroll to bottom"
+        >
+          <ChevronDown className="h-5 w-5" strokeWidth={2.5} />
+        </button>
+      )}
     </div>
   );
 }
