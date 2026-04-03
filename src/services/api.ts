@@ -157,6 +157,38 @@ export async function getChat(
   return response.json();
 }
 
+/** PATCH /chats/{chat_id} — rename and/or change mode (see API_REFERENCE.md). */
+export async function patchChat(
+  chatId: string,
+  userEmail: string,
+  body: { title?: string; mode?: 'brainstorm' | 'campaign' }
+): Promise<{
+  chat_id: string;
+  title: string;
+  last_modified: string;
+  mode: string;
+  campaign_id: string | null;
+}> {
+  const response = await fetch(
+    buildUrl(`/chats/${chatId}`, { user_id: userEmail }),
+    {
+      method: 'PATCH',
+      headers: {
+        ...getHeaders(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to update chat');
+  }
+
+  return response.json();
+}
+
 // Get campaign by chat_id
 export async function getCampaignByChatId(
   chatId: string,

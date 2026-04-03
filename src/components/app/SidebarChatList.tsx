@@ -1,14 +1,15 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { FolderOpen, Loader2, MoreVertical, Trash2 } from "lucide-react";
+import { FolderOpen, Loader2, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceFromUTC } from "@/lib/dateUtils";
 import { useProjects } from "@/hooks/useProjects";
 import { useAuth } from "@/hooks/useAuth";
-import { deleteChatById } from "@/services/api";
+import { deleteChatById, patchChat } from "@/services/api";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { DeleteProjectDialog } from "@/components/app/DeleteProjectDialog";
+import { RenameChatDialog } from "@/components/app/RenameChatDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,13 +29,45 @@ export function SidebarChatList({ collapsed }: SidebarChatListProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
   const [chatToDelete, setChatToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [chatToRename, setChatToRename] = useState<{ id: string; title: string } | null>(null);
   
   const chats = data?.chats || [];
 
   const handleDeleteClick = (e: React.MouseEvent, chatId: string, chatTitle: string) => {
     e.stopPropagation();
     setChatToDelete({ id: chatId, title: chatTitle });
+  };
+
+  const handleRenameClick = (e: React.MouseEvent, id: string, title: string) => {
+    e.stopPropagation();
+    setChatToRename({ id, title });
+  };
+
+  const handleRenameConfirm = async (newTitle: string) => {
+    if (!chatToRename || !user?.email) return;
+
+    setRenamingId(chatToRename.id);
+    try {
+      await patchChat(chatToRename.id, user.email, { title: newTitle });
+      queryClient.invalidateQueries({ queryKey: ["chats"] });
+      queryClient.invalidateQueries({ queryKey: ["chat", chatToRename.id] });
+      toast({
+        title: "Chat renamed",
+        description: `Your project is now named "${newTitle}".`,
+      });
+      setChatToRename(null);
+    } catch (error) {
+      console.error("Rename chat error:", error);
+      toast({
+        title: "Failed to rename chat",
+        description: error instanceof Error ? error.message : "An error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setRenamingId(null);
+    }
   };
 
   const handleDeleteConfirm = async () => {
@@ -95,6 +128,13 @@ export function SidebarChatList({ collapsed }: SidebarChatListProps) {
           onConfirm={handleDeleteConfirm}
           isDeleting={!!deletingId}
         />
+        <RenameChatDialog
+          open={!!chatToRename}
+          onOpenChange={(open) => !open && setChatToRename(null)}
+          initialTitle={chatToRename?.title ?? ""}
+          onConfirm={handleRenameConfirm}
+          isSaving={!!renamingId}
+        />
       </>
     );
   }
@@ -142,7 +182,7 @@ export function SidebarChatList({ collapsed }: SidebarChatListProps) {
                 "transition-colors",
                 chatId === chat.chat_id && "bg-sidebar-accent text-sidebar-foreground"
               )}
-              disabled={deletingId === chat.chat_id}
+              disabled={deletingId === chat.chat_id || renamingId === chat.chat_id}
             >
               <div className="flex items-center gap-2">
                 <FolderOpen className="h-4 w-4 shrink-0" />
@@ -155,7 +195,7 @@ export function SidebarChatList({ collapsed }: SidebarChatListProps) {
             
             {/* Delete button */}
             <div className="absolute right-2 top-3">
-              {deletingId === chat.chat_id ? (
+              {deletingId === chat.chat_id || renamingId === chat.chat_id ? (
                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
               ) : (
                 <DropdownMenu>
@@ -168,6 +208,12 @@ export function SidebarChatList({ collapsed }: SidebarChatListProps) {
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={(e) => handleRenameClick(e, chat.chat_id, chat.title)}
+                    >
+                      <Pencil className="h-4 w-4 mr-2" />
+                      Rename
+                    </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={(e) => handleDeleteClick(e, chat.chat_id, chat.title)}
                       className="text-destructive focus:text-destructive"
@@ -189,6 +235,13 @@ export function SidebarChatList({ collapsed }: SidebarChatListProps) {
         projectTitle={chatToDelete?.title || ''}
         onConfirm={handleDeleteConfirm}
         isDeleting={!!deletingId}
+      />
+      <RenameChatDialog
+        open={!!chatToRename}
+        onOpenChange={(open) => !open && setChatToRename(null)}
+        initialTitle={chatToRename?.title ?? ""}
+        onConfirm={handleRenameConfirm}
+        isSaving={!!renamingId}
       />
     </>
   );
