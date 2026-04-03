@@ -131,7 +131,7 @@ export function ChatMessages({
             >
               <div
                 className={cn(
-                  "max-w-[80%] rounded-lg px-4 py-2.5 break-words space-y-3",
+                  "max-w-[min(80%,100%)] min-w-0 rounded-lg px-4 py-2.5 break-words space-y-3 overflow-hidden",
                   message.role === "user"
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted text-foreground"
@@ -165,7 +165,7 @@ export function ChatMessages({
         {truncatedUpdateMessage && (
           <div className="flex flex-col gap-1 items-start">
             <div
-              className="max-w-[80%] rounded-lg px-4 py-2.5 bg-muted/50 text-muted-foreground break-words"
+              className="max-w-[min(80%,100%)] min-w-0 overflow-hidden rounded-lg px-4 py-2.5 bg-muted/50 text-muted-foreground break-words"
               style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}
             >
               <p
@@ -181,7 +181,7 @@ export function ChatMessages({
         {isStreaming && (streamingAssets.length > 0 || streamingContent) && (
           <div className="flex flex-col gap-1 items-start">
             <div
-              className="max-w-[80%] rounded-lg px-4 py-2.5 bg-muted text-foreground break-words space-y-3"
+              className="max-w-[min(80%,100%)] min-w-0 overflow-hidden rounded-lg px-4 py-2.5 bg-muted text-foreground break-words space-y-3"
               style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}
             >
               {streamingAssets.length > 0 ? <ChatMessageAssets assets={streamingAssets} /> : null}

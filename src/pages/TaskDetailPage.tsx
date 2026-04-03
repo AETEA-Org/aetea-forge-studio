@@ -382,8 +382,8 @@ export default function TaskDetailPage() {
       </div>
 
       <Dialog open={deliverablesOpen} onOpenChange={setDeliverablesOpen}>
-        <DialogContent className="max-w-5xl">
-          <DialogHeader>
+        <DialogContent className="max-w-5xl w-[calc(100vw-2rem)] max-h-[90vh] overflow-hidden flex flex-col gap-0 sm:max-h-[85vh] min-w-0">
+          <DialogHeader className="shrink-0 pr-10">
             <DialogTitle>Task Deliverables</DialogTitle>
             <DialogDescription>
               Browse generated deliverables for this task.
@@ -399,8 +399,8 @@ export default function TaskDetailPage() {
               No task deliverables yet.
             </div>
           ) : (
-            <div className="grid md:grid-cols-[220px_1fr] gap-4 min-h-[360px]">
-              <div className="border border-border rounded-md p-2 space-y-2 overflow-y-auto max-h-[420px]">
+            <div className="grid md:grid-cols-[minmax(0,220px)_minmax(0,1fr)] gap-4 min-h-0 min-w-0 flex-1 overflow-hidden">
+              <div className="border border-border rounded-md p-2 space-y-2 overflow-y-auto max-h-[min(420px,50vh)] md:max-h-[min(420px,60vh)] min-w-0">
                 {deliverables.map((item, idx) => {
                   const active = selectedDeliverable?.id === item.id;
                   const itemLabel = item.title?.trim() || `Item ${item.item_index || idx + 1}`;
@@ -423,12 +423,12 @@ export default function TaskDetailPage() {
                 })}
               </div>
 
-              <div className="border border-border rounded-md p-4 flex flex-col min-h-0">
-                <div className="flex items-center justify-between mb-3 gap-2">
-                  <h3 className="font-semibold truncate">
+              <div className="border border-border rounded-md p-4 flex flex-col min-h-0 min-w-0 overflow-hidden max-w-full">
+                <div className="flex items-start justify-between mb-3 gap-2 min-w-0">
+                  <h3 className="font-semibold text-sm sm:text-base min-w-0 flex-1 break-words">
                     {selectedDeliverable?.title?.trim() || `Item ${selectedDeliverable?.item_index ?? 1}`}
                   </h3>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 shrink-0">
                     <Button
                       type="button"
                       variant="outline"
@@ -459,11 +459,11 @@ export default function TaskDetailPage() {
                 {!hasPreviewContent ? (
                   <p className="text-sm text-muted-foreground">No components in this deliverable.</p>
                 ) : (
-                  <div className="space-y-4 overflow-y-auto pr-1 flex flex-col min-h-0">
+                  <div className="space-y-4 overflow-y-auto overflow-x-hidden pr-1 flex flex-col min-h-0 min-w-0 max-w-full">
                     {media && (
-                      <section className="min-w-0">
+                      <section className="min-w-0 max-w-full overflow-hidden">
                         <h4 className="text-xs font-medium text-muted-foreground mb-2">Preview</h4>
-                        <div className="rounded-lg border border-border bg-card overflow-hidden flex flex-col items-center justify-center min-h-[200px] p-2">
+                        <div className="rounded-lg border border-border bg-card overflow-hidden flex flex-col items-center justify-center min-h-[200px] p-2 w-full max-w-full">
                           {(() => {
                             const url = media.view_url || media.download_url || "";
                             const isVideo =
@@ -511,21 +511,23 @@ export default function TaskDetailPage() {
                     )}
 
                     {pdf && (
-                      <section className="min-w-0">
+                      <section className="min-w-0 max-w-full overflow-hidden">
                         <h4 className="text-xs font-medium text-muted-foreground mb-2">Document</h4>
-                        <div className="rounded-lg border border-border bg-card p-4 flex flex-col gap-3">
-                          <div className="flex items-start gap-3">
+                        <div className="rounded-lg border border-border bg-card p-4 flex flex-col gap-3 min-w-0 max-w-full overflow-hidden">
+                          <div className="flex items-start gap-3 min-w-0">
                             <FileText className="h-10 w-10 shrink-0 text-muted-foreground" aria-hidden />
-                            <div className="min-w-0 flex-1 space-y-1">
-                              <p className="font-medium text-sm truncate">
+                            <div className="min-w-0 flex-1 space-y-1 overflow-hidden">
+                              <p className="font-medium text-sm break-words">
                                 {pdf.file_name?.trim() || "PDF"}
                               </p>
                               {pdf.description?.trim() ? (
-                                <p className="text-sm text-muted-foreground">{pdf.description}</p>
+                                <p className="text-sm text-muted-foreground break-words hyphens-auto">
+                                  {pdf.description}
+                                </p>
                               ) : null}
                             </div>
                           </div>
-                          <div className="flex flex-wrap gap-2">
+                          <div className="flex flex-wrap gap-2 min-w-0">
                             {pdf.view_url ? (
                               <Button variant="outline" size="sm" asChild>
                                 <a href={pdf.view_url} target="_blank" rel="noopener noreferrer">

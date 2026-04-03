@@ -88,13 +88,13 @@ export function AssetsModal({ chatId, open, onOpenChange }: AssetsModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-2xl max-h-[80vh] flex flex-col gap-0 p-0"
+        className="max-w-2xl max-h-[80vh] flex flex-col gap-0 p-0 overflow-hidden min-w-0 w-[calc(100vw-2rem)] sm:w-full"
         onPointerDownOutside={(e) => e.preventDefault()}
       >
         <DialogHeader className="shrink-0 px-6 pt-6 pb-4 border-b border-border">
           <DialogTitle>Assets</DialogTitle>
         </DialogHeader>
-        <div className="flex-1 overflow-y-auto px-6 py-4 min-h-0">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 py-4 min-h-0 min-w-0">
           {!open ? null : isLoading ? (
             <div className="flex justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -112,54 +112,56 @@ export function AssetsModal({ chatId, open, onOpenChange }: AssetsModalProps) {
               <p className="text-muted-foreground">No assets yet</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 min-w-0">
               {assets.map((asset) => {
                 const FileIcon = getFileIcon(asset);
                 return (
                   <div
                     key={asset.id}
                     className={cn(
-                      "border border-border rounded-lg p-3 flex flex-col min-w-0",
+                      "border border-border rounded-lg p-3 pb-3 flex flex-col min-w-0 max-w-full overflow-hidden",
                       refreshingUrls.has(asset.id) && "opacity-60"
                     )}
                   >
-                    <div className="aspect-square mb-2 bg-muted rounded flex items-center justify-center overflow-hidden">
+                    <div className="aspect-square shrink-0 mb-2 bg-muted rounded-md flex items-center justify-center overflow-hidden">
                       {isImageAsset(asset) ? (
                         <img
                           src={asset.download_url}
                           alt={asset.file_name}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full max-h-full object-cover"
                         />
                       ) : (
-                        <FileIcon className="h-10 w-10 text-muted-foreground" />
+                        <FileIcon className="h-10 w-10 text-muted-foreground shrink-0" />
                       )}
                     </div>
-                    <span
-                      className="text-sm font-medium truncate mb-2"
+                    <p
+                      className="text-xs font-medium line-clamp-2 break-words min-w-0 mb-2 min-h-[2.25rem]"
                       title={asset.file_name}
                     >
                       {asset.file_name}
-                    </span>
-                    <div className="flex gap-2 mt-auto">
+                    </p>
+                    <div className="flex gap-2 mt-auto pt-1 shrink-0 justify-center">
                       <Button
                         variant="outline"
-                        size="sm"
-                        className="flex-1 h-8 text-xs"
+                        size="icon"
+                        className="h-8 w-8 shrink-0"
                         onClick={(e) => handleView(e, asset)}
                         disabled={refreshingUrls.has(asset.id)}
+                        title="View"
+                        aria-label="View asset"
                       >
-                        <Eye className="h-3 w-3 mr-1" />
-                        View
+                        <Eye className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="outline"
-                        size="sm"
-                        className="flex-1 h-8 text-xs"
+                        size="icon"
+                        className="h-8 w-8 shrink-0"
                         onClick={(e) => handleDownload(e, asset)}
                         disabled={refreshingUrls.has(asset.id)}
+                        title="Download"
+                        aria-label="Download asset"
                       >
-                        <Download className="h-3 w-3 mr-1" />
-                        Download
+                        <Download className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>

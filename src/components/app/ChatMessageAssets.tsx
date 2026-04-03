@@ -47,8 +47,8 @@ export function ChatMessageAssets({ assets, className }: ChatMessageAssetsProps)
     <>
       <div
         className={cn(
-          "grid gap-2 w-full",
-          "grid-cols-[repeat(auto-fill,minmax(120px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(140px,1fr))]",
+          "grid gap-2 w-full min-w-0 max-w-full",
+          "grid-cols-[repeat(auto-fill,minmax(100px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(120px,1fr))]",
           className
         )}
       >
@@ -58,8 +58,8 @@ export function ChatMessageAssets({ assets, className }: ChatMessageAssetsProps)
             type="button"
             onClick={() => setOpenIndex(index)}
             className={cn(
-              "relative rounded-lg border border-border/80 bg-muted/40 overflow-hidden",
-              "aspect-square max-h-40 flex flex-col items-center justify-center",
+              "relative rounded-lg border border-border/80 bg-muted/40 overflow-hidden min-w-0 max-w-full",
+              "aspect-square max-h-32 sm:max-h-36 flex flex-col items-center justify-center p-1",
               "hover:ring-2 hover:ring-primary/40 transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             )}
           >
@@ -112,10 +112,10 @@ function AssetTileInner({ asset }: { asset: ChatRenderableAsset }) {
   }
   if (isVideoMime(asset.mime_type)) {
     return (
-      <div className="relative w-full h-full flex items-center justify-center bg-black/20">
+      <div className="relative w-full h-full min-h-0 flex items-center justify-center bg-black/20 overflow-hidden">
         <video
           src={url}
-          className="max-w-full max-h-full object-contain"
+          className="max-w-full max-h-full w-auto h-auto object-contain"
           muted
           playsInline
           preload="metadata"
@@ -129,7 +129,7 @@ function AssetTileInner({ asset }: { asset: ChatRenderableAsset }) {
       <img
         src={url}
         alt={asset.file_name || asset.id}
-        className="w-full h-full object-contain max-h-36"
+        className="max-w-full max-h-full w-auto h-auto object-contain"
       />
     );
   }
