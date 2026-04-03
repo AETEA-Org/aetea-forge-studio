@@ -172,7 +172,7 @@ export default function ChatView() {
     consumedPendingRef.current = false;
   }, [chatId]);
 
-  // Consume pending brainstorm stream from Start Brainstorming (landing): show user message + streaming AI reply; on error delete chat and redirect
+  // Consume pending brainstorm stream from Start Brainstorming (landing): show user message + streaming AETEA reply; on error delete chat and redirect
   useEffect(() => {
     if (!chatId || !user?.email) return;
     const pending = getAndClearPendingBrainstormStream(chatId);

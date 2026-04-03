@@ -203,7 +203,7 @@ export function ChatMessages({
               <div className="space-y-2 max-w-sm">
                 <img src="/favicon.png" alt="AETEA" className="h-8 w-8 mx-auto" />
                 <p className="text-sm text-muted-foreground">
-                  Start a conversation to get AI assistance with your project.
+                  Start a conversation with AETEA about your project.
                 </p>
               </div>
             </div>

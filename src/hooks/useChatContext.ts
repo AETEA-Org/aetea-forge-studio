@@ -14,7 +14,7 @@ export function useChatContext({
   activeTab,
   selectedTaskId,
 }: UseChatContextProps = {}): ChatContext {
-  // When viewing a task, send task context so AI can complete/re-do the task
+  // When viewing a task, send task context so AETEA can complete/re-do the task
   if (selectedTaskId) {
     return {
       context: `task:${selectedTaskId}`,

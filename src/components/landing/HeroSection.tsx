@@ -57,7 +57,7 @@ export function HeroSection() {
             className="text-lg sm:text-xl md:text-2xl text-foreground/70 max-w-2xl leading-relaxed mb-12 opacity-0 animate-fade-in mx-auto"
             style={{ animationDelay: '0.4s' }}
           >
-            One creative intelligence, backed by everything required to envision, execute and excel.
+            AETEA is your creative intelligence—backed by everything required to envision, execute, and excel.
           </p>
 
           {/* CTAs */}
@@ -93,7 +93,7 @@ export function HeroSection() {
             {[
               "Strategy + Creative + Production",
               "Multi-format outputs",
-              "AI-assisted, human-checked",
+              "AETEA-assisted, human-checked",
             ].map((point, i) => (
               <div key={i} className="flex items-center gap-3">
                 <div className="w-1.5 h-1.5 rounded-full bg-primary" />

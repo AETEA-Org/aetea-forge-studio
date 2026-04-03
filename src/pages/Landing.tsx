@@ -5,7 +5,7 @@ import { CreateLaunchGrow } from "@/components/landing/CreateLaunchGrow";
 import { ServicesGrid } from "@/components/landing/ServicesGrid";
 import { WhoItsFor } from "@/components/landing/WhoItsFor";
 import { HowItWorks } from "@/components/landing/HowItWorks";
-import { AIAlly } from "@/components/landing/AIAlly";
+import { AeteaAlly } from "@/components/landing/AeteaAlly";
 import { TrustSafety } from "@/components/landing/TrustSafety";
 import { FinalCTA } from "@/components/landing/FinalCTA";
 import { Footer } from "@/components/landing/Footer";
@@ -21,7 +21,7 @@ export default function Landing() {
         <ServicesGrid />
         <WhoItsFor />
         <HowItWorks />
-        <AIAlly />
+        <AeteaAlly />
         <TrustSafety />
         <FinalCTA />
       </main>

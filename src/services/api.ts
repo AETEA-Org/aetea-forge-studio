@@ -274,7 +274,7 @@ export async function getProjectTasks(projectId: string, userEmail: string): Pro
   return response.json();
 }
 
-// Create campaign via AI chat (SSE streaming)
+// Create campaign via AETEA chat (SSE streaming)
 export async function createCampaignViaChat(
   userEmail: string,
   chatId: string,
@@ -710,7 +710,7 @@ let pendingBrainstormStream: {
   reader: ReadableStreamDefaultReader<Uint8Array>;
 } | null = null;
 
-/** Start first brainstorm message (POST /ai/chat). Stores the response stream for ChatView to consume. Does not await stream. */
+/** Start first brainstorm message (POST /ai/chat — AETEA). Stores the response stream for ChatView to consume. Does not await stream. */
 export async function startBrainstormFirstMessage(
   userEmail: string,
   chatId: string,
@@ -756,7 +756,7 @@ export function getAndClearPendingBrainstormStream(chatId: string): {
   return { userMessage, reader };
 }
 
-/** Consume an AI chat SSE stream (reader) and invoke callbacks. */
+/** Consume an AETEA chat SSE stream (reader) and invoke callbacks. */
 export async function consumeAgentStream(
   reader: ReadableStreamDefaultReader<Uint8Array>,
   callbacks: {

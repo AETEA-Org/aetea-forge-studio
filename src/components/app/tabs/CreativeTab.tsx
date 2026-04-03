@@ -219,7 +219,7 @@ export function CreativeTab({ campaignId, chatId, isModifying }: CreativeTabProp
       setIsKeyVisualDialogOpen(false);
       resetKeyVisualDialog();
 
-      // Trigger auto-send: message appears in chatbox, then auto-sends and streams in AICopilotPanel
+      // Trigger auto-send: message appears in chatbox, then auto-sends and streams in the copilot panel
       // Overlay driven only by backend campaign_modifying event
       await triggerAutoSend(message, {
         files: filesToSend.length > 0 ? filesToSend : undefined,

@@ -39,7 +39,7 @@ const statusLabels: Record<string, string> = {
 export function TaskModal({ task, open, onClose, isModifying }: TaskModalProps) {
   const backdropRef = useRef<HTMLDivElement>(null);
   
-  // Dynamically calculate AI Copilot width and update backdrop
+  // Dynamically calculate AETEA Copilot panel width and update backdrop
   useEffect(() => {
     if (!open || !backdropRef.current) return;
     
@@ -57,7 +57,7 @@ export function TaskModal({ task, open, onClose, isModifying }: TaskModalProps) 
       });
       
       if (asideWidth > 0 && backdropRef.current) {
-        // Set the backdrop's right edge to not cover the AI Copilot
+        // Set the backdrop's right edge to not cover the AETEA Copilot panel
         // This actually changes the div's size, not just clips it visually
         backdropRef.current.style.right = `${asideWidth}px`;
       }
@@ -103,7 +103,7 @@ export function TaskModal({ task, open, onClose, isModifying }: TaskModalProps) 
   return (
     <Dialog open={open} onOpenChange={(newOpen) => !newOpen && onClose()} modal={false}>
       <DialogPortal container={document.body}>
-        {/* Custom backdrop that dynamically excludes AI Copilot area */}
+        {/* Custom backdrop that dynamically excludes AETEA Copilot panel area */}
         <div
           ref={backdropRef}
           className="fixed top-0 bottom-0 left-0 z-40 bg-black/80"
@@ -124,7 +124,7 @@ export function TaskModal({ task, open, onClose, isModifying }: TaskModalProps) 
             const target = e.target as HTMLElement;
             const closestAside = target.closest('aside');
             
-            // Don't close when clicking on AI Copilot panel
+            // Don't close when clicking on AETEA Copilot panel
             if (closestAside) {
               e.preventDefault();
             }
@@ -133,7 +133,7 @@ export function TaskModal({ task, open, onClose, isModifying }: TaskModalProps) 
             const target = e.target as HTMLElement;
             const closestAside = target.closest('aside');
             
-            // Don't close when clicking on AI Copilot panel
+            // Don't close when clicking on AETEA Copilot panel
             if (closestAside) {
               e.preventDefault();
             }
@@ -213,7 +213,7 @@ export function TaskModal({ task, open, onClose, isModifying }: TaskModalProps) 
                 </div>
               </div>
               <p className="text-sm font-medium text-foreground/80">
-                AI is updating this task...
+                AETEA is updating this task...
               </p>
             </div>
           </div>

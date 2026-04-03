@@ -5,7 +5,7 @@ interface ModificationOverlayProps {
   message?: string;
 }
 
-export function ModificationOverlay({ isActive, message = "AI is modifying this section..." }: ModificationOverlayProps) {
+export function ModificationOverlay({ isActive, message = "AETEA is modifying this section..." }: ModificationOverlayProps) {
   if (!isActive) return null;
 
   return (

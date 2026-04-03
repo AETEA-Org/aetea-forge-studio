@@ -1,7 +1,7 @@
 import { Check } from "lucide-react";
 
 const trustPoints = [
-  "AI-assisted, human-checked workflows",
+  "AETEA-assisted, human-checked workflows",
   "Clear review points at every stage",
   "Voice, visual, and message consistency",
   "Built to reduce chaos and rework",

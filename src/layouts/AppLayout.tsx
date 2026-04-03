@@ -15,7 +15,7 @@ export function AppLayout() {
   const [isModifying, setIsModifyingState] = useState(false);
   const [modifyingContext, setModifyingContextState] = useState<string | null>(null);
   
-  // Shared state for active tab and selected task - lifted for AI Copilot context detection
+  // Shared state for active tab and selected task - lifted for AETEA Copilot context detection
   const [activeTab, setActiveTab] = useState<CampaignTab>('brief');
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   
@@ -73,7 +73,7 @@ export function AppLayout() {
           />
         </main>
 
-        {/* Right AI Panel - Only show when chat is open and has a campaign (Campaign view) */}
+        {/* Right AETEA panel - Only show when chat is open and has a campaign (Campaign view) */}
         {chatId && hasCampaign && !taskId && (
           <AICopilotPanel 
             chatId={chatId}
