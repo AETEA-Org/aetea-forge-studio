@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useModification } from "@/hooks/useModification";
 import { useAutoMessage } from "@/hooks/useAutoMessage";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import type { StyleCard } from "@/types/api";
 import { CreativeTruthCard } from "./CreativeTruthCard";
 import { CreativeToneCard } from "./CreativeToneCard";
@@ -38,7 +38,6 @@ export function CreativeTab({ campaignId, chatId, isModifying }: CreativeTabProp
   const { user } = useAuth();
   const { setIsModifying } = useModification();
   const { triggerAutoSend } = useAutoMessage();
-  const queryClient = useQueryClient();
   const { toast } = useToast();
   
   const [flippedCards, setFlippedCards] = useState<Set<'truth' | 'tone' | 'visual'>>(new Set());
@@ -224,20 +223,6 @@ export function CreativeTab({ campaignId, chatId, isModifying }: CreativeTabProp
       await triggerAutoSend(message, {
         files: filesToSend.length > 0 ? filesToSend : undefined,
         context: 'tab:creative',
-        onEvent: (eventName: string) => {
-          if (eventName === 'campaign_modified') {
-            queryClient.invalidateQueries({
-              queryKey: ['creative', campaignId, user.email],
-            });
-            queryClient.invalidateQueries({
-              queryKey: ['campaign', campaignId, 'tasks', user.email],
-            });
-            queryClient.invalidateQueries({ queryKey: ['asset-urls'] });
-            queryClient.invalidateQueries({
-              queryKey: ['assets', chatId, user.email],
-            });
-          }
-        },
         onComplete: () => {
           setIsModifying(false, null);
           setIsGenerating(false);
@@ -268,13 +253,11 @@ export function CreativeTab({ campaignId, chatId, isModifying }: CreativeTabProp
     keyVisualDetails,
     referenceImages,
     user,
-    chatId,
     campaignId,
     isGenerating,
     updateCreativeStateMutation,
     triggerAutoSend,
     setIsModifying,
-    queryClient,
     toast,
     resetKeyVisualDialog,
   ]);

@@ -26,7 +26,8 @@ export function AppLayout() {
     queryFn: () => getChat(chatId!, user!.email!),
     enabled: !!chatId && !!user?.email,
   });
-  const hasCampaign = !!chatData?.campaign_id;
+  const campaignId = chatData?.campaign_id;
+  const hasCampaign = !!campaignId;
 
   // Handler that updates modification state - shared between AICopilotPanel and Project
   // Wrapped in useCallback to prevent recreating on every render
@@ -77,6 +78,7 @@ export function AppLayout() {
         {chatId && hasCampaign && !taskId && (
           <AICopilotPanel 
             chatId={chatId}
+            campaignId={campaignId}
             activeTab={activeTab}
             selectedTaskId={selectedTaskId}
             collapsed={copilotCollapsed} 

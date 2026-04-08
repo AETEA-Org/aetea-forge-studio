@@ -19,6 +19,8 @@ import type { AutoSendOptions } from "@/contexts/AutoMessageContext";
 
 interface AICopilotPanelProps {
   chatId: string;
+  /** Present whenever the chat is linked to a campaign (same as AppLayout `hasCampaign`). */
+  campaignId: string | undefined;
   activeTab: CampaignTab;
   selectedTaskId: string | null;
   collapsed: boolean;
@@ -27,6 +29,7 @@ interface AICopilotPanelProps {
 
 export function AICopilotPanel({
   chatId,
+  campaignId,
   activeTab,
   selectedTaskId,
   collapsed,
@@ -178,13 +181,25 @@ export function AICopilotPanel({
               }
             } else if (eventName === 'campaign_modified') {
               console.log('🔄 Campaign modified - refetching data');
-              // Refetch campaign data for current tab
-              // Note: This will refetch all campaign queries - the specific tab will be refetched by its hook
-              queryClient.invalidateQueries({
-                queryKey: ['campaign'],
-              }).catch((err) => {
-                console.error('Error invalidating campaign data:', err);
-              });
+              queryClient
+                .invalidateQueries({
+                  queryKey: ['campaign'],
+                })
+                .catch((err) => {
+                  console.error('Error invalidating campaign data:', err);
+                });
+              // Creative + assets use separate query roots from ['campaign', …] (see useCreativeState, useAssets).
+              if (campaignId && user?.email) {
+                queryClient.invalidateQueries({
+                  queryKey: ['creative', campaignId, user.email],
+                });
+              }
+              if (user?.email) {
+                queryClient.invalidateQueries({ queryKey: ['asset-urls'] });
+                queryClient.invalidateQueries({
+                  queryKey: ['assets', chatId, user.email],
+                });
+              }
             }
             override?.onEvent?.(eventName);
           },
@@ -269,7 +284,7 @@ export function AICopilotPanel({
         override?.onError?.(errorMsg);
       }
     },
-    [chatId, context, contextLabel, user, setIsModifying, queryClient, toast, mergeStreamAssets]
+    [chatId, campaignId, context, contextLabel, user, setIsModifying, queryClient, toast, mergeStreamAssets]
   );
 
   // Auto-send: ref to read pending data in onPrefillComplete (avoids stale closure)
