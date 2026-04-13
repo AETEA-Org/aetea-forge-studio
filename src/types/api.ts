@@ -164,15 +164,18 @@ export interface InsightModel {
   single_minded_proposition: string;
 }
 
+/** Canonical shape after client normalization (matches current API / StrategyModel). */
 export interface CreativeFoundationModel {
-  foundation: string;
-  rationale: string;
+  big_idea: string;
+  key_message: string;
+  tagline_or_campaign_line: string | null;
+  creative_direction: string;
 }
 
 export interface StrategyModel {
   doctrine: string[];
   insight: InsightModel;
-  creative_foundation: CreativeFoundationModel;
+  creative_foundation?: CreativeFoundationModel;
   campaign_pillars: CampaignPillar[];
   kpis: KPI[];
   audience_mapping: {

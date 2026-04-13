@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { getCampaignByChatId } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
+import { normalizeStrategyFromApi } from "@/lib/normalizeStrategySection";
 import type { 
   BriefModel, 
   ResearchModel, 
@@ -20,8 +21,12 @@ export function useCampaignSection<T>(
     queryKey: ['campaign', chatId, section, userEmail],
     queryFn: async () => {
       const data = await getCampaignByChatId(chatId!, userEmail!);
+      let content = data.sections[section] as T;
+      if (section === "strategy") {
+        content = normalizeStrategyFromApi(data.sections.strategy) as T;
+      }
       return {
-        content: data.sections[section] as T,
+        content,
       } as SectionResponse<T>;
     },
     enabled: !!chatId && !!userEmail,

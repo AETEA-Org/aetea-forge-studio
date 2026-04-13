@@ -2,6 +2,7 @@ import { Loader2, ArrowRight } from "lucide-react";
 import { useCampaignStrategy } from "@/hooks/useCampaignSection";
 import { Markdown } from "@/components/ui/markdown";
 import { ModificationOverlay } from "@/components/app/ModificationOverlay";
+import { hasCreativeFoundationContent } from "@/lib/normalizeStrategySection";
 import type { StrategyModel } from "@/types/api";
 
 interface StrategyTabProps {
@@ -173,17 +174,57 @@ export function StrategyTab({ campaignId, isModifying }: StrategyTabProps) {
       )}
 
       {/* 3. Creative Foundation */}
-      {strategy.creative_foundation && (
-        <div className="glass rounded-xl p-6 border-2 border-primary/30 bg-gradient-to-br from-primary/10 to-primary/5">
-          <h2 className="font-semibold mb-3 text-primary">Creative Foundation</h2>
-          <div className="text-2xl md:text-3xl font-bold text-primary tracking-tight mb-3">
-            <Markdown className="leading-tight">{strategy.creative_foundation.foundation}</Markdown>
+      {strategy.creative_foundation &&
+        hasCreativeFoundationContent(strategy.creative_foundation) && (
+          <div className="glass rounded-xl p-6 border-2 border-primary/30 bg-gradient-to-br from-primary/10 to-primary/5">
+            <h2 className="font-semibold mb-4 text-primary">Creative Foundation</h2>
+            <div className="space-y-5">
+              {strategy.creative_foundation.big_idea.trim() !== "" && (
+                <div>
+                  <h3 className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">
+                    Big Idea
+                  </h3>
+                  <div className="text-2xl md:text-3xl font-bold text-primary tracking-tight">
+                    <Markdown className="leading-tight">
+                      {strategy.creative_foundation.big_idea}
+                    </Markdown>
+                  </div>
+                </div>
+              )}
+              {strategy.creative_foundation.key_message.trim() !== "" && (
+                <div>
+                  <h3 className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">
+                    Key Message
+                  </h3>
+                  <Markdown className="text-sm leading-relaxed">
+                    {strategy.creative_foundation.key_message}
+                  </Markdown>
+                </div>
+              )}
+              {strategy.creative_foundation.tagline_or_campaign_line != null &&
+                strategy.creative_foundation.tagline_or_campaign_line.trim() !== "" && (
+                  <div>
+                    <h3 className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">
+                      Tag Line
+                    </h3>
+                    <Markdown className="text-sm leading-relaxed">
+                      {strategy.creative_foundation.tagline_or_campaign_line}
+                    </Markdown>
+                  </div>
+                )}
+              {strategy.creative_foundation.creative_direction.trim() !== "" && (
+                <div>
+                  <h3 className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">
+                    Creative Direction
+                  </h3>
+                  <Markdown className="text-sm text-muted-foreground leading-relaxed">
+                    {strategy.creative_foundation.creative_direction}
+                  </Markdown>
+                </div>
+              )}
+            </div>
           </div>
-          <div className="text-sm text-muted-foreground leading-relaxed">
-            <Markdown>{strategy.creative_foundation.rationale}</Markdown>
-          </div>
-        </div>
-      )}
+        )}
 
       {/* 4. Strategic Doctrine */}
       <div className="glass rounded-xl p-6">
