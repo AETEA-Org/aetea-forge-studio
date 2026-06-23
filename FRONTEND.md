@@ -339,9 +339,26 @@ const styleCards = await fetch(
 
 | Card | Front | Back (flipped) |
 |---|---|---|
-| Creative Truth | Title "Creative Truth" | Claims/RTBs list + CTAs/Specs list |
+| Creative Truth & Constraints | Title "Creative Truth & Constraints" | Claims/RTBs list + CTAs/Specs list + constraints list |
 | Tone & Voice | Title "Creative Tone & Voice" | Concept, headline sample, body copy sample |
 | Visual Direction | Title "Visual Direction" | Style card grid (100+ cards) + reference image upload (max 3) |
+
+**Creative Foundation:** Strategy includes exactly three `creative_territories`. Each territory has a `selected` boolean; exactly one is active. The active territory controls the displayed creative direction and the suggested key visual routes.
+
+**Changing selected territory:**
+```javascript
+await fetch(`/campaigns/${campaignId}/strategy/selected-territory?user_id=${userId}`, {
+  method: "PATCH",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    territory_id: "territory_2"
+  })
+});
+```
+
+**Campaign DNA:** Creative tab shows quick links to Brief objectives, Strategy KPIs, Strategy audience, and Strategy creative foundation. Use stable anchors `brief-campaign-goals`, `strategy-kpis`, `strategy-audience`, and `strategy-creative-foundation`.
+
+**Key visual routes:** The Generate Key Visual dialog displays the active territory's three `kv_routes`. Clicking a route copies that route into the additional details field only; generation still requires pressing Submit.
 
 **Style card grid performance tip:** Load style cards in pages (30 at a time) with `limit` and `offset`. Use lazy loading / virtualization for the grid since there are 100+ cards.
 

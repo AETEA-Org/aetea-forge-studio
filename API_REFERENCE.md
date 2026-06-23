@@ -39,6 +39,7 @@ Code-accurate API documentation for frontend clients and AI agents.
 | GET | `/campaigns/{campaign_id}` | Get campaign by id |
 | GET | `/campaigns/{campaign_id}/creative` | Get creative state |
 | PATCH | `/campaigns/{campaign_id}/creative` | Update creative state |
+| PATCH | `/campaigns/{campaign_id}/strategy/selected-territory` | Select active creative territory |
 | GET | `/campaigns/{campaign_id}/tasks` | List campaign tasks |
 | GET | `/campaigns/tasks/{task_id}` | Get one task |
 | PATCH | `/campaigns/tasks/{task_id}` | Update task fields |
@@ -313,6 +314,20 @@ Code-accurate API documentation for frontend clients and AI agents.
   - `key_visual_asset_id`
 - Response model: `CreativeStateResponse`
 
+### `PATCH /campaigns/{campaign_id}/strategy/selected-territory`
+
+**Plain English:** Selects which creative territory is active inside the campaign strategy. The strategy JSON remains self-contained: exactly one territory has `selected: true`.
+
+**Technical:**
+- Path:
+  - `campaign_id`
+- Query:
+  - `user_id`
+- Body:
+  - `territory_id` (required, e.g. `territory_2`)
+- Response model: `StrategyModel`
+- `400` if the territory id does not exist or the strategy fails validation.
+
 ### `GET /campaigns/{campaign_id}/tasks`
 
 **Plain English:** Lists all tasks in a campaign so the UI can render the campaign workboard.
@@ -541,7 +556,15 @@ Code-accurate API documentation for frontend clients and AI agents.
 - `CampaignWithSectionsResponse`: `campaign` (`CampaignResponse`), `sections` (dict keyed by section name, values are section content objects)
 
 ### `CreativeStateResponse`
-- `id`, `campaign_id`, `creative_truth`, `creative_tone`, optional `selected_style_id`, optional `key_visual_asset_id`, `created_at`, `updated_at`
+- `id`, `campaign_id`, `creative_truth` (claims/RTBs, CTAs/specs, constraints), `creative_tone`, optional `selected_style_id`, optional `key_visual_asset_id`, `created_at`, `updated_at`
+
+### `StrategyModel` creative foundation
+- `creative_foundation.big_idea`, `key_message`, optional `tagline_or_campaign_line`
+- `creative_foundation.creative_territories`: exactly 3 items
+- Each territory includes `id`, `title`, `concept`, `rationale`, `sample_executions`, `emotional_territory`, `selected`, `creative_direction`, and `kv_routes`
+- Exactly one creative territory must have `selected: true`
+- `creative_direction` is grouped into concise lists: `visual_direction`, `photography`, `motion_style`, `color_system`, `typography`
+- `kv_routes` contains 3 suggested key visual routes with `label`, `description`, and `headline`
 
 ### `StyleCardListResponse` / `StyleCardResponse`
 - `StyleCardListResponse`: `style_cards`, `total` (total count for pagination)

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useOutletContext } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { CampaignHeader } from "@/components/app/CampaignHeader";
@@ -34,8 +34,16 @@ export default function Campaign({ outletContext: outletContextProp }: CampaignP
   const modifyingContext = outletContext?.modifyingContext || null;
   const activeTab = outletContext?.activeTab || 'brief';
   const selectedTaskId = outletContext?.selectedTaskId || null;
-  const setActiveTab = outletContext?.setActiveTab || (() => {});
-  const setSelectedTaskId = outletContext?.setSelectedTaskId || (() => {});
+  const setActiveTab = outletContext?.setActiveTab;
+  const [pendingScroll, setPendingScroll] = useState<{
+    tab: CampaignTab;
+    sectionId: string;
+  } | null>(null);
+
+  const navigateToSection = useCallback((tab: CampaignTab, sectionId: string) => {
+    setPendingScroll({ tab, sectionId });
+    setActiveTab?.(tab);
+  }, [setActiveTab]);
   
   // Fetch chat to get campaign_id
   const { data: chatData, isLoading: chatLoading } = useQuery({
@@ -55,6 +63,34 @@ export default function Campaign({ outletContext: outletContextProp }: CampaignP
   useEffect(() => {
     setIsModifying(false, null);
   }, [chatId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!pendingScroll || pendingScroll.tab !== activeTab) return;
+
+    let attempts = 0;
+    let timer: number | undefined;
+
+    const tryScroll = () => {
+      const target = document.getElementById(pendingScroll.sectionId);
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        setPendingScroll(null);
+        return;
+      }
+      attempts += 1;
+      if (attempts < 20) {
+        timer = window.setTimeout(tryScroll, 75);
+      }
+    };
+
+    timer = window.setTimeout(tryScroll, 0);
+
+    return () => {
+      if (timer !== undefined) {
+        window.clearTimeout(timer);
+      }
+    };
+  }, [activeTab, pendingScroll]);
 
   if (chatLoading) {
     return (
@@ -109,7 +145,14 @@ export default function Campaign({ outletContext: outletContextProp }: CampaignP
       case 'strategy':
         return <StrategyTab campaignId={campaignId} {...commonProps} />;
       case 'creative':
-        return <CreativeTab campaignId={campaignId} chatId={chatId!} {...commonProps} />;
+        return (
+          <CreativeTab
+            campaignId={campaignId}
+            chatId={chatId!}
+            onNavigateToSection={navigateToSection}
+            {...commonProps}
+          />
+        );
       case 'analytics':
         return <AnalyticsTab {...commonProps} />;
       case 'settings':
@@ -131,7 +174,7 @@ export default function Campaign({ outletContext: outletContextProp }: CampaignP
             <CampaignTabs 
               activeTab={activeTab} 
               onTabChange={(tab) => {
-                setActiveTab(tab);
+                setActiveTab?.(tab);
               }} 
             />
             

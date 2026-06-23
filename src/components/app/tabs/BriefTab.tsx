@@ -83,7 +83,7 @@ export function BriefTab({ campaignId, isModifying }: BriefTabProps) {
     <div className="relative space-y-6">
       <ModificationOverlay isActive={isModifying || false} />
       {/* Campaign Goals */}
-      <div className="glass rounded-xl p-6">
+      <div id="brief-campaign-goals" className="glass rounded-xl p-6 scroll-mt-24">
         <h2 className="font-semibold mb-4">Campaign Goals</h2>
         
         <div className="space-y-4">

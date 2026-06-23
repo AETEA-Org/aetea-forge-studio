@@ -1,5 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
-import { getCampaignById } from "@/services/api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { getCampaignById, selectCreativeTerritory } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 import { normalizeStrategyFromApi } from "@/lib/normalizeStrategySection";
 import type { 
@@ -45,4 +45,29 @@ export function useCampaignResearch(campaignId: string | undefined) {
 
 export function useCampaignStrategy(campaignId: string | undefined) {
   return useCampaignSection<StrategyModel>(campaignId, 'strategy');
+}
+
+export function useSelectCreativeTerritory() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      campaignId,
+      territoryId,
+    }: {
+      campaignId: string;
+      territoryId: string;
+    }) => {
+      if (!user?.email) {
+        throw new Error("User not authenticated");
+      }
+      return selectCreativeTerritory(campaignId, user.email, territoryId);
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ['campaign', variables.campaignId, 'strategy', user?.email],
+      });
+    },
+  });
 }

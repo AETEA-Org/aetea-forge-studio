@@ -164,12 +164,38 @@ export interface InsightModel {
   single_minded_proposition: string;
 }
 
+export interface CreativeDirectionModel {
+  visual_direction: string[];
+  photography: string[];
+  motion_style: string[];
+  color_system: string[];
+  typography: string[];
+}
+
+export interface KeyVisualRouteModel {
+  label: string;
+  description: string;
+  headline: string;
+}
+
+export interface CreativeTerritoryModel {
+  id: string;
+  title: string;
+  concept: string;
+  rationale: string;
+  sample_executions: string[];
+  emotional_territory: string;
+  selected: boolean;
+  creative_direction: CreativeDirectionModel;
+  kv_routes: KeyVisualRouteModel[];
+}
+
 /** Canonical shape after client normalization (matches current API / StrategyModel). */
 export interface CreativeFoundationModel {
   big_idea: string;
   key_message: string;
   tagline_or_campaign_line: string | null;
-  creative_direction: string;
+  creative_territories: CreativeTerritoryModel[];
 }
 
 export interface StrategyModel {
@@ -325,6 +351,7 @@ export interface CreativeState {
   creative_truth: {
     claims_rtbs: string[];
     ctas_specs: string[];
+    constraints?: string[];
   };
   creative_tone: {
     concept: string;
@@ -414,6 +441,7 @@ export interface CreativeState {
   creative_truth: {
     claims_rtbs: string[];
     ctas_specs: string[];
+    constraints?: string[];
   };
   creative_tone: {
     concept: string;

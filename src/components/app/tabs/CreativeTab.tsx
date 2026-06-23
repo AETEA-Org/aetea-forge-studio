@@ -1,6 +1,7 @@
-import { useState, useCallback, useEffect } from "react";
-import { Loader2, Upload, X } from "lucide-react";
+import { useState, useCallback, useEffect, useMemo } from "react";
+import { BarChart3, Compass, Loader2, Target, Upload, Users, X } from "lucide-react";
 import { useCreativeState, useUpdateCreativeState } from "@/hooks/useCreativeState";
+import { useCampaignStrategy } from "@/hooks/useCampaignSection";
 import { useStyleCards } from "@/hooks/useStyleCards";
 import { useCampaignTasks } from "@/hooks/useCampaignTasks";
 import { useAuth } from "@/hooks/useAuth";
@@ -16,7 +17,9 @@ import { GenerateKeyVisualButton } from "./GenerateKeyVisualButton";
 import { CreativeTaskCard } from "./CreativeTaskCard";
 import { ModificationOverlay } from "@/components/app/ModificationOverlay";
 import { refreshAssetUrls } from "@/services/api";
+import { getSelectedCreativeTerritory } from "@/lib/normalizeStrategySection";
 import { cn } from "@/lib/utils";
+import type { CampaignTab } from "@/components/app/CampaignTabs";
 import {
   Dialog,
   DialogContent,
@@ -27,14 +30,21 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import type { KeyVisualRouteModel, StrategyModel } from "@/types/api";
 
 interface CreativeTabProps {
   campaignId: string;
   chatId: string;
   isModifying?: boolean;
+  onNavigateToSection?: (tab: CampaignTab, sectionId: string) => void;
 }
 
-export function CreativeTab({ campaignId, chatId, isModifying }: CreativeTabProps) {
+export function CreativeTab({
+  campaignId,
+  chatId,
+  isModifying,
+  onNavigateToSection,
+}: CreativeTabProps) {
   const { user } = useAuth();
   const { setIsModifying } = useModification();
   const { triggerAutoSend } = useAutoMessage();
@@ -44,6 +54,7 @@ export function CreativeTab({ campaignId, chatId, isModifying }: CreativeTabProp
   const [isGenerating, setIsGenerating] = useState(false);
   const [isKeyVisualDialogOpen, setIsKeyVisualDialogOpen] = useState(false);
   const [keyVisualDetails, setKeyVisualDetails] = useState("");
+  const [selectedKvRoute, setSelectedKvRoute] = useState<KeyVisualRouteModel | null>(null);
   const [referenceImages, setReferenceImages] = useState<File[]>([]);
   const [isDraggingImages, setIsDraggingImages] = useState(false);
 
@@ -53,6 +64,9 @@ export function CreativeTab({ campaignId, chatId, isModifying }: CreativeTabProp
   // Fetch creative state
   const { data: creativeState, isLoading, error } = useCreativeState(campaignId);
   const updateCreativeStateMutation = useUpdateCreativeState();
+  const { data: strategyData } = useCampaignStrategy(campaignId);
+  const strategy = strategyData?.content as StrategyModel | undefined;
+  const selectedTerritory = getSelectedCreativeTerritory(strategy?.creative_foundation);
 
   // Fetch campaign tasks (for Tasks section below Key Visual)
   const { data: tasksData, isLoading: tasksLoading } = useCampaignTasks(campaignId);
@@ -94,7 +108,10 @@ export function CreativeTab({ campaignId, chatId, isModifying }: CreativeTabProp
     }
   }, [shouldLoadStyleCards]);
 
-  const styleCards = shouldLoadStyleCards ? accumulatedStyleCards : [];
+  const styleCards = useMemo(
+    () => (shouldLoadStyleCards ? accumulatedStyleCards : []),
+    [accumulatedStyleCards, shouldLoadStyleCards]
+  );
   const totalStyleCards = styleCardsData?.total ?? 0;
   // When API omits total (null), infer hasMore from full-page response (30 cards = possibly more)
   const hasMoreStyleCards =
@@ -143,8 +160,28 @@ export function CreativeTab({ campaignId, chatId, isModifying }: CreativeTabProp
 
   const resetKeyVisualDialog = useCallback(() => {
     setKeyVisualDetails("");
+    setSelectedKvRoute(null);
     setReferenceImages([]);
     setIsDraggingImages(false);
+  }, []);
+
+  const creativeDirectionSummary = selectedTerritory
+    ? Object.entries(selectedTerritory.creative_direction)
+        .map(([label, values]) => `${label.replace(/_/g, " ")}: ${values.join(", ")}`)
+        .join("\n")
+    : "";
+
+  const handleKvRouteClick = useCallback((route: KeyVisualRouteModel) => {
+    const routeText = `${route.label}: ${route.description}\nHeadline: ${route.headline}`;
+    setSelectedKvRoute(route);
+    setKeyVisualDetails((current) => {
+      const trimmed = current.trim();
+      if (!trimmed) return routeText;
+      if (trimmed.includes(route.description) || trimmed.includes(route.headline)) {
+        return current;
+      }
+      return `${trimmed}\n\n${routeText}`;
+    });
   }, []);
 
   const handleReferenceFiles = useCallback((files: FileList | null) => {
@@ -186,7 +223,7 @@ export function CreativeTab({ campaignId, chatId, isModifying }: CreativeTabProp
     if (validImages.length > 0) {
       setReferenceImages((prev) => [...prev, ...validImages].slice(0, MAX_REFERENCE_IMAGES));
     }
-  }, [referenceImages.length, toast]);
+  }, [MAX_IMAGE_SIZE_BYTES, referenceImages.length, toast]);
 
   const handleRemoveReferenceImage = useCallback((index: number) => {
     setReferenceImages((prev) => prev.filter((_, i) => i !== index));
@@ -208,6 +245,12 @@ export function CreativeTab({ campaignId, chatId, isModifying }: CreativeTabProp
 
       const messageParts = [
         "Generate a key visual using the selected style and following details:",
+        selectedTerritory ? `selected creative territory: ${selectedTerritory.title}` : "",
+        selectedTerritory ? `territory concept: ${selectedTerritory.concept}` : "",
+        creativeDirectionSummary ? `selected creative direction:\n${creativeDirectionSummary}` : "",
+        selectedKvRoute
+          ? `selected KV route: ${selectedKvRoute.label}\n${selectedKvRoute.description}\nHeadline: ${selectedKvRoute.headline}`
+          : "",
         normalizedDetails,
         styleLine,
         imageNames ? `reference images ${imageNames}` : "",
@@ -251,11 +294,12 @@ export function CreativeTab({ campaignId, chatId, isModifying }: CreativeTabProp
     selectedStyleId,
     styleCards,
     keyVisualDetails,
+    selectedTerritory,
+    creativeDirectionSummary,
+    selectedKvRoute,
     referenceImages,
     user,
-    campaignId,
     isGenerating,
-    updateCreativeStateMutation,
     triggerAutoSend,
     setIsModifying,
     toast,
@@ -288,6 +332,92 @@ export function CreativeTab({ campaignId, chatId, isModifying }: CreativeTabProp
         isActive={isModifying || false}
         message="AETEA is modifying campaign..."
       />
+
+      <section className="mb-6 border-b border-border pb-5">
+        <div className="mb-3 flex items-end justify-between gap-4">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-primary">
+              Campaign DNA
+            </p>
+            <h3 className="text-base font-semibold">
+              Core signals for creative execution
+            </h3>
+          </div>
+          <p className="hidden max-w-md text-right text-xs text-muted-foreground md:block">
+            Jump to the strategic inputs that should shape every asset.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+          <button
+            type="button"
+            className="group rounded-md border border-border bg-muted/20 px-3 py-3 text-left transition-colors hover:border-primary/50 hover:bg-primary/5"
+            onClick={() => onNavigateToSection?.('brief', 'brief-campaign-goals')}
+          >
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-background text-primary transition-colors group-hover:border-primary/40">
+                <Target className="h-4 w-4" />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Brief
+                </span>
+                <span className="block truncate text-sm font-medium">Objectives</span>
+              </span>
+            </div>
+          </button>
+          <button
+            type="button"
+            className="group rounded-md border border-border bg-muted/20 px-3 py-3 text-left transition-colors hover:border-primary/50 hover:bg-primary/5"
+            onClick={() => onNavigateToSection?.('strategy', 'strategy-kpis')}
+          >
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-background text-primary transition-colors group-hover:border-primary/40">
+                <BarChart3 className="h-4 w-4" />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Strategy
+                </span>
+                <span className="block truncate text-sm font-medium">KPI targets</span>
+              </span>
+            </div>
+          </button>
+          <button
+            type="button"
+            className="group rounded-md border border-border bg-muted/20 px-3 py-3 text-left transition-colors hover:border-primary/50 hover:bg-primary/5"
+            onClick={() => onNavigateToSection?.('strategy', 'strategy-audience')}
+          >
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-background text-primary transition-colors group-hover:border-primary/40">
+                <Users className="h-4 w-4" />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Strategy
+                </span>
+                <span className="block truncate text-sm font-medium">Audience map</span>
+              </span>
+            </div>
+          </button>
+          <button
+            type="button"
+            className="group rounded-md border border-border bg-muted/20 px-3 py-3 text-left transition-colors hover:border-primary/50 hover:bg-primary/5"
+            onClick={() => onNavigateToSection?.('strategy', 'strategy-creative-foundation')}
+          >
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-background text-primary transition-colors group-hover:border-primary/40">
+                <Compass className="h-4 w-4" />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Strategy
+                </span>
+                <span className="block truncate text-sm font-medium">Foundation</span>
+              </span>
+            </div>
+          </button>
+        </div>
+      </section>
 
       {/* Two-column card layout per plan */}
       <div className="grid grid-cols-2 gap-6">
@@ -375,6 +505,34 @@ export function CreativeTab({ campaignId, chatId, isModifying }: CreativeTabProp
               void handleGenerateKeyVisual();
             }}
           >
+            {selectedTerritory?.kv_routes.length ? (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">
+                  Suggested KV routes
+                </label>
+                <div className="grid gap-2">
+                  {selectedTerritory.kv_routes.map((route) => (
+                    <button
+                      key={`${route.label}-${route.headline}`}
+                      type="button"
+                      onClick={() => handleKvRouteClick(route)}
+                      disabled={isGenerating}
+                      className={cn(
+                        "rounded-lg border px-3 py-2 text-left transition-colors",
+                        selectedKvRoute?.label === route.label
+                          ? "border-primary bg-primary/10"
+                          : "border-border hover:border-primary/50"
+                      )}
+                    >
+                      <div className="text-sm font-medium">{route.label}</div>
+                      <div className="text-xs text-muted-foreground">{route.description}</div>
+                      <div className="text-xs text-primary mt-1">{route.headline}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground" htmlFor="key-visual-details">
                 Additional details (optional)

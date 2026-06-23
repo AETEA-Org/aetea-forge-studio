@@ -29,7 +29,9 @@ export function CreativeTruthCard({ flipped, onFlip, data }: CreativeTruthCardPr
           style={{ backfaceVisibility: 'hidden' }}
         >
           <Sparkles className="h-12 w-12 text-primary mb-4" />
-          <h3 className="text-xl font-semibold mb-2">Creative Truth</h3>
+          <h3 className="text-xl font-semibold mb-2 text-center">
+            Creative Truth & Constraints
+          </h3>
           <p className="text-sm text-muted-foreground">Click to view</p>
         </div>
 
@@ -42,7 +44,7 @@ export function CreativeTruthCard({ flipped, onFlip, data }: CreativeTruthCardPr
           style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
         >
           <div className="flex items-start justify-between mb-4">
-            <h3 className="text-lg font-semibold">Creative Truth</h3>
+            <h3 className="text-lg font-semibold">Creative Truth & Constraints</h3>
             <button
               onClick={onFlip}
               className="p-2 hover:bg-muted rounded-md transition-colors"
@@ -84,6 +86,22 @@ export function CreativeTruthCard({ flipped, onFlip, data }: CreativeTruthCardPr
                 </ul>
               ) : (
                 <p className="text-sm text-muted-foreground">No CTAs/Specs available</p>
+              )}
+            </div>
+
+            <div>
+              <h4 className="text-sm font-medium mb-3">Constraints</h4>
+              {data?.constraints && data.constraints.length > 0 ? (
+                <ul className="space-y-2">
+                  {data.constraints.map((constraint, index) => (
+                    <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
+                      <span className="text-primary mt-1">•</span>
+                      <span>{constraint}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-muted-foreground">No constraints available</p>
               )}
             </div>
           </div>

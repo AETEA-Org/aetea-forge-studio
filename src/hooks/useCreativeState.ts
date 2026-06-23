@@ -29,6 +29,7 @@ export function useUpdateCreativeState() {
         creative_truth?: {
           claims_rtbs: string[];
           ctas_specs: string[];
+          constraints?: string[];
         } | null;
         creative_tone?: {
           concept: string;

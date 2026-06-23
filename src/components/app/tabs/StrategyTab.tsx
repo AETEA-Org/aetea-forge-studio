@@ -1,8 +1,15 @@
-import { Loader2, ArrowRight } from "lucide-react";
-import { useCampaignStrategy } from "@/hooks/useCampaignSection";
+import { Loader2, ArrowRight, CheckCircle2 } from "lucide-react";
+import {
+  useCampaignStrategy,
+  useSelectCreativeTerritory,
+} from "@/hooks/useCampaignSection";
 import { Markdown } from "@/components/ui/markdown";
 import { ModificationOverlay } from "@/components/app/ModificationOverlay";
-import { hasCreativeFoundationContent } from "@/lib/normalizeStrategySection";
+import {
+  getSelectedCreativeTerritory,
+  hasCreativeFoundationContent,
+} from "@/lib/normalizeStrategySection";
+import { useToast } from "@/hooks/use-toast";
 import type { StrategyModel } from "@/types/api";
 
 interface StrategyTabProps {
@@ -12,6 +19,8 @@ interface StrategyTabProps {
 
 export function StrategyTab({ campaignId, isModifying }: StrategyTabProps) {
   const { data, isLoading, error } = useCampaignStrategy(campaignId);
+  const selectTerritoryMutation = useSelectCreativeTerritory();
+  const { toast } = useToast();
   const strategy = data?.content as StrategyModel | undefined;
 
   if (isLoading) {
@@ -60,13 +69,32 @@ export function StrategyTab({ campaignId, isModifying }: StrategyTabProps) {
   const personas = strategy.audience_mapping?.personas || [];
   const channels = strategy.channel_strategy?.channels || [];
   const contentCalendar = strategy.channel_strategy?.content_calendar || [];
+  const creativeFoundation = strategy.creative_foundation;
+  const selectedTerritory = getSelectedCreativeTerritory(creativeFoundation);
+
+  const handleSelectTerritory = async (territoryId: string) => {
+    if (!creativeFoundation || selectedTerritory?.id === territoryId) return;
+    try {
+      await selectTerritoryMutation.mutateAsync({ campaignId, territoryId });
+      toast({
+        title: "Creative territory selected",
+        description: "Strategy has been updated.",
+      });
+    } catch (err) {
+      toast({
+        title: "Failed to select territory",
+        description: err instanceof Error ? err.message : "An error occurred",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className="relative space-y-6">
       <ModificationOverlay isActive={isModifying || false} />
       
       {/* 1. Audience Mapping */}
-      <div className="glass rounded-xl p-6">
+      <div id="strategy-audience" className="glass rounded-xl p-6 scroll-mt-24">
         <h2 className="font-semibold mb-4">Audience Mapping</h2>
         
         {/* Segments */}
@@ -174,52 +202,129 @@ export function StrategyTab({ campaignId, isModifying }: StrategyTabProps) {
       )}
 
       {/* 3. Creative Foundation */}
-      {strategy.creative_foundation &&
-        hasCreativeFoundationContent(strategy.creative_foundation) && (
-          <div className="glass rounded-xl p-6 border-2 border-primary/30 bg-gradient-to-br from-primary/10 to-primary/5">
+      {creativeFoundation &&
+        hasCreativeFoundationContent(creativeFoundation) && (
+          <div
+            id="strategy-creative-foundation"
+            className="glass rounded-xl p-6 border-2 border-primary/30 bg-gradient-to-br from-primary/10 to-primary/5 scroll-mt-24"
+          >
             <h2 className="font-semibold mb-4 text-primary">Creative Foundation</h2>
             <div className="space-y-5">
-              {strategy.creative_foundation.big_idea.trim() !== "" && (
+              {creativeFoundation.big_idea.trim() !== "" && (
                 <div>
                   <h3 className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">
                     Big Idea
                   </h3>
                   <div className="text-2xl md:text-3xl font-bold text-primary tracking-tight">
                     <Markdown className="leading-tight">
-                      {strategy.creative_foundation.big_idea}
+                      {creativeFoundation.big_idea}
                     </Markdown>
                   </div>
                 </div>
               )}
-              {strategy.creative_foundation.key_message.trim() !== "" && (
+              {creativeFoundation.key_message.trim() !== "" && (
                 <div>
                   <h3 className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">
                     Key Message
                   </h3>
                   <Markdown className="text-sm leading-relaxed">
-                    {strategy.creative_foundation.key_message}
+                    {creativeFoundation.key_message}
                   </Markdown>
                 </div>
               )}
-              {strategy.creative_foundation.tagline_or_campaign_line != null &&
-                strategy.creative_foundation.tagline_or_campaign_line.trim() !== "" && (
+              {creativeFoundation.tagline_or_campaign_line != null &&
+                creativeFoundation.tagline_or_campaign_line.trim() !== "" && (
                   <div>
                     <h3 className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">
                       Tag Line
                     </h3>
                     <Markdown className="text-sm leading-relaxed">
-                      {strategy.creative_foundation.tagline_or_campaign_line}
+                      {creativeFoundation.tagline_or_campaign_line}
                     </Markdown>
                   </div>
                 )}
-              {strategy.creative_foundation.creative_direction.trim() !== "" && (
+
+              {creativeFoundation.creative_territories.length > 0 && (
                 <div>
                   <h3 className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">
-                    Creative Direction
+                    Creative Territories
                   </h3>
-                  <Markdown className="text-sm text-muted-foreground leading-relaxed">
-                    {strategy.creative_foundation.creative_direction}
-                  </Markdown>
+                  <div className="grid md:grid-cols-3 gap-4">
+                    {creativeFoundation.creative_territories.map((territory) => (
+                      <button
+                        key={territory.id}
+                        type="button"
+                        onClick={() => void handleSelectTerritory(territory.id)}
+                        disabled={selectTerritoryMutation.isPending}
+                        className={`text-left rounded-lg border p-4 transition-colors ${
+                          territory.selected
+                            ? "border-primary bg-primary/10"
+                            : "border-border bg-background/60 hover:border-primary/50"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3 mb-2">
+                          <h4 className="font-medium text-sm">{territory.title}</h4>
+                          {territory.selected && (
+                            <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
+                          )}
+                        </div>
+                        <p className="text-xs text-primary mb-2">
+                          {territory.selected ? "AETEA Recommended" : territory.emotional_territory}
+                        </p>
+                        <Markdown className="text-xs text-muted-foreground mb-3">
+                          {territory.concept}
+                        </Markdown>
+                        {territory.rationale && (
+                          <Markdown className="text-xs text-muted-foreground mb-3">
+                            {territory.rationale}
+                          </Markdown>
+                        )}
+                        {territory.sample_executions.length > 0 && (
+                          <ul className="space-y-1">
+                            {territory.sample_executions.slice(0, 4).map((execution, index) => (
+                              <li
+                                key={`${territory.id}-execution-${index}`}
+                                className="text-xs text-muted-foreground flex gap-1.5"
+                              >
+                                <span className="text-primary">•</span>
+                                <span>{execution}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedTerritory && (
+                <div>
+                  <h3 className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">
+                    Selected Creative Direction
+                  </h3>
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {Object.entries(selectedTerritory.creative_direction).map(
+                      ([label, values]) => (
+                        <div key={label} className="rounded-lg bg-background/60 border border-border p-3">
+                          <h4 className="text-xs font-medium capitalize mb-2">
+                            {label.replace(/_/g, " ")}
+                          </h4>
+                          <ul className="space-y-1">
+                            {values.map((value, index) => (
+                              <li
+                                key={`${label}-${index}`}
+                                className="text-xs text-muted-foreground flex gap-1.5"
+                              >
+                                <span className="text-primary">•</span>
+                                <span>{value}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -227,7 +332,7 @@ export function StrategyTab({ campaignId, isModifying }: StrategyTabProps) {
         )}
 
       {/* 4. Strategic Doctrine */}
-      <div className="glass rounded-xl p-6">
+      <div id="strategy-kpis" className="glass rounded-xl p-6 scroll-mt-24">
         <h2 className="font-semibold mb-4">Strategic Doctrine</h2>
         <ul className="space-y-2">
           {doctrine.map((item, i) => (

@@ -21,6 +21,7 @@ import type {
   CampaignTasksResponse,
   CampaignTask,
   DeliverablesResponse,
+  StrategyModel,
 } from "@/types/api";
 
 // Direct API base URL (bypassing Supabase Edge Function)
@@ -256,6 +257,30 @@ export async function getCampaignById(
     throw new Error(error.detail || 'Failed to fetch campaign');
   }
   
+  return response.json();
+}
+
+export async function selectCreativeTerritory(
+  campaignId: string,
+  userEmail: string,
+  territoryId: string
+): Promise<StrategyModel> {
+  const response = await fetch(
+    buildUrl(`/campaigns/${campaignId}/strategy/selected-territory`, {
+      user_id: userEmail,
+    }),
+    {
+      method: 'PATCH',
+      headers: getHeaders('application/json'),
+      body: JSON.stringify({ territory_id: territoryId }),
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to select creative territory');
+  }
+
   return response.json();
 }
 
