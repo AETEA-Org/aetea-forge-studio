@@ -427,6 +427,21 @@ export interface DeliverableObjectsResponse {
   objects: DeliverableObject[];
 }
 
+// Asset folders (GET /assets/folders) — flat list, client builds the tree
+export interface AssetFolder {
+  id: string;
+  chat_id: string;
+  parent_folder_id: string | null;
+  name: string;
+  created_by: string;
+  is_system: boolean;
+  created_at: string;
+}
+
+export interface AssetFoldersResponse {
+  folders: AssetFolder[];
+}
+
 /** @deprecated Use DeliverableObject — legacy item/component model removed */
 export interface DeliverableComponent {
   id: string;

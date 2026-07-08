@@ -21,6 +21,8 @@ import type {
   CampaignTasksResponse,
   CampaignTask,
   DeliverableObjectsResponse,
+  DeliverableObject,
+  AssetFoldersResponse,
 } from "@/types/api";
 
 // Direct API base URL (bypassing Supabase Edge Function)
@@ -648,7 +650,8 @@ export async function sendChatMessage(
   onAssets?: (items: StreamAssetHint[]) => void,
   onComplete?: (content: string) => void,
   onError?: (message: string) => void,
-  branchId: string = 'main'
+  branchId: string = 'main',
+  referenceAssetIds?: string[]
 ): Promise<void> {
   const url = buildUrl('/ai/chat');
   
@@ -661,6 +664,12 @@ export async function sendChatMessage(
   
   if (context) {
     formData.append('context', context);
+  }
+
+  if (referenceAssetIds && referenceAssetIds.length > 0) {
+    referenceAssetIds.forEach((id) => {
+      formData.append('reference_asset_ids', id);
+    });
   }
   
   if (files && files.length > 0) {
@@ -875,6 +884,76 @@ export async function getCampaignTaskDeliverables(
   if (!response.ok) {
     const err = await response.json();
     throw new Error(err.detail || 'Failed to fetch deliverable objects');
+  }
+  return response.json();
+}
+
+/** PATCH a deliverable object's canvas placement (drag/resize). */
+export async function patchDeliverableObjectPosition(
+  taskId: string,
+  objectId: string,
+  userEmail: string,
+  position: {
+    canvas_x?: number;
+    canvas_y?: number;
+    canvas_width?: number;
+    canvas_height?: number;
+    canvas_z_index?: number;
+  }
+): Promise<DeliverableObject> {
+  const response = await fetch(
+    buildUrl(
+      `/campaigns/tasks/${taskId}/deliverable-objects/${objectId}/position`,
+      { user_id: userEmail }
+    ),
+    {
+      method: 'PATCH',
+      headers: getHeaders('application/json'),
+      body: JSON.stringify(position),
+    }
+  );
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.detail || 'Failed to update deliverable position');
+  }
+  return response.json();
+}
+
+/** PATCH to approve a deliverable object (user-only). */
+export async function approveDeliverableObject(
+  taskId: string,
+  objectId: string,
+  userEmail: string
+): Promise<DeliverableObject> {
+  const response = await fetch(
+    buildUrl(
+      `/campaigns/tasks/${taskId}/deliverable-objects/${objectId}/approve`,
+      { user_id: userEmail }
+    ),
+    {
+      method: 'PATCH',
+      headers: getHeaders(),
+    }
+  );
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.detail || 'Failed to approve deliverable object');
+  }
+  return response.json();
+}
+
+/** GET the full flat folder list for a chat (client builds the tree). */
+export async function getAssetFolders(
+  chatId: string,
+  userEmail: string
+): Promise<AssetFoldersResponse> {
+  const response = await fetch(
+    buildUrl('/assets/folders', { user_id: userEmail, chat_id: chatId }),
+    { headers: getHeaders() }
+  );
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.detail || 'Failed to fetch asset folders');
   }
   return response.json();
 }

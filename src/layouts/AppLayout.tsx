@@ -54,11 +54,13 @@ export function AppLayout() {
     <ModificationProvider setIsModifying={handleModification}>
       <AutoMessageProvider>
       <div className="flex h-screen bg-background overflow-hidden">
-        {/* Left Sidebar */}
-        <Sidebar 
-          collapsed={sidebarCollapsed} 
-          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} 
-        />
+        {/* Left Sidebar - hidden on the canvas view (task open); canvas has its own Back button */}
+        {!taskId && (
+          <Sidebar 
+            collapsed={sidebarCollapsed} 
+            onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} 
+          />
+        )}
 
         {/* Main Content */}
         <main className="flex-1 overflow-y-auto custom-scrollbar">

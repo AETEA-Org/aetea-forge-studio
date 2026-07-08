@@ -14,8 +14,7 @@ import Auth from "./pages/Auth";
 import AppPage from "./pages/App";
 import { CampaignShell } from "./layouts/CampaignShell";
 import ChatOrCampaign from "./pages/ChatOrCampaign";
-import TaskDetailPage from "./pages/TaskDetailPage";
-import TaskReviewPage from "./pages/TaskReviewPage";
+import DeliverableCanvasPage from "./pages/DeliverableCanvasPage";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
@@ -45,8 +44,7 @@ const App = () => (
                 <Route index element={<AppPage />} />
                 <Route path="chat/:chatId" element={<CampaignShell />}>
                   <Route index element={<ChatOrCampaign />} />
-                  <Route path="task/:taskId" element={<TaskDetailPage />} />
-                  <Route path="task/:taskId/review" element={<TaskReviewPage />} />
+                  <Route path="task/:taskId" element={<DeliverableCanvasPage />} />
                 </Route>
                 <Route path="settings" element={<Settings />} />
               </Route>

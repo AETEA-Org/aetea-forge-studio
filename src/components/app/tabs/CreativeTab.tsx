@@ -629,9 +629,9 @@ export function CreativeTab({
         </DialogContent>
       </Dialog>
 
-      {/* Tasks - list of campaign tasks (task detail page later) */}
+      {/* Deliverables - list of campaign tasks; each opens the canvas workspace */}
       <section className="mt-8 pt-6 border-t border-border">
-        <h3 className="text-lg font-semibold mb-4">Tasks</h3>
+        <h3 className="text-lg font-semibold mb-4">Deliverables</h3>
         {tasksLoading ? (
           <div className="flex justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
