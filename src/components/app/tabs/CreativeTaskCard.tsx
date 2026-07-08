@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { FileText, Image, Video } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { CampaignTask, CampaignTaskStatus, CampaignTaskType } from "@/types/api";
+import type { CampaignTask, CampaignTaskStatus } from "@/types/api";
 
 interface CreativeTaskCardProps {
   task: CampaignTask;
@@ -15,21 +15,20 @@ const statusConfig: Record<CampaignTaskStatus, { label: string; className: strin
   done: { label: 'Done', className: 'bg-green-500/20 text-green-600 dark:text-green-400' },
 };
 
-function TypeIcon({ type }: { type: CampaignTaskType }) {
-  switch (type) {
-    case 'text':
-      return <FileText className="h-4 w-4 shrink-0" />;
-    case 'image':
-      return <Image className="h-4 w-4 shrink-0" />;
-    case 'video':
-      return <Video className="h-4 w-4 shrink-0" />;
-    default:
-      return <FileText className="h-4 w-4 shrink-0" />;
+function CategoryIcon({ category }: { category: string | null }) {
+  const cat = (category || "").toLowerCase();
+  if (cat.includes("image")) {
+    return <Image className="h-4 w-4 shrink-0" />;
   }
+  if (cat.includes("video")) {
+    return <Video className="h-4 w-4 shrink-0" />;
+  }
+  return <FileText className="h-4 w-4 shrink-0" />;
 }
 
 export function CreativeTaskCard({ task, chatId }: CreativeTaskCardProps) {
   const status = statusConfig[task.status];
+  const categoryLabel = task.category?.replace(/_/g, " ") || "task";
 
   return (
     <Link
@@ -41,7 +40,7 @@ export function CreativeTaskCard({ task, chatId }: CreativeTaskCardProps) {
     >
       <div className="flex items-start gap-3 mb-3">
         <div className="shrink-0 text-muted-foreground">
-          <TypeIcon type={task.type} />
+          <CategoryIcon category={task.category} />
         </div>
         <p
           className="font-medium text-foreground line-clamp-3 break-words min-h-0"
@@ -59,7 +58,7 @@ export function CreativeTaskCard({ task, chatId }: CreativeTaskCardProps) {
         >
           {status.label}
         </span>
-        <span className="text-xs text-muted-foreground capitalize">{task.type}</span>
+        <span className="text-xs text-muted-foreground capitalize">{categoryLabel}</span>
       </div>
     </Link>
   );

@@ -20,8 +20,7 @@ import type {
   StyleCardsResponse,
   CampaignTasksResponse,
   CampaignTask,
-  DeliverablesResponse,
-  StrategyModel,
+  DeliverableObjectsResponse,
 } from "@/types/api";
 
 // Direct API base URL (bypassing Supabase Edge Function)
@@ -868,14 +867,14 @@ export async function getChatMessages(
 export async function getCampaignTaskDeliverables(
   taskId: string,
   userEmail: string
-): Promise<DeliverablesResponse> {
+): Promise<DeliverableObjectsResponse> {
   const response = await fetch(
-    buildUrl(`/campaigns/tasks/${taskId}/deliverables`, { user_id: userEmail }),
+    buildUrl(`/campaigns/tasks/${taskId}/deliverable-objects`, { user_id: userEmail }),
     { headers: getHeaders() }
   );
   if (!response.ok) {
     const err = await response.json();
-    throw new Error(err.detail || 'Failed to fetch task deliverables');
+    throw new Error(err.detail || 'Failed to fetch deliverable objects');
   }
   return response.json();
 }

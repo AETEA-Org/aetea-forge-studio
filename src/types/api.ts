@@ -382,17 +382,14 @@ export interface StyleCardsResponse {
 
 // Campaign tasks (GET /campaigns/{id}/tasks)
 export type CampaignTaskStatus = 'todo' | 'in_progress' | 'under_review' | 'done';
-export type CampaignTaskType = 'text' | 'image' | 'video';
 
 export interface CampaignTask {
   id: string;
   campaign_id: string;
-  type: CampaignTaskType;
-  subtype?: string;
+  category: string | null;
   title: string;
   description: string;
   status: CampaignTaskStatus;
-  body_copy: string | null;
   deadline: string | null;
   created_at: string;
   updated_at: string;
@@ -402,13 +399,19 @@ export interface CampaignTasksResponse {
   tasks: CampaignTask[];
 }
 
-export interface DeliverableComponent {
+export interface DeliverableObject {
   id: string;
-  deliverable_item_id?: string | null;
-  component_type: string;
-  asset_id?: string | null;
-  text_content?: string | null;
-  order_index?: number;
+  task_id: string;
+  asset_id: string;
+  object_type: string;
+  title?: string | null;
+  is_approved?: boolean;
+  approved_at?: string | null;
+  canvas_x?: number | null;
+  canvas_y?: number | null;
+  canvas_width?: number | null;
+  canvas_height?: number | null;
+  canvas_z_index?: number;
   file_name?: string | null;
   description?: string | null;
   mime_type?: string | null;
@@ -418,18 +421,32 @@ export interface DeliverableComponent {
   updated_at?: string;
 }
 
-export interface DeliverableItem {
-  id: string;
-  task_id?: string;
-  item_index: number;
-  title?: string | null;
-  status?: string | null;
-  components?: DeliverableComponent[];
-  created_at?: string;
-  updated_at?: string;
+export interface DeliverableObjectsResponse {
+  objects: DeliverableObject[];
 }
 
+/** @deprecated Use DeliverableObject — legacy item/component model removed */
+export interface DeliverableComponent {
+  id: string;
+  component_type: string;
+  asset_id?: string | null;
+  text_content?: string | null;
+  file_name?: string | null;
+  mime_type?: string | null;
+  view_url?: string | null;
+  download_url?: string | null;
+}
+
+/** @deprecated Use DeliverableObject */
+export interface DeliverableItem {
+  id: string;
+  title?: string | null;
+  components?: DeliverableComponent[];
+}
+
+/** @deprecated Use DeliverableObjectsResponse */
 export interface DeliverablesResponse {
+  objects?: DeliverableObject[];
   deliverables?: DeliverableItem[];
   items?: DeliverableItem[];
 }

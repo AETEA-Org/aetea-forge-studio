@@ -7,8 +7,6 @@ import {
   Image,
   Video,
   ListChecks,
-  ChevronLeft,
-  ChevronRight,
   ChevronDown,
   ChevronUp,
   Download,
@@ -34,11 +32,9 @@ import { useChatMessages } from "@/hooks/useChats";
 import { cn } from "@/lib/utils";
 import type {
   CampaignTaskStatus,
-  CampaignTaskType,
   ChatMessage,
   ChatRenderableAsset,
-  DeliverableComponent,
-  DeliverableItem,
+  DeliverableObject,
   StreamAssetHint,
 } from "@/types/api";
 import {
@@ -56,53 +52,64 @@ const statusConfig: Record<CampaignTaskStatus, { label: string; className: strin
   done: { label: 'Done', className: 'bg-green-500/20 text-green-600 dark:text-green-400' },
 };
 
-function classifyDeliverableComponent(c: DeliverableComponent): "media" | "text" | "pdf" | "other" {
-  const t = (c.component_type || "").toLowerCase();
-  const m = (c.mime_type || "").toLowerCase();
-  if (t === "pdf" || m === "application/pdf") return "pdf";
-  if (t === "image" || t === "video" || m.startsWith("image/") || m.startsWith("video/")) return "media";
-  if (t === "text") {
-    return c.text_content?.trim() ? "text" : "other";
-  }
-  if (c.text_content?.trim()) return "text";
-  return "other";
+function CategoryIcon({ category }: { category: string | null }) {
+  const cat = (category || "").toLowerCase();
+  if (cat.includes("image")) return <Image className="h-4 w-4 shrink-0" />;
+  if (cat.includes("video")) return <Video className="h-4 w-4 shrink-0" />;
+  return <FileText className="h-4 w-4 shrink-0" />;
 }
 
-function partitionDeliverableComponents(components: DeliverableComponent[]) {
-  let media: DeliverableComponent | undefined;
-  let text: DeliverableComponent | undefined;
-  let pdf: DeliverableComponent | undefined;
-  const other: DeliverableComponent[] = [];
-  for (const c of components) {
-    const kind = classifyDeliverableComponent(c);
-    if (kind === "pdf") {
-      if (!pdf) pdf = c;
-      else other.push(c);
-    } else if (kind === "media") {
-      if (!media) media = c;
-      else other.push(c);
-    } else if (kind === "text") {
-      if (!text) text = c;
-      else other.push(c);
-    } else {
-      other.push(c);
-    }
-  }
-  other.sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
-  return { media, text, pdf, other };
-}
+function DeliverableObjectPreview({ obj }: { obj: DeliverableObject }) {
+  const url = obj.view_url || obj.download_url || "";
+  const isVideo =
+    obj.object_type === "video" || obj.mime_type?.toLowerCase().startsWith("video/");
+  const isImage =
+    obj.object_type === "image" || obj.mime_type?.toLowerCase().startsWith("image/");
+  const label = obj.title?.trim() || obj.file_name || obj.object_type;
 
-function TypeIcon({ type }: { type: CampaignTaskType }) {
-  switch (type) {
-    case 'text':
-      return <FileText className="h-4 w-4 shrink-0" />;
-    case 'image':
-      return <Image className="h-4 w-4 shrink-0" />;
-    case 'video':
-      return <Video className="h-4 w-4 shrink-0" />;
-    default:
-      return <FileText className="h-4 w-4 shrink-0" />;
+  if (isImage && url) {
+    return (
+      <img
+        src={url}
+        alt={label}
+        className="max-w-full max-h-[280px] object-contain rounded-md"
+      />
+    );
   }
+  if (isVideo && url) {
+    return (
+      <video src={url} controls className="max-w-full max-h-[280px] rounded-md" />
+    );
+  }
+  return (
+    <div className="flex items-start gap-3 min-w-0">
+      <FileText className="h-10 w-10 shrink-0 text-muted-foreground" />
+      <div className="min-w-0">
+        <p className="font-medium text-sm">{obj.file_name || label}</p>
+        {obj.description && (
+          <p className="text-sm text-muted-foreground mt-1">{obj.description}</p>
+        )}
+        <div className="flex flex-wrap gap-2 mt-2">
+          {obj.view_url && (
+            <Button variant="outline" size="sm" asChild>
+              <a href={obj.view_url} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Open
+              </a>
+            </Button>
+          )}
+          {obj.download_url && (
+            <Button variant="outline" size="sm" asChild>
+              <a href={obj.download_url} download={obj.file_name || true}>
+                <Download className="h-4 w-4 mr-2" />
+                Download
+              </a>
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function TaskDetailPage() {
@@ -129,7 +136,6 @@ export default function TaskDetailPage() {
   const [optimisticMessages, setOptimisticMessages] = useState<ChatMessage[]>([]);
   const [isDetailsCollapsed, setIsDetailsCollapsed] = useState(true);
   const [deliverablesOpen, setDeliverablesOpen] = useState(false);
-  const [selectedDeliverableId, setSelectedDeliverableId] = useState<string | null>(null);
   const [streamingAssets, setStreamingAssets] = useState<ChatRenderableAsset[]>([]);
   const chatInputRef = useRef<ChatInputHandle>(null);
 
@@ -143,30 +149,14 @@ export default function TaskDetailPage() {
   const messages = [...serverMessages, ...optimisticMessages];
 
   const { data: deliverablesData, isLoading: deliverablesLoading } = useQuery({
-    queryKey: ['campaign-task-deliverables', taskId, user?.email],
+    queryKey: ['campaign-task-deliverable-objects', taskId, user?.email],
     queryFn: () => getCampaignTaskDeliverables(taskId!, user!.email!),
     enabled: deliverablesOpen && !!taskId && !!user?.email,
   });
 
-  const deliverables = useMemo<DeliverableItem[]>(() => {
-    const maybeItems = deliverablesData?.deliverables ?? deliverablesData?.items ?? [];
-    return Array.isArray(maybeItems) ? maybeItems : [];
+  const deliverableObjects = useMemo<DeliverableObject[]>(() => {
+    return deliverablesData?.objects ?? [];
   }, [deliverablesData]);
-
-  const selectedDeliverableIndex = deliverables.findIndex((item) => item.id === selectedDeliverableId);
-  const selectedDeliverable =
-    selectedDeliverableIndex >= 0 ? deliverables[selectedDeliverableIndex] : (deliverables[0] ?? null);
-
-  useEffect(() => {
-    if (!deliverablesOpen) return;
-    if (!deliverables.length) {
-      setSelectedDeliverableId(null);
-      return;
-    }
-    if (!selectedDeliverableId || !deliverables.some((d) => d.id === selectedDeliverableId)) {
-      setSelectedDeliverableId(deliverables[0].id);
-    }
-  }, [deliverablesOpen, deliverables, selectedDeliverableId]);
 
   useEffect(() => {
     if (taskId) setSelectedTaskId(taskId);
@@ -221,7 +211,7 @@ export default function TaskDetailPage() {
             setIsModifying(true, `task:${taskId}`);
           } else if (eventName === "campaign_modified") {
             queryClient.invalidateQueries({ queryKey: ['campaign-task', taskId, user.email] });
-            queryClient.invalidateQueries({ queryKey: ['campaign-task-deliverables', taskId, user.email] });
+            queryClient.invalidateQueries({ queryKey: ['campaign-task-deliverable-objects', taskId, user.email] });
           }
         },
         (hints: StreamAssetHint[]) => {
@@ -230,7 +220,7 @@ export default function TaskDetailPage() {
         async () => {
           await queryClient.refetchQueries({ queryKey: ['chat-messages', chatId, branchId] });
           queryClient.invalidateQueries({ queryKey: ['campaign-task', taskId, user.email] });
-          queryClient.invalidateQueries({ queryKey: ['campaign-task-deliverables', taskId, user.email] });
+          queryClient.invalidateQueries({ queryKey: ['campaign-task-deliverable-objects', taskId, user.email] });
           setIsModifying(false, null);
           setStreamingContent("");
           setStreamingAssets([]);
@@ -285,12 +275,7 @@ export default function TaskDetailPage() {
 
   const status = statusConfig[task.status];
   const taskDeadline = task.deadline ? new Date(task.deadline).toLocaleDateString() : null;
-  const { media, text, pdf, other } = partitionDeliverableComponents(
-    selectedDeliverable?.components ?? []
-  );
-  const hasPreviewContent = Boolean(
-    media || pdf || other.length || text?.text_content?.trim()
-  );
+  const categoryLabel = task.category?.replace(/_/g, " ") || "task";
 
   return (
     <div className={cn("relative min-h-full p-6 md:p-8 flex flex-col", isModifying && "pointer-events-none")}>
@@ -331,13 +316,8 @@ export default function TaskDetailPage() {
             <div className="px-4 pb-4 space-y-3 border-t border-border/60">
               <div className="flex flex-wrap items-center gap-3 pt-3">
                 <div className="flex items-center gap-2 text-muted-foreground">
-                  <TypeIcon type={task.type} />
-                  <span className="text-sm capitalize">{task.type}</span>
-                  {task.subtype && (
-                    <span className="text-sm">
-                      · {task.subtype.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
-                    </span>
-                  )}
+                  <CategoryIcon category={task.category} />
+                  <span className="text-sm capitalize">{categoryLabel}</span>
                 </div>
                 {taskDeadline && (
                   <span className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground">
@@ -401,221 +381,28 @@ export default function TaskDetailPage() {
             <div className="py-8 flex items-center justify-center">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
-          ) : deliverables.length === 0 ? (
+          ) : deliverableObjects.length === 0 ? (
             <div className="py-8 text-center text-muted-foreground">
-              No task deliverables yet.
+              No deliverable objects yet.
             </div>
           ) : (
-            <div className="grid md:grid-cols-[minmax(0,220px)_minmax(0,1fr)] gap-4 min-h-0 min-w-0 flex-1 overflow-hidden">
-              <div className="border border-border rounded-md p-2 space-y-2 overflow-y-auto max-h-[min(420px,50vh)] md:max-h-[min(420px,60vh)] min-w-0">
-                {deliverables.map((item, idx) => {
-                  const active = selectedDeliverable?.id === item.id;
-                  const itemLabel = item.title?.trim() || `Item ${item.item_index || idx + 1}`;
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => setSelectedDeliverableId(item.id)}
-                      className={cn(
-                        "w-full text-left px-3 py-2 rounded-md border transition-colors",
-                        active ? "bg-primary/10 border-primary text-primary" : "bg-card border-border hover:bg-muted/50"
-                      )}
-                    >
-                      <p className="text-sm font-medium truncate">{itemLabel}</p>
-                      {item.status && (
-                        <p className="text-xs text-muted-foreground mt-1 capitalize">{item.status}</p>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="border border-border rounded-md p-4 flex flex-col min-h-0 min-w-0 overflow-hidden max-w-full">
-                <div className="flex items-start justify-between mb-3 gap-2 min-w-0">
-                  <h3 className="font-semibold text-sm sm:text-base min-w-0 flex-1 break-words">
-                    {selectedDeliverable?.title?.trim() || `Item ${selectedDeliverable?.item_index ?? 1}`}
-                  </h3>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      disabled={selectedDeliverableIndex <= 0}
-                      onClick={() => {
-                        if (selectedDeliverableIndex <= 0) return;
-                        setSelectedDeliverableId(deliverables[selectedDeliverableIndex - 1].id);
-                      }}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      disabled={selectedDeliverableIndex < 0 || selectedDeliverableIndex >= deliverables.length - 1}
-                      onClick={() => {
-                        if (selectedDeliverableIndex < 0 || selectedDeliverableIndex >= deliverables.length - 1) return;
-                        setSelectedDeliverableId(deliverables[selectedDeliverableIndex + 1].id);
-                      }}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
+            <div className="space-y-4 overflow-y-auto max-h-[min(520px,70vh)] pr-1">
+              {deliverableObjects.map((obj) => (
+                <div
+                  key={obj.id}
+                  className="rounded-lg border border-border p-4 space-y-3"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-medium text-sm">
+                      {obj.title?.trim() || obj.file_name || obj.object_type}
+                    </p>
+                    <span className="text-xs uppercase text-muted-foreground">
+                      {obj.object_type}
+                    </span>
                   </div>
+                  <DeliverableObjectPreview obj={obj} />
                 </div>
-
-                {!hasPreviewContent ? (
-                  <p className="text-sm text-muted-foreground">No components in this deliverable.</p>
-                ) : (
-                  <div className="space-y-4 overflow-y-auto overflow-x-hidden pr-1 flex flex-col min-h-0 min-w-0 max-w-full">
-                    {media && (
-                      <section className="min-w-0 max-w-full overflow-hidden">
-                        <h4 className="text-xs font-medium text-muted-foreground mb-2">Preview</h4>
-                        <div className="rounded-lg border border-border bg-card overflow-hidden flex flex-col items-center justify-center min-h-[200px] p-2 w-full max-w-full">
-                          {(() => {
-                            const url = media.view_url || media.download_url || "";
-                            const isVideo =
-                              media.component_type?.toLowerCase() === "video" ||
-                              media.mime_type?.toLowerCase().startsWith("video/");
-                            const alt = media.file_name || media.description || "Deliverable visual";
-                            if (!url) {
-                              return (
-                                <p className="text-sm text-muted-foreground text-center px-2">
-                                  Preview unavailable
-                                  {media.asset_id ? ` · ${media.asset_id}` : ""}
-                                </p>
-                              );
-                            }
-                            if (isVideo) {
-                              return (
-                                <video
-                                  key={media.id}
-                                  src={url}
-                                  controls
-                                  className="max-w-full max-h-[400px] rounded-md"
-                                />
-                              );
-                            }
-                            return (
-                              <img
-                                key={media.id}
-                                src={url}
-                                alt={alt}
-                                className="max-w-full max-h-[400px] object-contain rounded-md"
-                              />
-                            );
-                          })()}
-                        </div>
-                      </section>
-                    )}
-
-                    {text?.text_content?.trim() && (
-                      <section className="min-w-0">
-                        <h4 className="text-xs font-medium text-muted-foreground mb-2">Copy</h4>
-                        <div className="rounded-lg border border-border bg-card p-4">
-                          <Markdown className="text-sm">{text.text_content}</Markdown>
-                        </div>
-                      </section>
-                    )}
-
-                    {pdf && (
-                      <section className="min-w-0 max-w-full overflow-hidden">
-                        <h4 className="text-xs font-medium text-muted-foreground mb-2">Document</h4>
-                        <div className="rounded-lg border border-border bg-card p-4 flex flex-col gap-3 min-w-0 max-w-full overflow-hidden">
-                          <div className="flex items-start gap-3 min-w-0">
-                            <FileText className="h-10 w-10 shrink-0 text-muted-foreground" aria-hidden />
-                            <div className="min-w-0 flex-1 space-y-1 overflow-hidden">
-                              <p className="font-medium text-sm break-words">
-                                {pdf.file_name?.trim() || "PDF"}
-                              </p>
-                              {pdf.description?.trim() ? (
-                                <p className="text-sm text-muted-foreground break-words hyphens-auto">
-                                  {pdf.description}
-                                </p>
-                              ) : null}
-                            </div>
-                          </div>
-                          <div className="flex flex-wrap gap-2 min-w-0">
-                            {pdf.view_url ? (
-                              <Button variant="outline" size="sm" asChild>
-                                <a href={pdf.view_url} target="_blank" rel="noopener noreferrer">
-                                  <ExternalLink className="h-4 w-4 mr-2" />
-                                  Open
-                                </a>
-                              </Button>
-                            ) : null}
-                            {pdf.download_url ? (
-                              <Button variant="outline" size="sm" asChild>
-                                <a href={pdf.download_url} download={pdf.file_name || true}>
-                                  <Download className="h-4 w-4 mr-2" />
-                                  Download
-                                </a>
-                              </Button>
-                            ) : null}
-                            {!pdf.view_url && !pdf.download_url ? (
-                              <p className="text-sm text-muted-foreground">
-                                Links unavailable
-                                {pdf.asset_id ? ` · ${pdf.asset_id}` : ""}
-                              </p>
-                            ) : null}
-                          </div>
-                        </div>
-                      </section>
-                    )}
-
-                    {other.length > 0 && (
-                      <section className="min-w-0">
-                        <h4 className="text-xs font-medium text-muted-foreground mb-2">Other</h4>
-                        <div className="space-y-2">
-                          {other.map((component) => (
-                            <div
-                              key={component.id}
-                              className="rounded-md border border-border p-3 space-y-2"
-                            >
-                              <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                                {component.component_type}
-                              </p>
-                              {component.text_content?.trim() ? (
-                                <Markdown className="text-sm">{component.text_content}</Markdown>
-                              ) : null}
-                              {component.view_url || component.download_url ? (
-                                <div className="flex flex-wrap gap-2">
-                                  {component.view_url ? (
-                                    <Button variant="outline" size="sm" asChild>
-                                      <a
-                                        href={component.view_url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                      >
-                                        Open
-                                      </a>
-                                    </Button>
-                                  ) : null}
-                                  {component.download_url ? (
-                                    <Button variant="outline" size="sm" asChild>
-                                      <a
-                                        href={component.download_url}
-                                        download={component.file_name || true}
-                                      >
-                                        Download
-                                      </a>
-                                    </Button>
-                                  ) : null}
-                                </div>
-                              ) : component.asset_id ? (
-                                <p className="text-sm text-muted-foreground">
-                                  Asset reference: {component.asset_id}
-                                </p>
-                              ) : (
-                                <p className="text-sm text-muted-foreground">No preview.</p>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </section>
-                    )}
-                  </div>
-                )}
-              </div>
+              ))}
             </div>
           )}
         </DialogContent>
