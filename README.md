@@ -22,11 +22,24 @@ Transform your creative briefs into comprehensive marketing campaigns with intel
 Upload your creative briefs (PDF, DOCX, TXT) and let AI extract key information, analyze market trends, and generate comprehensive campaign strategies.
 
 ### 📊 **Comprehensive Project Views**
-- **Overview**: High-level campaign summary with brand snapshot and strategy highlights
 - **Brief**: Detailed campaign goals, brand information, and project specifications
 - **Research**: Market analysis, competitor insights, audience mapping, and SWOT analysis
 - **Strategy**: Strategic doctrine, campaign pillars, KPIs, audience segmentation, and channel strategy
-- **Tasks**: Kanban-style task board to manage campaign execution
+- **Creative**: Creative truth/tone, key visual, style cards, and the **Deliverables** list —
+  each one opens a full canvas workspace for execution
+- **Assets**: a real per-chat folder tree (not a flat list) for uploaded and generated files
+
+> Note: there is no standalone "Overview" or "Tasks" tab — an `OverviewTab` component exists in
+> the codebase but isn't wired into navigation, and deliverable execution moved from a Kanban
+> board to the canvas workspace described below.
+
+### 🖼️ **Deliverable Canvas**
+An infinite, pannable/zoomable workspace (React Flow) for each deliverable: a task detail card,
+a task-scoped chat, and every AI-generated output as its own draggable, resizable card. Select a
+card to use it as a reference in your next message; approve a card to mark it the finalized
+output — approval is a user action only, never something the AI can do itself. A side panel gives
+quick-reference popups for the other campaign tabs and the asset folder tree without leaving the
+canvas, and a bottom-center switcher jumps between deliverables.
 
 ### 🎯 **Intelligent Features**
 - Real-time streaming progress updates during AI analysis
@@ -96,7 +109,8 @@ aetea-forge-studio/
 ├── src/
 │   ├── components/
 │   │   ├── app/              # Application-specific components
-│   │   │   ├── tabs/         # Project tab components
+│   │   │   ├── tabs/         # Campaign tab components (Brief, Research, Strategy, Creative, Assets, Analytics, Settings)
+│   │   │   ├── canvas/       # Deliverable canvas workspace (React Flow: workspace, nodes, left pane, switcher)
 │   │   │   ├── ProjectList.tsx
 │   │   │   ├── DeleteProjectDialog.tsx
 │   │   │   └── BriefAnalysisLoading.tsx
@@ -140,7 +154,8 @@ VITE_AETEA_API_TOKEN=your-huggingface-api-token
 2. **Add Context** (Optional): Provide additional context or specific instructions
 3. **Analyze**: Click "Analyze Brief" to start AI processing
 4. **Monitor Progress**: Watch real-time progress updates as AI analyzes your brief
-5. **Review Results**: Explore generated insights across Overview, Brief, Research, Strategy, and Tasks tabs
+5. **Review Results**: Explore generated insights across the Brief, Research, Strategy, Creative,
+   and Assets tabs
 
 ### Managing Projects
 
@@ -148,11 +163,12 @@ VITE_AETEA_API_TOKEN=your-huggingface-api-token
 - **Open Project**: Click any project to view its details
 - **Delete Project**: Click the three-dot menu next to a project and select "Delete"
 
-### Working with Tasks
+### Working with Deliverables
 
-- Navigate to the **Tasks** tab to view your execution task board
-- Organize tasks by status: To Do, In Progress, or Done
-- Drag and drop tasks between columns to update their status
+- Open the **Creative** tab and scroll to **Deliverables** to see your campaign's execution list
+- Click a deliverable to open its canvas workspace and work it with the AI
+- Status (`todo` → `in_progress` → `under_review` → `done`) is driven by the agent as work
+  progresses — there's no drag-and-drop board
 
 ---
 
