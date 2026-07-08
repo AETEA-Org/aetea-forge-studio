@@ -332,8 +332,10 @@ export interface Asset {
   user_id: string;
   chat_id: string;
   task_id: string | null;
-  folder_path: string;
+  folder_id?: string | null;
+  created_by?: string;
   file_name: string;
+  description?: string | null;
   view_url: string;
   download_url: string;
   mime_type: string;
