@@ -11,11 +11,13 @@ import {
   resolveStreamAssetHints,
   patchDeliverableObjectPosition,
   approveDeliverableObject,
+  refreshAssetUrls,
 } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 import { useModification } from "@/hooks/useModification";
 import { useToast } from "@/hooks/use-toast";
 import { useChatMessages } from "@/hooks/useChats";
+import { useCreativeState } from "@/hooks/useCreativeState";
 import { ModificationOverlay } from "@/components/app/ModificationOverlay";
 import type { ChatInputHandle } from "@/components/app/ChatInput";
 import type {
@@ -26,7 +28,10 @@ import type {
 } from "@/types/api";
 import { cn } from "@/lib/utils";
 import { CanvasContext, type CanvasContextValue } from "@/components/app/canvas/canvasContext";
-import { CanvasWorkspace } from "@/components/app/canvas/CanvasWorkspace";
+import {
+  CanvasWorkspace,
+  type KeyVisualProp,
+} from "@/components/app/canvas/CanvasWorkspace";
 import { CanvasLeftPane } from "@/components/app/canvas/CanvasLeftPane";
 import { CanvasSwitcher } from "@/components/app/canvas/CanvasSwitcher";
 import {
@@ -60,7 +65,7 @@ export default function DeliverableCanvasPage() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [optimisticMessages, setOptimisticMessages] = useState<ChatMessage[]>([]);
   const [streamingAssets, setStreamingAssets] = useState<ChatRenderableAsset[]>([]);
-  const [selectedObjectIds, setSelectedObjectIds] = useState<string[]>([]);
+  const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
   const [approvingIds, setApprovingIds] = useState<Set<string>>(new Set());
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [fixturePositions, setFixturePositions] = useState<FixturePositions>(() =>
@@ -75,6 +80,20 @@ export default function DeliverableCanvasPage() {
     enabled: !!chatId && !!user?.email,
   });
   const campaignId = chatData?.campaign_id ?? undefined;
+
+  const { data: creativeState } = useCreativeState(campaignId);
+  const keyVisualAssetId = creativeState?.key_visual_asset_id ?? null;
+  const { data: keyVisualUrl } = useQuery({
+    queryKey: ["asset-urls", keyVisualAssetId, user?.email],
+    queryFn: () =>
+      refreshAssetUrls(keyVisualAssetId!, user!.email!).then((r) => r.download_url),
+    enabled: !!keyVisualAssetId && !!user?.email,
+    staleTime: 50 * 60 * 1000,
+  });
+  const keyVisual: KeyVisualProp =
+    keyVisualAssetId && keyVisualUrl
+      ? { assetId: keyVisualAssetId, downloadUrl: keyVisualUrl }
+      : null;
 
   const { data: task, isLoading, error } = useQuery({
     queryKey: ["campaign-task", taskId, user?.email],
@@ -98,18 +117,6 @@ export default function DeliverableCanvasPage() {
     [deliverablesData]
   );
 
-  const objectById = useMemo(
-    () => new Map(objects.map((o) => [o.id, o])),
-    [objects]
-  );
-  const selectedAssetIds = useMemo(
-    () =>
-      selectedObjectIds
-        .map((id) => objectById.get(id)?.asset_id)
-        .filter((v): v is string => !!v),
-    [selectedObjectIds, objectById]
-  );
-
   useEffect(() => {
     if (taskId) setSelectedTaskId?.(taskId);
     return () => setSelectedTaskId?.(null);
@@ -117,7 +124,7 @@ export default function DeliverableCanvasPage() {
 
   // Reset per-task local UI state when the task changes.
   useEffect(() => {
-    setSelectedObjectIds([]);
+    setSelectedAssetIds([]);
     setFixturePositions(loadFixturePositions(taskId ?? ""));
     placedRef.current = new Set();
   }, [taskId]);
@@ -145,7 +152,7 @@ export default function DeliverableCanvasPage() {
   }, [chatId, navigate, setActiveTab]);
 
   const handleFixtureMoved = useCallback(
-    (which: "detail" | "chat", pos: XY) => {
+    (which: keyof FixturePositions, pos: XY) => {
       setFixturePositions((prev) => {
         const next = { ...prev, [which]: pos };
         if (taskId) saveFixturePositions(taskId, next);
@@ -257,6 +264,11 @@ export default function DeliverableCanvasPage() {
               queryClient.invalidateQueries({
                 queryKey: ["campaign-task-deliverable-objects", taskId, user.email],
               });
+              if (campaignId) {
+                queryClient.invalidateQueries({
+                  queryKey: ["creative", campaignId, user.email],
+                });
+              }
             }
           },
           (hints: StreamAssetHint[]) => {
@@ -272,6 +284,11 @@ export default function DeliverableCanvasPage() {
             queryClient.invalidateQueries({
               queryKey: ["campaign-task-deliverable-objects", taskId, user.email],
             });
+            if (campaignId) {
+              queryClient.invalidateQueries({
+                queryKey: ["creative", campaignId, user.email],
+              });
+            }
             setIsModifying(false, null);
             setStreamingContent("");
             setStreamingAssets([]);
@@ -307,6 +324,7 @@ export default function DeliverableCanvasPage() {
     },
     [
       branchId,
+      campaignId,
       chatId,
       isStreaming,
       mergeStreamAssets,
@@ -323,6 +341,7 @@ export default function DeliverableCanvasPage() {
     if (!task) return null;
     return {
       task,
+      objects,
       messages,
       threadAssets: messagesData?.assets ?? [],
       streamingAssets,
@@ -333,10 +352,11 @@ export default function DeliverableCanvasPage() {
       chatInputRef,
       onApprove: handleApprove,
       approvingIds,
-      referenceCount: selectedObjectIds.length,
+      referenceCount: selectedAssetIds.length,
     };
   }, [
     task,
+    objects,
     messages,
     messagesData?.assets,
     streamingAssets,
@@ -346,7 +366,7 @@ export default function DeliverableCanvasPage() {
     handleSend,
     handleApprove,
     approvingIds,
-    selectedObjectIds.length,
+    selectedAssetIds.length,
   ]);
 
   if (isLoading) {
@@ -409,11 +429,12 @@ export default function DeliverableCanvasPage() {
 
           <CanvasWorkspace
             objects={objects}
+            keyVisual={keyVisual}
             fixturePositions={fixturePositions}
             onFixtureMoved={handleFixtureMoved}
             onObjectMoved={handleObjectMoved}
             onObjectResized={handleObjectResized}
-            onSelectionChange={setSelectedObjectIds}
+            onSelectionChange={setSelectedAssetIds}
           />
 
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">

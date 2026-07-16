@@ -21,6 +21,8 @@ import { ObjectViewerDialog, objectKind, useTextContent } from "./ObjectViewer";
 const RESIZE_LINE = "!border-primary opacity-0 group-hover:opacity-100 transition-opacity";
 const RESIZE_HANDLE =
   "!bg-primary !border-background opacity-0 group-hover:opacity-100 transition-opacity";
+/** Larger fixed hit area — don't shrink with zoom (autoScale=false). */
+const RESIZE_HANDLE_STYLE = { width: 18, height: 18 };
 
 const statusConfig: Record<CampaignTaskStatus, { label: string; className: string }> = {
   todo: { label: "To do", className: "bg-muted text-muted-foreground" },
@@ -60,6 +62,8 @@ export const DetailCardNode = memo(function DetailCardNode() {
         minHeight={180}
         lineClassName={RESIZE_LINE}
         handleClassName={RESIZE_HANDLE}
+        handleStyle={RESIZE_HANDLE_STYLE}
+        autoScale={false}
       />
       <CardHeader
         title={task.title}
@@ -119,8 +123,10 @@ export const ChatWindowNode = memo(function ChatWindowNode() {
         minHeight={300}
         lineClassName={RESIZE_LINE}
         handleClassName={RESIZE_HANDLE}
+        handleStyle={RESIZE_HANDLE_STYLE}
+        autoScale={false}
       />
-      <CardHeader title="Task chat" />
+      <CardHeader title="AETEA Chat" />
       <div className="nodrag nowheel flex-1 min-h-0 flex flex-col">
         <ChatPanelDropZone
           className="flex-1 min-h-0"
@@ -136,6 +142,7 @@ export const ChatWindowNode = memo(function ChatWindowNode() {
               isStreaming={isStreaming}
               updateMessage={updateMessage}
               showEmptyState={false}
+              suppressInlineAssets
             />
           </div>
           <div className="px-2 pb-2">
@@ -323,7 +330,7 @@ export const DeliverableObjectNode = memo(function DeliverableObjectNode({
   data,
   selected,
 }: NodeProps) {
-  const { onApprove, approvingIds } = useCanvas();
+  const { onApprove, approvingIds, objects } = useCanvas();
   const { object } = data as DeliverableObjectNodeData;
   const [viewerOpen, setViewerOpen] = useState(false);
   const isApproving = approvingIds.has(object.id);
@@ -342,6 +349,8 @@ export const DeliverableObjectNode = memo(function DeliverableObjectNode({
         minHeight={140}
         lineClassName={RESIZE_LINE}
         handleClassName={RESIZE_HANDLE}
+        handleStyle={RESIZE_HANDLE_STYLE}
+        autoScale={false}
       />
       <div className="drag-handle flex items-center gap-2 px-2.5 py-1.5 border-b border-border/60 cursor-grab active:cursor-grabbing bg-muted/40">
         <span className="text-xs font-medium truncate flex-1">{title}</span>
@@ -368,7 +377,110 @@ export const DeliverableObjectNode = memo(function DeliverableObjectNode({
         </span>
       )}
 
-      <ObjectViewerDialog object={object} open={viewerOpen} onOpenChange={setViewerOpen} />
+      <ObjectViewerDialog
+        objects={objects}
+        initialObjectId={object.id}
+        open={viewerOpen}
+        onOpenChange={setViewerOpen}
+      />
+    </div>
+  );
+});
+
+export type KeyVisualNodeData = {
+  assetId: string | null;
+  downloadUrl: string | null;
+};
+
+/** Fixed campaign key-visual card — selectable as a generation reference. */
+export const KeyVisualNode = memo(function KeyVisualNode({
+  data,
+  selected,
+}: NodeProps) {
+  const { assetId, downloadUrl } = data as KeyVisualNodeData;
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const hasImage = Boolean(assetId && downloadUrl);
+
+  // Single-item list so ObjectViewerDialog can render without joining task deliverables.
+  const viewerObjects: DeliverableObject[] = hasImage
+    ? [
+        {
+          id: `key-visual:${assetId}`,
+          task_id: "",
+          asset_id: assetId!,
+          object_type: "image",
+          title: "Key Visual",
+          mime_type: "image/*",
+          view_url: downloadUrl,
+          download_url: downloadUrl,
+        },
+      ]
+    : [];
+
+  return (
+    <div
+      className={cn(
+        "group relative h-full w-full flex flex-col rounded-xl border bg-card shadow-sm overflow-hidden",
+        selected && hasImage
+          ? "border-primary ring-2 ring-primary/50"
+          : "border-border"
+      )}
+    >
+      <NodeResizer
+        minWidth={180}
+        minHeight={140}
+        lineClassName={RESIZE_LINE}
+        handleClassName={RESIZE_HANDLE}
+        handleStyle={RESIZE_HANDLE_STYLE}
+        autoScale={false}
+      />
+      <div className="drag-handle flex items-center gap-2 px-2.5 py-1.5 border-b border-border/60 cursor-grab active:cursor-grabbing bg-muted/40">
+        <span className="text-xs font-medium truncate flex-1">Key Visual</span>
+      </div>
+
+      <div className="flex-1 min-h-0 bg-muted/20">
+        {hasImage ? (
+          <img
+            src={downloadUrl!}
+            alt="Key visual"
+            className="nowheel pointer-events-none h-full w-full object-cover"
+            draggable={false}
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center p-4 text-center">
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              No key visual yet — generate one from the Creative tab
+            </p>
+          </div>
+        )}
+      </div>
+
+      {hasImage && downloadUrl && (
+        <div className="nodrag absolute top-1 right-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <IconAction label="View" onClick={() => setViewerOpen(true)}>
+            <Eye className="h-3.5 w-3.5" />
+          </IconAction>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button size="icon" variant="secondary" className="h-7 w-7 shadow-sm" asChild>
+                <a href={downloadUrl} download>
+                  <Download className="h-3.5 w-3.5" />
+                </a>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Download</TooltipContent>
+          </Tooltip>
+        </div>
+      )}
+
+      {viewerObjects.length > 0 && (
+        <ObjectViewerDialog
+          objects={viewerObjects}
+          initialObjectId={viewerObjects[0].id}
+          open={viewerOpen}
+          onOpenChange={setViewerOpen}
+        />
+      )}
     </div>
   );
 });

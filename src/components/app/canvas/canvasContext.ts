@@ -5,11 +5,14 @@ import type {
   CampaignTask,
   ChatMessage,
   ChatRenderableAsset,
+  DeliverableObject,
 } from "@/types/api";
 
 /** Everything the canvas nodes need, provided once so the node array stays stable. */
 export interface CanvasContextValue {
   task: CampaignTask;
+  /** Task deliverable objects — used by the object preview dialog for nav. */
+  objects: DeliverableObject[];
   // Task-scoped chat (mirrors the old TaskDetailPage chat)
   messages: ChatMessage[];
   threadAssets: Asset[];

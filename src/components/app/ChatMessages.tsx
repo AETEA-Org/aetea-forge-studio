@@ -22,6 +22,8 @@ interface ChatMessagesProps {
   isStreaming?: boolean;
   updateMessage?: string | null;
   showEmptyState?: boolean;
+  /** When true, skip inline asset thumbnails (canvas chat — objects appear as cards). */
+  suppressInlineAssets?: boolean;
 }
 
 export function ChatMessages({
@@ -32,6 +34,7 @@ export function ChatMessages({
   isStreaming,
   updateMessage,
   showEmptyState = true,
+  suppressInlineAssets = false,
 }: ChatMessagesProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const prevMessageCountRef = useRef<number>(0);
@@ -121,6 +124,8 @@ export function ChatMessages({
         {messages.map((message) => {
           const msgAssets = resolveMessageAssets(message);
           const hasText = Boolean(message.content?.trim());
+          const showAssets = !suppressInlineAssets && msgAssets.length > 0;
+          if (!showAssets && !hasText) return null;
           return (
             <div
               key={message.message_id}
@@ -138,7 +143,7 @@ export function ChatMessages({
                 )}
                 style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}
               >
-                {msgAssets.length > 0 ? (
+                {showAssets ? (
                   <ChatMessageAssets
                     assets={msgAssets}
                     className={message.role === "user" ? "[&_button]:border-primary-foreground/20" : undefined}
@@ -178,13 +183,16 @@ export function ChatMessages({
           </div>
         )}
 
-        {isStreaming && (streamingAssets.length > 0 || streamingContent) && (
+        {isStreaming &&
+          ((!suppressInlineAssets && streamingAssets.length > 0) || streamingContent) && (
           <div className="flex flex-col gap-1 items-start">
             <div
               className="max-w-[min(80%,100%)] min-w-0 overflow-hidden rounded-lg px-4 py-2.5 bg-muted text-foreground break-words space-y-3"
               style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}
             >
-              {streamingAssets.length > 0 ? <ChatMessageAssets assets={streamingAssets} /> : null}
+              {!suppressInlineAssets && streamingAssets.length > 0 ? (
+                <ChatMessageAssets assets={streamingAssets} />
+              ) : null}
               {streamingContent ? (
                 <Markdown className="text-sm leading-relaxed break-words">{streamingContent}</Markdown>
               ) : null}
