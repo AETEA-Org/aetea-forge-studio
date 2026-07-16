@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Download, FileText, Loader2 } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  FileText,
+  Loader2,
+  Pencil,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +22,8 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { DeliverableObject } from "@/types/api";
+import { useCanvas } from "./canvasContext";
+import { ImageEditorDialog } from "./imageEditor/ImageEditorDialog";
 
 export type ObjectKind = "image" | "video" | "pdf" | "text" | "other";
 
@@ -84,7 +93,7 @@ function thumbUrl(obj: DeliverableObject): string | null {
   return obj.view_url || obj.download_url || null;
 }
 
-/** Full-size in-app viewer with prev/next, filmstrip, and download. */
+/** Full-size in-app viewer with prev/next, filmstrip, download, and image Edit. */
 export function ObjectViewerDialog({
   objects,
   initialObjectId,
@@ -96,12 +105,17 @@ export function ObjectViewerDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const { chatId, campaignId, userEmail, task } = useCanvas();
   const initialIndex = useMemo(() => {
     const idx = objects.findIndex((o) => o.id === initialObjectId);
     return idx >= 0 ? idx : 0;
   }, [objects, initialObjectId]);
 
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editorTarget, setEditorTarget] = useState<DeliverableObject | null>(
+    null
+  );
 
   // Reset index when the dialog opens on a different object.
   useEffect(() => {
@@ -140,91 +154,155 @@ export function ObjectViewerDialog({
   const kind = objectKind(object);
   const url = object.view_url || object.download_url || "";
   const title = object.title?.trim() || object.file_name || object.object_type;
+  const canEdit = kind === "image" && Boolean(object.asset_id && url);
+
+  const openEditor = () => {
+    setEditorTarget(object);
+    onOpenChange(false);
+    // Let the preview Dialog unmount before opening the editor Dialog —
+    // opening both in the same tick fights Radix portals / focus traps.
+    window.setTimeout(() => setEditorOpen(true), 0);
+  };
+
+  const editorUrl =
+    editorTarget?.view_url || editorTarget?.download_url || "";
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl">
-        <DialogHeader className="pr-8">
-          <div className="flex items-center gap-2">
-            {showNav && (
-              <div className="flex items-center gap-0.5 shrink-0">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  disabled={!canPrev}
-                  onClick={goPrev}
-                  aria-label="Previous"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  disabled={!canNext}
-                  onClick={goNext}
-                  aria-label="Next"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
-            <DialogTitle className="truncate flex-1">{title}</DialogTitle>
-            {object.download_url && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" asChild>
-                    <a href={object.download_url} download={object.file_name || true}>
-                      <Download className="h-4 w-4" />
-                    </a>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader className="pr-8">
+            <div className="flex items-center gap-2">
+              {showNav && (
+                <div className="flex items-center gap-0.5 shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    disabled={!canPrev}
+                    onClick={goPrev}
+                    aria-label="Previous"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
                   </Button>
-                </TooltipTrigger>
-                <TooltipContent>Download</TooltipContent>
-              </Tooltip>
-            )}
-          </div>
-        </DialogHeader>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    disabled={!canNext}
+                    onClick={goNext}
+                    aria-label="Next"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+              <DialogTitle className="truncate flex-1">{title}</DialogTitle>
+              {canEdit && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8 shrink-0"
+                      onClick={openEditor}
+                      aria-label="Edit"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Edit</TooltipContent>
+                </Tooltip>
+              )}
+              {object.download_url && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8 shrink-0"
+                      asChild
+                    >
+                      <a
+                        href={object.download_url}
+                        download={object.file_name || true}
+                      >
+                        <Download className="h-4 w-4" />
+                      </a>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Download</TooltipContent>
+                </Tooltip>
+              )}
+            </div>
+          </DialogHeader>
 
-        <ObjectViewerBody kind={kind} url={url} title={title} open={open} />
+          <ObjectViewerBody kind={kind} url={url} title={title} open={open} />
 
-        {showNav && (
-          <div className="flex gap-2 overflow-x-auto pb-1 pt-1">
-            {objects.map((obj, i) => {
-              const tUrl = thumbUrl(obj);
-              const tKind = objectKind(obj);
-              const label = obj.title?.trim() || obj.file_name || obj.object_type;
-              return (
-                <button
-                  key={obj.id}
-                  type="button"
-                  onClick={() => setCurrentIndex(i)}
-                  className={cn(
-                    "relative h-14 w-14 shrink-0 overflow-hidden rounded-md border bg-muted/40",
-                    i === currentIndex
-                      ? "border-primary ring-2 ring-primary/40"
-                      : "border-border hover:border-muted-foreground/40"
-                  )}
-                  title={label}
-                  aria-label={label}
-                  aria-current={i === currentIndex ? "true" : undefined}
-                >
-                  {tKind === "image" && tUrl ? (
-                    <img src={tUrl} alt="" className="h-full w-full object-cover" />
-                  ) : tKind === "video" && tUrl ? (
-                    <video src={tUrl} muted className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center">
-                      <FileText className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+          {showNav && (
+            <div className="flex gap-2 overflow-x-auto pb-1 pt-1">
+              {objects.map((obj, i) => {
+                const tUrl = thumbUrl(obj);
+                const tKind = objectKind(obj);
+                const label =
+                  obj.title?.trim() || obj.file_name || obj.object_type;
+                return (
+                  <button
+                    key={obj.id}
+                    type="button"
+                    onClick={() => setCurrentIndex(i)}
+                    className={cn(
+                      "relative h-14 w-14 shrink-0 overflow-hidden rounded-md border bg-muted/40",
+                      i === currentIndex
+                        ? "border-primary ring-2 ring-primary/40"
+                        : "border-border hover:border-muted-foreground/40"
+                    )}
+                    title={label}
+                    aria-label={label}
+                    aria-current={i === currentIndex ? "true" : undefined}
+                  >
+                    {tKind === "image" && tUrl ? (
+                      <img
+                        src={tUrl}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    ) : tKind === "video" && tUrl ? (
+                      <video
+                        src={tUrl}
+                        muted
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <FileText className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {editorTarget && editorUrl && (
+        <ImageEditorDialog
+          open={editorOpen}
+          onOpenChange={(next) => {
+            setEditorOpen(next);
+            if (!next) setEditorTarget(null);
+          }}
+          assetId={editorTarget.asset_id}
+          imageUrl={editorUrl}
+          fileName={editorTarget.file_name}
+          chatId={chatId}
+          userEmail={userEmail}
+          campaignId={campaignId}
+          taskId={editorTarget.task_id || task.id}
+        />
+      )}
+    </>
   );
 }
 
@@ -251,7 +329,11 @@ function ObjectViewerBody({
         />
       )}
       {kind === "video" && url && (
-        <video src={url} controls className="mx-auto max-h-[70vh] w-full rounded-md" />
+        <video
+          src={url}
+          controls
+          className="mx-auto max-h-[70vh] w-full rounded-md"
+        />
       )}
       {kind === "pdf" && url && (
         <iframe

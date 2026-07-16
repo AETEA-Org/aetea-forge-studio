@@ -346,6 +346,13 @@ export interface AssetListResponse {
   assets: Asset[];
 }
 
+export interface AssetEditResponse {
+  asset: Asset;
+  mode: "save" | "save_as" | string;
+  deliverable_id?: string | null;
+  key_visual_updated?: boolean;
+}
+
 // Creative State types
 export interface CreativeState {
   id: string;

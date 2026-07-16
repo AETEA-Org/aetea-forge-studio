@@ -340,10 +340,13 @@ export default function DeliverableCanvasPage() {
   );
 
   const canvasContextValue = useMemo<CanvasContextValue | null>(() => {
-    if (!task) return null;
+    if (!task || !chatId || !user?.email) return null;
     return {
       task,
       objects,
+      chatId,
+      campaignId,
+      userEmail: user.email,
       messages,
       threadAssets: messagesData?.assets ?? [],
       streamingAssets,
@@ -359,6 +362,9 @@ export default function DeliverableCanvasPage() {
   }, [
     task,
     objects,
+    chatId,
+    campaignId,
+    user,
     messages,
     messagesData?.assets,
     streamingAssets,

@@ -13,6 +13,9 @@ export interface CanvasContextValue {
   task: CampaignTask;
   /** Task deliverable objects — used by the object preview dialog for nav. */
   objects: DeliverableObject[];
+  chatId: string;
+  campaignId?: string;
+  userEmail: string;
   // Task-scoped chat (mirrors the old TaskDetailPage chat)
   messages: ChatMessage[];
   threadAssets: Asset[];

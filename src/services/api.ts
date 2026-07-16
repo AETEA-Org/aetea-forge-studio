@@ -16,6 +16,7 @@ import type {
   ChatMessagesResponse,
   DeleteChatResponse,
   AssetListResponse,
+  AssetEditResponse,
   CreativeState,
   StyleCardsResponse,
   CampaignTasksResponse,
@@ -439,6 +440,62 @@ export async function refreshAssetUrls(
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.detail || 'Failed to refresh asset URLs');
+  }
+
+  return response.json();
+}
+
+/** Fetch raw asset bytes (same-origin) for the Fabric image editor. */
+export async function fetchAssetContentBlob(
+  assetId: string,
+  userEmail: string
+): Promise<Blob> {
+  const response = await fetch(
+    buildUrl(`/assets/${assetId}/content`, { user_id: userEmail }),
+    { headers: getHeaders() }
+  );
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(
+      (error as { detail?: string }).detail || "Failed to load asset content"
+    );
+  }
+  return response.blob();
+}
+
+/** Save / Save As an edited image over an existing asset (POST /assets/{id}/edit). */
+export async function editAsset(
+  assetId: string,
+  userEmail: string,
+  mode: "save" | "save_as",
+  file: Blob,
+  options?: {
+    fileName?: string;
+    campaignId?: string;
+  }
+): Promise<AssetEditResponse> {
+  const formData = new FormData();
+  formData.append("user_id", userEmail);
+  formData.append("mode", mode);
+  formData.append("file", file, options?.fileName || "edited.png");
+  if (mode === "save_as" && options?.fileName) {
+    formData.append("file_name", options.fileName);
+  }
+  if (options?.campaignId) {
+    formData.append("campaign_id", options.campaignId);
+  }
+
+  const response = await fetch(buildUrl(`/assets/${assetId}/edit`), {
+    method: "POST",
+    headers: getHeaders(),
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(
+      (error as { detail?: string }).detail || "Failed to save edited image"
+    );
   }
 
   return response.json();
