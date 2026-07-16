@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import type { ChatInputHandle } from "@/components/app/ChatInput";
+import type { ChatInputHandle, ChatSendMeta } from "@/components/app/ChatInput";
 import type {
   Asset,
   CampaignTask,
@@ -20,7 +20,7 @@ export interface CanvasContextValue {
   streamingContent: string;
   isStreaming: boolean;
   updateMessage: string | null;
-  onSend: (message: string, files?: File[]) => void;
+  onSend: (message: string, files?: File[], meta?: ChatSendMeta) => void;
   chatInputRef: React.RefObject<ChatInputHandle>;
   /** Count of selected cards attached as references to the next message. */
   referenceCount: number;

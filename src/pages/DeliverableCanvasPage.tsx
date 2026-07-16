@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useChatMessages } from "@/hooks/useChats";
 import { useCreativeState } from "@/hooks/useCreativeState";
 import { ModificationOverlay } from "@/components/app/ModificationOverlay";
-import type { ChatInputHandle } from "@/components/app/ChatInput";
+import type { ChatInputHandle, ChatSendMeta } from "@/components/app/ChatInput";
 import type {
   ChatMessage,
   ChatRenderableAsset,
@@ -224,7 +224,7 @@ export default function DeliverableCanvasPage() {
   );
 
   const handleSend = useCallback(
-    async (message: string, files?: File[]) => {
+    async (message: string, files?: File[], meta?: ChatSendMeta) => {
       if (!user?.email || !chatId || !taskId || isStreaming) return;
 
       const optimisticMessage: ChatMessage = {
@@ -306,7 +306,9 @@ export default function DeliverableCanvasPage() {
             toast({ title: "Error", description: errorMsg, variant: "destructive" });
           },
           branchId,
-          refs
+          refs,
+          meta?.generationMode,
+          meta?.generationOptions
         );
       } catch (e) {
         setIsModifying(false, null);

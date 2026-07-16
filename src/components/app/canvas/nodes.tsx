@@ -154,6 +154,7 @@ export const ChatWindowNode = memo(function ChatWindowNode() {
               inputPlaceholder="Describe what to generate or refine..."
               textareaMaxHeight={140}
               variant="floating"
+              enableGenerationModes
             />
           </div>
         </ChatPanelDropZone>

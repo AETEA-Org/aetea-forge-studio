@@ -651,7 +651,9 @@ export async function sendChatMessage(
   onComplete?: (content: string) => void,
   onError?: (message: string) => void,
   branchId: string = 'main',
-  referenceAssetIds?: string[]
+  referenceAssetIds?: string[],
+  generationMode?: 'general' | 'image' | 'video',
+  generationOptions?: Record<string, string | number | boolean>
 ): Promise<void> {
   const url = buildUrl('/ai/chat');
   
@@ -670,6 +672,13 @@ export async function sendChatMessage(
     referenceAssetIds.forEach((id) => {
       formData.append('reference_asset_ids', id);
     });
+  }
+
+  if (generationMode && generationMode !== 'general') {
+    formData.append('generation_mode', generationMode);
+  }
+  if (generationOptions && Object.keys(generationOptions).length > 0) {
+    formData.append('generation_options', JSON.stringify(generationOptions));
   }
   
   if (files && files.length > 0) {
