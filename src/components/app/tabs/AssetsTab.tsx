@@ -1,68 +1,338 @@
-import { useState, useCallback } from "react";
-import { Loader2, Folder, File, Download, Eye, Image, Grid3x3, List } from "lucide-react";
-import { useAssets } from "@/hooks/useAssets";
-import { refreshAssetUrls } from "@/services/api";
+import { useCallback, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  ChevronDown,
+  ChevronRight,
+  Download,
+  Eye,
+  File,
+  Folder,
+  FolderOpen,
+  Image,
+  Loader2,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import {
+  deleteAsset,
+  getAssetFolders,
+  getAssets,
+  refreshAssetUrls,
+  renameAsset,
+} from "@/services/api";
+import {
+  buildAssetsByFolder,
+  childFoldersOf,
+  getTopFolders,
+} from "@/components/app/assets/assetTreeUtils";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
-import type { Asset } from "@/types/api";
-
-type ViewMode = 'grid' | 'detail';
+import type { Asset, AssetFolder } from "@/types/api";
+import { toast } from "sonner";
 
 interface AssetsTabProps {
   chatId: string;
   isModifying?: boolean;
 }
 
-const FOLDERS = [
-  { id: 'all', label: 'All Assets', path: undefined },
-  { id: 'uploaded', label: 'User Uploaded', path: 'User-Uploaded' },
-  { id: 'generated', label: 'AETEA Generated', path: 'AETEA-Generated' },
-];
+const URL_EXPIRATION_MS = 60 * 60 * 1000;
 
 function isImageAsset(asset: Asset): boolean {
-  return asset.mime_type.startsWith('image/');
+  return asset.mime_type.startsWith("image/");
 }
 
-function getFileIcon(asset: Asset) {
-  if (isImageAsset(asset)) {
-    return Image;
-  }
-  return File;
+function typeLabel(asset: Asset): string {
+  const ext = asset.file_name.split(".").pop()?.toUpperCase() || "FILE";
+  const mimeRoot = asset.mime_type.split("/")[0] || "application";
+  if (mimeRoot === "image") return "Image";
+  if (mimeRoot === "video") return "Video";
+  if (mimeRoot === "text") return "Text";
+  if (mimeRoot === "application") return ext;
+  return mimeRoot;
 }
 
-// URL expiration time: 1 hour in milliseconds
-const URL_EXPIRATION_MS = 60 * 60 * 1000;
+function AssetsFileRow({
+  asset,
+  depth,
+  disabled,
+  onView,
+  onDownload,
+  onRename,
+  onRequestDelete,
+}: {
+  asset: Asset;
+  depth: number;
+  disabled?: boolean;
+  onView: (asset: Asset) => void;
+  onDownload: (asset: Asset) => void;
+  onRename: (asset: Asset, nextName: string) => Promise<void>;
+  onRequestDelete: (asset: Asset) => void;
+}) {
+  const [renaming, setRenaming] = useState(false);
+  const [draftName, setDraftName] = useState(asset.file_name);
+  const [saving, setSaving] = useState(false);
+  const FileIcon = isImageAsset(asset) ? Image : File;
+
+  const commitRename = async () => {
+    const next = draftName.trim();
+    if (!next || next === asset.file_name) {
+      setDraftName(asset.file_name);
+      setRenaming(false);
+      return;
+    }
+    setSaving(true);
+    try {
+      await onRename(asset, next);
+      setRenaming(false);
+    } catch {
+      setDraftName(asset.file_name);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      className={cn(
+        "group flex items-center gap-3 rounded-md px-2 py-1.5 hover:bg-muted/40",
+        disabled && "pointer-events-none opacity-50"
+      )}
+      style={{ paddingLeft: 12 + depth * 12 }}
+    >
+      <FileIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+      <div className="min-w-0 flex-1">
+        {renaming ? (
+          <Input
+            autoFocus
+            value={draftName}
+            disabled={saving}
+            className="h-7 text-sm"
+            onChange={(e) => setDraftName(e.target.value)}
+            onBlur={() => void commitRename()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                void commitRename();
+              }
+              if (e.key === "Escape") {
+                setDraftName(asset.file_name);
+                setRenaming(false);
+              }
+            }}
+          />
+        ) : (
+          <button
+            type="button"
+            className="block w-full truncate text-left text-sm font-medium hover:underline"
+            title={asset.file_name}
+            onClick={() => onView(asset)}
+          >
+            {asset.file_name}
+          </button>
+        )}
+      </div>
+      <span className="hidden w-20 shrink-0 text-xs text-muted-foreground sm:block">
+        {typeLabel(asset)}
+      </span>
+      <span className="hidden w-36 shrink-0 text-xs text-muted-foreground md:block">
+        {new Date(asset.created_at).toLocaleString()}
+      </span>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 data-[state=open]:opacity-100"
+            aria-label={`Actions for ${asset.file_name}`}
+          >
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-40">
+          <DropdownMenuItem onClick={() => onView(asset)}>
+            <Eye className="mr-2 h-4 w-4" />
+            View
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onDownload(asset)}>
+            <Download className="mr-2 h-4 w-4" />
+            Download
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => {
+              setDraftName(asset.file_name);
+              setRenaming(true);
+            }}
+          >
+            <Pencil className="mr-2 h-4 w-4" />
+            Rename
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            className="text-destructive focus:text-destructive"
+            onClick={() => onRequestDelete(asset)}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
+
+function FolderTreeNode({
+  folder,
+  folders,
+  assetsByFolder,
+  depth,
+  disabled,
+  onView,
+  onDownload,
+  onRename,
+  onRequestDelete,
+}: {
+  folder: AssetFolder;
+  folders: AssetFolder[];
+  assetsByFolder: Map<string, Asset[]>;
+  depth: number;
+  disabled?: boolean;
+  onView: (asset: Asset) => void;
+  onDownload: (asset: Asset) => void;
+  onRename: (asset: Asset, nextName: string) => Promise<void>;
+  onRequestDelete: (asset: Asset) => void;
+}) {
+  const [open, setOpen] = useState(depth === 0);
+  const childFolders = useMemo(
+    () => childFoldersOf(folders, folder.id),
+    [folders, folder.id]
+  );
+  const files = assetsByFolder.get(folder.id) ?? [];
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-sm font-medium hover:bg-muted/60"
+        style={{ paddingLeft: 8 + depth * 12 }}
+      >
+        {open ? (
+          <ChevronDown className="h-4 w-4 shrink-0" />
+        ) : (
+          <ChevronRight className="h-4 w-4 shrink-0" />
+        )}
+        {open ? (
+          <FolderOpen className="h-4 w-4 shrink-0 text-primary" />
+        ) : (
+          <Folder className="h-4 w-4 shrink-0 text-primary" />
+        )}
+        <span className="truncate">{folder.name}</span>
+      </button>
+      {open && (
+        <div>
+          {childFolders.map((child) => (
+            <FolderTreeNode
+              key={child.id}
+              folder={child}
+              folders={folders}
+              assetsByFolder={assetsByFolder}
+              depth={depth + 1}
+              disabled={disabled}
+              onView={onView}
+              onDownload={onDownload}
+              onRename={onRename}
+              onRequestDelete={onRequestDelete}
+            />
+          ))}
+          {files.map((asset) => (
+            <AssetsFileRow
+              key={asset.id}
+              asset={asset}
+              depth={depth + 1}
+              disabled={disabled}
+              onView={onView}
+              onDownload={onDownload}
+              onRename={onRename}
+              onRequestDelete={onRequestDelete}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function AssetsTab({ chatId, isModifying }: AssetsTabProps) {
   const { user } = useAuth();
-  const [selectedFolder, setSelectedFolder] = useState<string | undefined>(undefined);
-  const [viewMode, setViewMode] = useState<ViewMode>('detail');
+  const queryClient = useQueryClient();
   const [refreshingUrls, setRefreshingUrls] = useState<Set<string>>(new Set());
-  
-  const { data, isLoading, error } = useAssets(chatId, selectedFolder);
-  
-  // Check if URL is expired (1 hour since fetch)
-  const isUrlExpired = useCallback((fetchedAt?: number): boolean => {
-    if (!fetchedAt) return true; // If no timestamp, assume expired
-    const now = Date.now();
-    return (now - fetchedAt) >= URL_EXPIRATION_MS;
-  }, []);
-  
-  const getValidUrl = useCallback(
-    async (asset: Asset, urlKey: 'view_url' | 'download_url'): Promise<string> => {
-      const fetchedAt = (data as { _fetchedAt?: number })?._fetchedAt;
-      const existingUrl = urlKey === 'view_url' ? asset.view_url : asset.download_url;
+  const [pendingDelete, setPendingDelete] = useState<Asset | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
+  const {
+    data: foldersData,
+    isLoading: foldersLoading,
+    error: foldersError,
+  } = useQuery({
+    queryKey: ["asset-folders", chatId, user?.email],
+    queryFn: () => getAssetFolders(chatId, user!.email!),
+    enabled: !!chatId && !!user?.email,
+  });
+
+  const {
+    data: assetsData,
+    isLoading: assetsLoading,
+    error: assetsError,
+  } = useQuery({
+    queryKey: ["assets", chatId, undefined, user?.email],
+    queryFn: () => getAssets(chatId, user!.email!),
+    enabled: !!chatId && !!user?.email,
+  });
+
+  const folders = useMemo(() => foldersData?.folders ?? [], [foldersData]);
+  const assetsByFolder = useMemo(
+    () => buildAssetsByFolder(assetsData?.assets ?? []),
+    [assetsData]
+  );
+  const topFolders = useMemo(() => getTopFolders(folders), [folders]);
+  const fetchedAt = (assetsData as { _fetchedAt?: number } | undefined)?._fetchedAt;
+
+  const isUrlExpired = useCallback((at?: number): boolean => {
+    if (!at) return true;
+    return Date.now() - at >= URL_EXPIRATION_MS;
+  }, []);
+
+  const getValidUrl = useCallback(
+    async (asset: Asset, urlKey: "view_url" | "download_url"): Promise<string> => {
+      const existingUrl = urlKey === "view_url" ? asset.view_url : asset.download_url;
       if (!isUrlExpired(fetchedAt)) return existingUrl;
       if (refreshingUrls.has(asset.id)) return existingUrl;
-
       try {
         setRefreshingUrls((prev) => new Set(prev).add(asset.id));
         const result = await refreshAssetUrls(asset.id, user!.email!);
         return result[urlKey];
       } catch (err) {
-        console.error('Failed to refresh asset URL:', err);
+        console.error("Failed to refresh asset URL:", err);
         return existingUrl;
       } finally {
         setRefreshingUrls((prev) => {
@@ -72,26 +342,62 @@ export function AssetsTab({ chatId, isModifying }: AssetsTabProps) {
         });
       }
     },
-    [data, isUrlExpired, refreshingUrls, user]
+    [fetchedAt, isUrlExpired, refreshingUrls, user]
   );
+
+  const invalidateAssetQueries = useCallback(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["assets", chatId] }),
+      queryClient.invalidateQueries({ queryKey: ["asset-folders", chatId] }),
+    ]);
+  }, [chatId, queryClient]);
 
   const handleView = useCallback(
     async (asset: Asset) => {
-      const url = await getValidUrl(asset, 'view_url');
-      window.open(url, '_blank');
+      const url = await getValidUrl(asset, "view_url");
+      window.open(url, "_blank");
     },
     [getValidUrl]
   );
 
   const handleDownload = useCallback(
     async (asset: Asset) => {
-      const url = await getValidUrl(asset, 'download_url');
-      window.open(url, '_blank');
+      const url = await getValidUrl(asset, "download_url");
+      window.open(url, "_blank");
     },
     [getValidUrl]
   );
 
-  if (isLoading) {
+  const handleRename = useCallback(
+    async (asset: Asset, nextName: string) => {
+      try {
+        await renameAsset(asset.id, user!.email!, nextName);
+        await invalidateAssetQueries();
+        toast.success("File renamed");
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Failed to rename");
+        throw err;
+      }
+    },
+    [invalidateAssetQueries, user]
+  );
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!pendingDelete || !user?.email) return;
+    setDeleting(true);
+    try {
+      await deleteAsset(pendingDelete.id, user.email);
+      setPendingDelete(null);
+      await invalidateAssetQueries();
+      toast.success("File deleted");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete");
+    } finally {
+      setDeleting(false);
+    }
+  }, [invalidateAssetQueries, pendingDelete, user]);
+
+  if (foldersLoading || assetsLoading) {
     return (
       <div className="flex justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -99,255 +405,100 @@ export function AssetsTab({ chatId, isModifying }: AssetsTabProps) {
     );
   }
 
+  const error = foldersError || assetsError;
   if (error) {
-    console.error('Assets load error:', error);
     return (
-      <div className="text-center py-12">
+      <div className="py-12 text-center">
         <p className="text-destructive">Failed to load assets</p>
-        <p className="text-sm text-muted-foreground mt-2">
-          {error instanceof Error ? error.message : 'Unknown error'}
+        <p className="mt-2 text-sm text-muted-foreground">
+          {error instanceof Error ? error.message : "Unknown error"}
         </p>
       </div>
     );
   }
 
-  const assets = data?.assets || [];
+  const totalFiles = assetsData?.assets?.length ?? 0;
 
   return (
-    <div className="space-y-6">
-      {/* Folder Navigation and View Toggle */}
-      <div className="border-b border-border pb-4">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex flex-wrap gap-2">
-            {FOLDERS.map((folder) => (
-              <button
-                key={folder.id}
-                onClick={() => setSelectedFolder(folder.path)}
-                className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                  selectedFolder === folder.path
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
-                )}
-              >
-                <Folder className="h-4 w-4" />
-                {folder.label}
-              </button>
-            ))}
-          </div>
-          
-          {/* View Mode Toggle */}
-          <div className="flex items-center gap-2 border border-border rounded-lg p-1">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={cn(
-                "p-2 rounded transition-colors",
-                viewMode === 'grid'
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-              title="Grid view"
-            >
-              <Grid3x3 className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => setViewMode('detail')}
-              className={cn(
-                "p-2 rounded transition-colors",
-                viewMode === 'detail'
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-              title="Detail view"
-            >
-              <List className="h-4 w-4" />
-            </button>
-          </div>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between border-b border-border pb-3">
+        <div>
+          <h3 className="text-sm font-semibold">Assets</h3>
+          <p className="text-xs text-muted-foreground">
+            {totalFiles} file{totalFiles === 1 ? "" : "s"} in campaign folders
+          </p>
         </div>
       </div>
 
-      {/* Assets Display */}
-      {assets.length === 0 ? (
-        <div className="text-center py-12">
-          <Folder className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">
-            {selectedFolder ? `No assets in "${FOLDERS.find(f => f.path === selectedFolder)?.label}"` : 'No assets found'}
-          </p>
-        </div>
-      ) : viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {assets.map((asset) => {
-            const FileIcon = getFileIcon(asset);
-            
-            return (
-              <div
-                key={asset.id}
-                className={cn(
-                  "border border-border rounded-lg p-4 hover:shadow-md transition-shadow flex flex-col min-w-0",
-                  isModifying && "opacity-50 pointer-events-none"
-                )}
-              >
-                {/* Asset Preview/Icon */}
-                <div className="aspect-square mb-3 bg-muted rounded-md flex items-center justify-center overflow-hidden">
-                  {isImageAsset(asset) ? (
-                    <img
-                      src={asset.download_url}
-                      alt={asset.file_name}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        // Fallback to icon if image fails to load
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                        const parent = target.parentElement;
-                        if (parent) {
-                          const icon = document.createElement('div');
-                          icon.className = 'flex items-center justify-center';
-                          icon.innerHTML = '<svg class="h-12 w-12 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>';
-                          parent.appendChild(icon);
-                        }
-                      }}
-                    />
-                  ) : (
-                    <FileIcon className="h-12 w-12 text-muted-foreground" />
-                  )}
-                </div>
-
-                {/* File Name */}
-                <p className="text-sm font-medium truncate mb-2" title={asset.file_name}>
-                  {asset.file_name}
-                </p>
-
-                {/* File Info */}
-                <p className="text-xs text-muted-foreground mb-3">
-                  {new Date(asset.created_at).toLocaleDateString()}
-                </p>
-
-                {/* Actions */}
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8 shrink-0"
-                    onClick={() => handleView(asset)}
-                    title="View"
-                    disabled={refreshingUrls.has(asset.id)}
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8 shrink-0"
-                    onClick={() => handleDownload(asset)}
-                    title="Download"
-                    disabled={refreshingUrls.has(asset.id)}
-                  >
-                    <Download className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            );
-          })}
+      {folders.length === 0 && totalFiles === 0 ? (
+        <div className="py-12 text-center">
+          <Folder className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+          <p className="text-muted-foreground">No assets found</p>
         </div>
       ) : (
-        /* Detail View - Windows File Explorer style */
-        <div className="border border-border rounded-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-muted/50 border-b border-border">
-                <tr>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Name</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Type</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Date Modified</th>
-                  <th className="text-right px-4 py-3 text-xs font-medium text-muted-foreground">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {assets.map((asset, index) => {
-                  const FileIcon = getFileIcon(asset);
-                  const fileExtension = asset.file_name.split('.').pop()?.toUpperCase() || 'FILE';
-                  const mimeType = asset.mime_type.split('/')[0] || 'application';
-                  
-                  return (
-                    <tr
-                      key={asset.id}
-                      className={cn(
-                        "border-b border-border hover:bg-muted/30 transition-colors",
-                        isModifying && "opacity-50 pointer-events-none",
-                        index === assets.length - 1 && "border-b-0"
-                      )}
-                    >
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <div className="flex-shrink-0">
-                            {isImageAsset(asset) ? (
-                              <img
-                                src={asset.download_url}
-                                alt={asset.file_name}
-                                className="h-8 w-8 object-cover rounded"
-                                onError={(e) => {
-                                  const target = e.target as HTMLImageElement;
-                                  target.style.display = 'none';
-                                  const parent = target.parentElement;
-                                  if (parent) {
-                                    const icon = document.createElement('div');
-                                    icon.className = 'flex items-center justify-center';
-                                    icon.innerHTML = '<svg class="h-8 w-8 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>';
-                                    parent.appendChild(icon);
-                                  }
-                                }}
-                              />
-                            ) : (
-                              <FileIcon className="h-8 w-8 text-muted-foreground" />
-                            )}
-                          </div>
-                          <span className="text-sm font-medium text-foreground truncate" title={asset.file_name}>
-                            {asset.file_name}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-sm text-muted-foreground">
-                          {mimeType === 'image' ? 'Image' : mimeType === 'application' ? fileExtension : mimeType}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-sm text-muted-foreground">
-                          {new Date(asset.created_at).toLocaleString()}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => handleView(asset)}
-                            title="View"
-                            disabled={refreshingUrls.has(asset.id)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => handleDownload(asset)}
-                            title="Download"
-                            disabled={refreshingUrls.has(asset.id)}
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+        <div className="rounded-lg border border-border">
+          <div className="hidden items-center gap-3 border-b border-border bg-muted/40 px-2 py-2 text-xs font-medium text-muted-foreground sm:flex">
+            <span className="min-w-0 flex-1 pl-8">Name</span>
+            <span className="w-20 shrink-0">Type</span>
+            <span className="hidden w-36 shrink-0 md:block">Date Modified</span>
+            <span className="w-7 shrink-0" />
+          </div>
+          <div className="p-1">
+            {topFolders.map((folder) => (
+              <FolderTreeNode
+                key={folder.id}
+                folder={folder}
+                folders={folders}
+                assetsByFolder={assetsByFolder}
+                depth={0}
+                disabled={isModifying}
+                onView={handleView}
+                onDownload={handleDownload}
+                onRename={handleRename}
+                onRequestDelete={setPendingDelete}
+              />
+            ))}
           </div>
         </div>
       )}
+
+      <AlertDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => !open && !deleting && setPendingDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete file</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete{" "}
+              <span className="font-semibold text-foreground">
+                &quot;{pendingDelete?.file_name}&quot;
+              </span>
+              ? This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                void handleConfirmDelete();
+              }}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

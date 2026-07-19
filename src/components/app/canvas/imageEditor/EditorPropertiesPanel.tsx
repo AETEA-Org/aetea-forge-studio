@@ -26,7 +26,9 @@ import {
   type CropAspect,
   type EditorStyleState,
   type EditorTool,
+  isArrowGroup,
   isShapeObject,
+  isShapeTool,
   isTextObject,
 } from "./types";
 
@@ -161,9 +163,12 @@ export function EditorPropertiesPanel({
   const showShapeSelected = isShapeObject(selectedObject);
   const showObjectActions = selectedObject !== null && tool === "select";
   const showShapeFill =
-    tool === "rect" ||
-    tool === "ellipse" ||
-    (showShapeSelected && selectedObject?.type !== "line");
+    (isShapeTool(tool) &&
+      tool !== "line" &&
+      tool !== "arrow") ||
+    (showShapeSelected &&
+      selectedObject?.type !== "line" &&
+      !isArrowGroup(selectedObject));
 
   const previewW = Math.round((originalWidth * scalePercent) / 100);
   const previewH = Math.round((originalHeight * scalePercent) / 100);
@@ -292,10 +297,7 @@ export function EditorPropertiesPanel({
         </Section>
       )}
 
-      {(tool === "rect" ||
-        tool === "ellipse" ||
-        tool === "line" ||
-        showShapeSelected) && (
+      {(isShapeTool(tool) || showShapeSelected) && (
         <Section title="Shape">
           <ColorField
             label="Stroke"

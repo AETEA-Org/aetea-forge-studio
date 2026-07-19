@@ -38,10 +38,19 @@ const statusConfig: Record<CampaignTaskStatus, { label: string; className: strin
 };
 
 /** Header used as the drag handle so inner content stays interactive. */
-function CardHeader({ title, badge }: { title: string; badge?: React.ReactNode }) {
+function CardHeader({
+  title,
+  badge,
+  icon,
+}: {
+  title: string;
+  badge?: React.ReactNode;
+  icon?: React.ReactNode;
+}) {
   return (
     <div className="drag-handle flex items-center gap-2 px-3 py-2 border-b border-border/60 cursor-grab active:cursor-grabbing bg-muted/40 rounded-t-xl">
       <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground" />
+      {icon}
       <span className="text-sm font-medium truncate flex-1">{title}</span>
       {badge}
     </div>
@@ -126,7 +135,16 @@ export const ChatWindowNode = memo(function ChatWindowNode() {
         handleStyle={RESIZE_HANDLE_STYLE}
         autoScale={false}
       />
-      <CardHeader title="AETEA Chat" />
+      <CardHeader
+        title="AETEA"
+        icon={
+          <img
+            src="/favicon.png"
+            alt=""
+            className="h-4 w-4 shrink-0"
+          />
+        }
+      />
       <div className="nodrag nowheel flex-1 min-h-0 flex flex-col">
         <ChatPanelDropZone
           className="flex-1 min-h-0"
@@ -280,7 +298,7 @@ function ObjectActionBar({
   onView: () => void;
 }) {
   return (
-    <div className="nodrag absolute top-1 right-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+    <div className="nodrag absolute top-9 right-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
       <IconAction label="View" onClick={onView}>
         <Eye className="h-3.5 w-3.5" />
       </IconAction>
@@ -457,7 +475,7 @@ export const KeyVisualNode = memo(function KeyVisualNode({
       </div>
 
       {hasImage && downloadUrl && (
-        <div className="nodrag absolute top-1 right-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="nodrag absolute top-9 right-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <IconAction label="View" onClick={() => setViewerOpen(true)}>
             <Eye className="h-3.5 w-3.5" />
           </IconAction>

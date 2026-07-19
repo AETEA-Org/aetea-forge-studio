@@ -101,11 +101,7 @@ export function EditorCanvasArea({
     <div className="flex min-h-0 flex-1 flex-col gap-2">
       <div
         ref={scrollRef}
-        className={cn(
-          "relative min-h-0 flex-1 overflow-auto rounded-md border border-border",
-          "bg-[length:16px_16px] bg-[position:0_0,8px_8px]",
-          "bg-[image:linear-gradient(45deg,#e4e4e7_25%,transparent_25%),linear-gradient(-45deg,#e4e4e7_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#e4e4e7_75%),linear-gradient(-45deg,transparent_75%,#e4e4e7_75%)]"
-        )}
+        className="relative min-h-0 flex-1 overflow-auto rounded-md border border-border bg-muted/10"
       >
         {loading && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60">
@@ -121,6 +117,8 @@ export function EditorCanvasArea({
             }}
             className={cn(
               "relative shrink-0 shadow-md outline-none",
+              "bg-[length:22px_22px] bg-[position:0_0,11px_11px]",
+              "bg-[image:linear-gradient(45deg,#f4f4f5_25%,transparent_25%),linear-gradient(-45deg,#f4f4f5_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#f4f4f5_75%),linear-gradient(-45deg,transparent_75%,#f4f4f5_75%)]",
               showBrushPreview && "cursor-none"
             )}
             onMouseMove={onMouseMove}

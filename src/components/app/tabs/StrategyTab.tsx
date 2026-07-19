@@ -152,7 +152,20 @@ export function StrategyTab({ campaignId, isModifying }: StrategyTabProps) {
         </div>
       </div>
 
-      {/* 2. Insight */}
+      {/* 2. Strategic Doctrine */}
+      <div id="strategy-kpis" className="glass rounded-xl p-6 scroll-mt-24">
+        <h2 className="font-semibold mb-4">Strategic Doctrine</h2>
+        <ul className="space-y-2">
+          {doctrine.map((item, i) => (
+            <li key={i} className="flex items-start gap-2 text-sm">
+              <span className="text-primary mt-1 shrink-0">•</span>
+              <Markdown className="flex-1">{item}</Markdown>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* 3. Insight */}
       {strategy.insight && (
         <div className="glass rounded-xl p-6 border-l-4 border-primary/50 bg-primary/5">
           <h2 className="font-semibold mb-4 text-primary">Insight</h2>
@@ -201,7 +214,7 @@ export function StrategyTab({ campaignId, isModifying }: StrategyTabProps) {
         </div>
       )}
 
-      {/* 3. Creative Foundation */}
+      {/* 4. Creative Foundation */}
       {creativeFoundation &&
         hasCreativeFoundationContent(creativeFoundation) && (
           <div
@@ -330,19 +343,6 @@ export function StrategyTab({ campaignId, isModifying }: StrategyTabProps) {
             </div>
           </div>
         )}
-
-      {/* 4. Strategic Doctrine */}
-      <div id="strategy-kpis" className="glass rounded-xl p-6 scroll-mt-24">
-        <h2 className="font-semibold mb-4">Strategic Doctrine</h2>
-        <ul className="space-y-2">
-          {doctrine.map((item, i) => (
-            <li key={i} className="flex items-start gap-2 text-sm">
-              <span className="text-primary mt-1 shrink-0">•</span>
-              <Markdown className="flex-1">{item}</Markdown>
-            </li>
-          ))}
-        </ul>
-      </div>
 
       {/* 5. Campaign Pillars */}
       <div className="glass rounded-xl p-6">

@@ -16,7 +16,11 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { getAssetFolders, getAssets } from "@/services/api";
-import { cn } from "@/lib/utils";
+import {
+  buildAssetsByFolder,
+  childFoldersOf,
+  getTopFolders,
+} from "@/components/app/assets/assetTreeUtils";
 import type { Asset, AssetFolder } from "@/types/api";
 import {
   Dialog,
@@ -83,7 +87,7 @@ function FolderTreeNode({
 }) {
   const [open, setOpen] = useState(depth === 0);
   const childFolders = useMemo(
-    () => folders.filter((f) => f.parent_folder_id === folder.id),
+    () => childFoldersOf(folders, folder.id),
     [folders, folder.id]
   );
   const files = assetsByFolder.get(folder.id) ?? [];
@@ -144,26 +148,11 @@ function AssetTree({ chatId }: { chatId: string }) {
   });
 
   const folders = useMemo(() => foldersData?.folders ?? [], [foldersData]);
-  const assetsByFolder = useMemo(() => {
-    const map = new Map<string, Asset[]>();
-    for (const asset of assetsData?.assets ?? []) {
-      const key = asset.folder_id ?? "__none__";
-      const list = map.get(key) ?? [];
-      list.push(asset);
-      map.set(key, list);
-    }
-    return map;
-  }, [assetsData]);
-
-  // The wrapping "Assets" header is provided by the left pane, so start the tree
-  // at the children of the system "Assets" root to avoid an "Assets / Assets" nest.
-  const topFolders = useMemo(() => {
-    const roots = folders.filter((f) => !f.parent_folder_id);
-    const assetsRoot = roots.find((f) => f.name === "Assets");
-    if (!assetsRoot) return roots;
-    const children = folders.filter((f) => f.parent_folder_id === assetsRoot.id);
-    return children.length > 0 ? children : roots;
-  }, [folders]);
+  const assetsByFolder = useMemo(
+    () => buildAssetsByFolder(assetsData?.assets ?? []),
+    [assetsData]
+  );
+  const topFolders = useMemo(() => getTopFolders(folders), [folders]);
 
   if (folders.length === 0) {
     return <p className="px-2 py-1 text-xs text-muted-foreground">No folders yet.</p>;

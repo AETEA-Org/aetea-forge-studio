@@ -1,17 +1,29 @@
 import type { FabricImage, FabricObject } from "fabric";
 
+export type ShapeTool = "rect" | "ellipse" | "line" | "triangle" | "arrow";
+
 export type EditorTool =
   | "select"
   | "draw"
   | "erase"
-  | "rect"
-  | "ellipse"
-  | "line"
+  | ShapeTool
   | "text"
   | "crop"
   | "resize";
 
-export type ShapeTool = "rect" | "ellipse" | "line";
+export type ImageExportFormat = "png" | "jpeg";
+
+export const SHAPE_TOOLS: ShapeTool[] = [
+  "rect",
+  "ellipse",
+  "line",
+  "triangle",
+  "arrow",
+];
+
+export function isShapeTool(tool: EditorTool): tool is ShapeTool {
+  return (SHAPE_TOOLS as readonly string[]).includes(tool);
+}
 
 export type CropAspect = "free" | "1:1" | "16:9" | "9:16";
 
@@ -90,8 +102,24 @@ export function isTextObject(obj: FabricObject | null): obj is FabricObject & {
   return t === "i-text" || t === "text" || t === "textbox";
 }
 
+export function isArrowGroup(obj: FabricObject | null): boolean {
+  if (!obj || (obj.type || "").toLowerCase() !== "group") return false;
+  const items = (obj as FabricObject & { _objects?: FabricObject[] })._objects;
+  if (!items || items.length !== 2) return false;
+  const types = items.map((item) => (item.type || "").toLowerCase());
+  return types[0] === "line" && types[1] === "polygon";
+}
+
 export function isShapeObject(obj: FabricObject | null): boolean {
   if (!obj) return false;
   const t = (obj.type || "").toLowerCase();
-  return t === "rect" || t === "ellipse" || t === "line" || t === "circle";
+  return (
+    t === "rect" ||
+    t === "ellipse" ||
+    t === "line" ||
+    t === "circle" ||
+    t === "triangle" ||
+    t === "polygon" ||
+    isArrowGroup(obj)
+  );
 }

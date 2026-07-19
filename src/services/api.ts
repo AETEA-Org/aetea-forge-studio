@@ -17,6 +17,7 @@ import type {
   DeleteChatResponse,
   AssetListResponse,
   AssetEditResponse,
+  Asset,
   CreativeState,
   StyleCardsResponse,
   CampaignTasksResponse,
@@ -463,6 +464,46 @@ export async function fetchAssetContentBlob(
   return response.blob();
 }
 
+/** Rename an asset (PATCH /assets/{id}) — metadata only; storage path unchanged. */
+export async function renameAsset(
+  assetId: string,
+  userEmail: string,
+  fileName: string
+): Promise<Asset> {
+  const response = await fetch(buildUrl(`/assets/${assetId}`), {
+    method: "PATCH",
+    headers: getHeaders(),
+    body: JSON.stringify({ user_id: userEmail, file_name: fileName }),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(
+      (error as { detail?: string }).detail || "Failed to rename asset"
+    );
+  }
+  return response.json();
+}
+
+/** Delete an asset (DELETE /assets/{id}). */
+export async function deleteAsset(
+  assetId: string,
+  userEmail: string
+): Promise<void> {
+  const response = await fetch(
+    buildUrl(`/assets/${assetId}`, { user_id: userEmail }),
+    {
+      method: "DELETE",
+      headers: getHeaders(),
+    }
+  );
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(
+      (error as { detail?: string }).detail || "Failed to delete asset"
+    );
+  }
+}
+
 /** Save / Save As an edited image over an existing asset (POST /assets/{id}/edit). */
 export async function editAsset(
   assetId: string,
@@ -472,12 +513,17 @@ export async function editAsset(
   options?: {
     fileName?: string;
     campaignId?: string;
+    mimeType?: "image/png" | "image/jpeg";
   }
 ): Promise<AssetEditResponse> {
+  const mimeType = options?.mimeType ?? "image/png";
+  const defaultName =
+    mimeType === "image/jpeg" ? "edited.jpg" : "edited.png";
   const formData = new FormData();
   formData.append("user_id", userEmail);
   formData.append("mode", mode);
-  formData.append("file", file, options?.fileName || "edited.png");
+  formData.append("mime_type", mimeType);
+  formData.append("file", file, options?.fileName || defaultName);
   if (mode === "save_as" && options?.fileName) {
     formData.append("file_name", options.fileName);
   }

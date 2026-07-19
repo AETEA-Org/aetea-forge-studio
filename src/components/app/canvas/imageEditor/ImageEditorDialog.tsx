@@ -8,7 +8,7 @@ import { EditorPropertiesPanel } from "./EditorPropertiesPanel";
 import { EditorToolRail } from "./EditorToolRail";
 import { EditorTopBar } from "./EditorTopBar";
 import { useFabricEditor } from "./useFabricEditor";
-import type { ImageEditorDialogProps } from "./types";
+import type { ImageEditorDialogProps, ImageExportFormat } from "./types";
 
 /** Near-fullscreen Fabric.js image editor with tool rail and properties panel. */
 export function ImageEditorDialog({
@@ -24,8 +24,9 @@ export function ImageEditorDialog({
 }: ImageEditorDialogProps) {
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
-  const [showSaveAs, setShowSaveAs] = useState(false);
-  const [saveAsName, setSaveAsName] = useState("edited.png");
+  const [saveAsOpen, setSaveAsOpen] = useState(false);
+  const [saveFormat, setSaveFormat] = useState<ImageExportFormat>("png");
+  const [saveAsName, setSaveAsName] = useState("edited");
 
   const editor = useFabricEditor({
     open,
@@ -55,13 +56,17 @@ export function ImageEditorDialog({
     [queryClient, chatId, taskId, userEmail, campaignId]
   );
 
+  const mimeType =
+    saveFormat === "jpeg" ? ("image/jpeg" as const) : ("image/png" as const);
+
   const handleSave = useCallback(async () => {
-    const blob = editor.exportPngBlob();
+    const blob = editor.exportImageBlob(saveFormat);
     if (!blob) return;
     setSaving(true);
     try {
       const result = await editAsset(assetId, userEmail, "save", blob, {
         campaignId,
+        mimeType,
       });
       invalidateCaches(result);
       toast.success("Image saved");
@@ -78,6 +83,8 @@ export function ImageEditorDialog({
     campaignId,
     invalidateCaches,
     onOpenChange,
+    saveFormat,
+    mimeType,
   ]);
 
   const handleSaveAs = useCallback(async () => {
@@ -86,16 +93,18 @@ export function ImageEditorDialog({
       toast.error("Enter a file name");
       return;
     }
-    const finalName = name.toLowerCase().endsWith(".png")
-      ? name
-      : `${name}.png`;
-    const blob = editor.exportPngBlob();
+    const ext = saveFormat === "jpeg" ? ".jpg" : ".png";
+    const finalName = /\.(png|jpe?g)$/i.test(name)
+      ? name.replace(/\.(png|jpe?g)$/i, ext)
+      : `${name}${ext}`;
+    const blob = editor.exportImageBlob(saveFormat);
     if (!blob) return;
     setSaving(true);
     try {
       const result = await editAsset(assetId, userEmail, "save_as", blob, {
         fileName: finalName,
         campaignId,
+        mimeType,
       });
       invalidateCaches(result);
       toast.success(
@@ -117,6 +126,8 @@ export function ImageEditorDialog({
     campaignId,
     invalidateCaches,
     onOpenChange,
+    saveFormat,
+    mimeType,
   ]);
 
   // Keyboard shortcuts
@@ -159,7 +170,8 @@ export function ImageEditorDialog({
 
   useEffect(() => {
     if (!open) {
-      setShowSaveAs(false);
+      setSaveAsOpen(false);
+      setSaveFormat("png");
       setSaveAsName(fileName?.replace(/\.[^.]+$/, "") ?? "edited");
     }
   }, [open, fileName]);
@@ -190,14 +202,15 @@ export function ImageEditorDialog({
           onRedo={() => void editor.redo()}
           onCancel={() => onOpenChange(false)}
           onSave={() => void handleSave()}
-          onSaveAs={() => setShowSaveAs(true)}
+          onSaveAsConfirm={() => void handleSaveAs()}
           saving={saving}
           ready={editor.ready}
-          showSaveAs={showSaveAs}
+          saveFormat={saveFormat}
+          onSaveFormatChange={setSaveFormat}
+          saveAsOpen={saveAsOpen}
+          onSaveAsOpenChange={setSaveAsOpen}
           saveAsName={saveAsName}
           onSaveAsNameChange={setSaveAsName}
-          onSaveAsConfirm={() => void handleSaveAs()}
-          onSaveAsBack={() => setShowSaveAs(false)}
         />
 
         <div className="flex min-h-0 flex-1">

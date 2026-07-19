@@ -7,7 +7,9 @@ import {
   IText,
   Line,
   PencilBrush,
+  Polygon,
   Rect,
+  Triangle,
   type FabricObject,
   type TEvent,
 } from "fabric";
@@ -23,6 +25,8 @@ import {
   type CropAspect,
   type EditorStyleState,
   type EditorTool,
+  type ImageExportFormat,
+  isArrowGroup,
   isTextObject,
 } from "./types";
 
@@ -64,7 +68,7 @@ export interface UseFabricEditorResult {
   deleteSelected: () => void;
   bringForward: () => void;
   sendBackward: () => void;
-  exportPngBlob: () => Blob | null;
+  exportImageBlob: (format: ImageExportFormat) => Blob | null;
   syncBgRef: () => void;
 }
 
@@ -73,6 +77,66 @@ function aspectRatio(aspect: CropAspect): number | null {
   if (aspect === "16:9") return 16 / 9;
   if (aspect === "9:16") return 9 / 16;
   return null;
+}
+
+const SHAPE_DRAW_TOOLS = new Set<EditorTool>([
+  "rect",
+  "ellipse",
+  "line",
+  "triangle",
+  "arrow",
+]);
+
+function getArrowParts(group: FabricObject): {
+  line: Line;
+  head: Polygon;
+} | null {
+  if (!isArrowGroup(group)) return null;
+  const items = (group as Group)._objects;
+  if (!items || items.length !== 2) return null;
+  return { line: items[0] as Line, head: items[1] as Polygon };
+}
+
+function buildArrowGroup(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  style: EditorStyleState
+): Group | null {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const len = Math.hypot(dx, dy);
+  if (len < 4) return null;
+
+  const angle = Math.atan2(dy, dx);
+  const headLen = Math.min(16, len * 0.3);
+  const headWidth = headLen * 0.6;
+  const bx = x2 - headLen * Math.cos(angle);
+  const by = y2 - headLen * Math.sin(angle);
+  const px = headWidth * Math.cos(angle + Math.PI / 2);
+  const py = headWidth * Math.sin(angle + Math.PI / 2);
+
+  const line = new Line([x1, y1, x2, y2], {
+    stroke: style.strokeColor,
+    strokeWidth: style.strokeWidth,
+  });
+  const head = new Polygon(
+    [
+      { x: x2, y: y2 },
+      { x: bx + px, y: by + py },
+      { x: bx - px, y: by - py },
+    ],
+    {
+      fill: style.strokeColor,
+      stroke: style.strokeColor,
+      strokeWidth: 1,
+    }
+  );
+  const group = new Group([line, head], {
+    opacity: style.objectOpacity,
+  });
+  return group;
 }
 
 /** Imperative Fabric canvas lifecycle + tools for the image editor. */
@@ -263,6 +327,8 @@ export function useFabricEditor({
         next === "rect" ||
         next === "ellipse" ||
         next === "line" ||
+        next === "triangle" ||
+        next === "arrow" ||
         next === "crop"
       ) {
         canvas.defaultCursor = "crosshair";
@@ -372,16 +438,26 @@ export function useFabricEditor({
             active.type === "rect" ||
             active.type === "ellipse" ||
             active.type === "line" ||
-            active.type === "circle"
+            active.type === "circle" ||
+            active.type === "triangle" ||
+            active.type === "polygon" ||
+            isArrowGroup(active)
           ) {
+            const strokeSource = isArrowGroup(active)
+              ? getArrowParts(active)?.line
+              : active;
             setStyle((prev) => ({
               ...prev,
-              strokeColor: (active.stroke as string) || prev.strokeColor,
-              strokeWidth: (active.strokeWidth as number) ?? prev.strokeWidth,
+              strokeColor:
+                (strokeSource?.stroke as string) || prev.strokeColor,
+              strokeWidth:
+                (strokeSource?.strokeWidth as number) ?? prev.strokeWidth,
               fillColor:
-                !active.fill || active.fill === ""
-                  ? "transparent"
-                  : (active.fill as string),
+                active.type === "line" || isArrowGroup(active)
+                  ? prev.fillColor
+                  : !active.fill || active.fill === ""
+                    ? "transparent"
+                    : (active.fill as string),
               objectOpacity: active.opacity ?? prev.objectOpacity,
             }));
           } else if (active.type === "path") {
@@ -451,9 +527,7 @@ export function useFabricEditor({
         }
 
         if (
-          current === "rect" ||
-          current === "ellipse" ||
-          current === "line" ||
+          SHAPE_DRAW_TOOLS.has(current) ||
           current === "crop"
         ) {
           drawStartRef.current = { x: pointer.x, y: pointer.y };
@@ -497,6 +571,15 @@ export function useFabricEditor({
                 top: pointer.y,
                 rx: 1,
                 ry: 1,
+                fill: s.fillColor === "transparent" ? "transparent" : s.fillColor,
+                ...common,
+              });
+            } else if (current === "triangle") {
+              shape = new Triangle({
+                left: pointer.x,
+                top: pointer.y,
+                width: 1,
+                height: 1,
                 fill: s.fillColor === "transparent" ? "transparent" : s.fillColor,
                 ...common,
               });
@@ -557,7 +640,14 @@ export function useFabricEditor({
             rx: Math.max(1, Math.abs(w) / 2),
             ry: Math.max(1, Math.abs(h) / 2),
           });
-        } else if (current === "line") {
+        } else if (current === "triangle") {
+          draft.set({
+            left: Math.min(start.x, pointer.x),
+            top: Math.min(start.y, pointer.y),
+            width: Math.max(1, Math.abs(w)),
+            height: Math.max(1, Math.abs(h)),
+          });
+        } else if (current === "line" || current === "arrow") {
           (draft as Line).set({ x2: pointer.x, y2: pointer.y });
         }
         canvas.requestRenderAll();
@@ -565,11 +655,33 @@ export function useFabricEditor({
 
       const onMouseUp = () => {
         drawStartRef.current = null;
-        const draft = draftShapeRef.current;
+        let draft = draftShapeRef.current;
         if (draft && canvas) {
           draftShapeRef.current = null;
           const current = toolRef.current;
-          if (current === "rect" || current === "ellipse" || current === "line") {
+          if (current === "arrow" && draft instanceof Line) {
+            const line = draft;
+            const x1 = line.x1 ?? 0;
+            const y1 = line.y1 ?? 0;
+            const x2 = line.x2 ?? 0;
+            const y2 = line.y2 ?? 0;
+            canvas.remove(line);
+            const arrow = buildArrowGroup(
+              x1,
+              y1,
+              x2,
+              y2,
+              styleRef.current
+            );
+            if (!arrow) {
+              canvas.requestRenderAll();
+              return;
+            }
+            markErasable(arrow);
+            canvas.add(arrow);
+            draft = arrow;
+          }
+          if (SHAPE_DRAW_TOOLS.has(current)) {
             setToolState("select");
             void applyTool("select", canvas);
             canvas.setActiveObject(draft);
@@ -708,6 +820,19 @@ export function useFabricEditor({
       });
     } else if (obj.type === "path") {
       obj.set({ stroke: style.brushColor, opacity: style.objectOpacity });
+    } else if (isArrowGroup(obj)) {
+      const parts = getArrowParts(obj);
+      if (parts) {
+        parts.line.set({
+          stroke: style.strokeColor,
+          strokeWidth: style.strokeWidth,
+        });
+        parts.head.set({
+          fill: style.strokeColor,
+          stroke: style.strokeColor,
+        });
+      }
+      obj.set({ opacity: style.objectOpacity });
     } else {
       obj.set({
         stroke: style.strokeColor,
@@ -854,13 +979,29 @@ export function useFabricEditor({
     canvas.requestRenderAll();
   }, [pushHistory]);
 
-  const exportPngBlob = useCallback((): Blob | null => {
-    const canvas = fabricRef.current;
-    if (!canvas) return null;
-    clearCropRect();
-    const dataUrl = canvas.toDataURL({ format: "png", multiplier: 1 });
-    return dataUrlToBlob(dataUrl);
-  }, [clearCropRect]);
+  const exportImageBlob = useCallback(
+    (format: ImageExportFormat): Blob | null => {
+      const canvas = fabricRef.current;
+      if (!canvas) return null;
+      clearCropRect();
+      const prevBg = canvas.backgroundColor;
+      if (format === "jpeg") {
+        canvas.backgroundColor = "#ffffff";
+        canvas.requestRenderAll();
+      }
+      const dataUrl = canvas.toDataURL({
+        format,
+        quality: format === "jpeg" ? 0.92 : undefined,
+        multiplier: 1,
+      });
+      if (format === "jpeg") {
+        canvas.backgroundColor = prevBg ?? "";
+        canvas.requestRenderAll();
+      }
+      return dataUrlToBlob(dataUrl);
+    },
+    [clearCropRect]
+  );
 
   const setCropAspect = useCallback((aspect: CropAspect) => {
     setCropAspectState(aspect);
@@ -896,7 +1037,7 @@ export function useFabricEditor({
     deleteSelected,
     bringForward,
     sendBackward,
-    exportPngBlob,
+    exportImageBlob,
     syncBgRef,
   };
 }

@@ -1,5 +1,16 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
-import { BarChart3, Compass, Loader2, Target, Upload, Users, X } from "lucide-react";
+import {
+  BarChart3,
+  Compass,
+  Download,
+  Eye,
+  Loader2,
+  Pencil,
+  Target,
+  Upload,
+  Users,
+  X,
+} from "lucide-react";
 import { useCreativeState, useUpdateCreativeState } from "@/hooks/useCreativeState";
 import { useCampaignStrategy } from "@/hooks/useCampaignSection";
 import { useStyleCards } from "@/hooks/useStyleCards";
@@ -8,7 +19,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useModification } from "@/hooks/useModification";
 import { useAutoMessage } from "@/hooks/useAutoMessage";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { StyleCard } from "@/types/api";
 import { CreativeTruthCard } from "./CreativeTruthCard";
 import { CreativeToneCard } from "./CreativeToneCard";
@@ -16,6 +27,7 @@ import { VisualDirectionCard } from "./VisualDirectionCard";
 import { GenerateKeyVisualButton } from "./GenerateKeyVisualButton";
 import { CreativeTaskCard } from "./CreativeTaskCard";
 import { ModificationOverlay } from "@/components/app/ModificationOverlay";
+import { ImageEditorDialog } from "@/components/app/canvas/imageEditor/ImageEditorDialog";
 import { refreshAssetUrls } from "@/services/api";
 import { getSelectedCreativeTerritory } from "@/lib/normalizeStrategySection";
 import { cn } from "@/lib/utils";
@@ -30,6 +42,11 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { KeyVisualRouteModel, StrategyModel } from "@/types/api";
 
 interface CreativeTabProps {
@@ -49,6 +66,7 @@ export function CreativeTab({
   const { setIsModifying } = useModification();
   const { triggerAutoSend } = useAutoMessage();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   
   const [flippedCards, setFlippedCards] = useState<Set<'truth' | 'tone' | 'visual'>>(new Set());
   const [isGenerating, setIsGenerating] = useState(false);
@@ -57,6 +75,8 @@ export function CreativeTab({
   const [selectedKvRoute, setSelectedKvRoute] = useState<KeyVisualRouteModel | null>(null);
   const [referenceImages, setReferenceImages] = useState<File[]>([]);
   const [isDraggingImages, setIsDraggingImages] = useState(false);
+  const [kvPreviewOpen, setKvPreviewOpen] = useState(false);
+  const [kvEditorOpen, setKvEditorOpen] = useState(false);
 
   const MAX_REFERENCE_IMAGES = 3;
   const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
@@ -453,7 +473,53 @@ export function CreativeTab({
       {/* Key visual - shown only when it exists, above Generate Key Visual button. Title left, image centered in tab. */}
       {keyVisualAssetId && (
         <section className="mt-8 pt-6 border-t border-border">
-          <h3 className="text-lg font-semibold mb-4 text-left">Key Visual</h3>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h3 className="text-lg font-semibold text-left">Key Visual</h3>
+            {keyVisualUrl && (
+              <div className="flex items-center gap-1">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={() => window.open(keyVisualUrl, "_blank")}
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Download</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={() => setKvPreviewOpen(true)}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Preview</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={() => setKvEditorOpen(true)}
+                      disabled={!user?.email}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Edit</TooltipContent>
+                </Tooltip>
+              </div>
+            )}
+          </div>
           <div className="flex justify-center w-full">
             {keyVisualUrl ? (
               <div className="rounded-lg border border-border overflow-hidden bg-muted/30 max-w-2xl w-full flex justify-center">
@@ -469,6 +535,43 @@ export function CreativeTab({
               </div>
             )}
           </div>
+
+          <Dialog open={kvPreviewOpen} onOpenChange={setKvPreviewOpen}>
+            <DialogContent className="max-w-4xl">
+              <DialogHeader>
+                <DialogTitle>Key Visual</DialogTitle>
+              </DialogHeader>
+              {keyVisualUrl && (
+                <img
+                  src={keyVisualUrl}
+                  alt="Key visual preview"
+                  className="max-h-[75vh] w-full object-contain"
+                />
+              )}
+            </DialogContent>
+          </Dialog>
+
+          {user?.email && keyVisualUrl && (
+            <ImageEditorDialog
+              open={kvEditorOpen}
+              onOpenChange={(open) => {
+                setKvEditorOpen(open);
+                if (!open) {
+                  void queryClient.invalidateQueries({
+                    queryKey: ["creative", campaignId],
+                  });
+                  void queryClient.invalidateQueries({
+                    queryKey: ["asset-urls", keyVisualAssetId],
+                  });
+                }
+              }}
+              assetId={keyVisualAssetId}
+              imageUrl={keyVisualUrl}
+              chatId={chatId}
+              userEmail={user.email}
+              campaignId={campaignId}
+            />
+          )}
         </section>
       )}
 
