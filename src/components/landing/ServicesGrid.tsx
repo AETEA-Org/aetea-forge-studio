@@ -19,7 +19,7 @@ const services = [
 
 export function ServicesGrid() {
   return (
-    <section className="py-32 md:py-40 relative overflow-hidden">
+    <section className="py-24 md:py-28 relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-card/30 to-transparent" />
       
       <div className="container relative px-6 lg:px-12">
@@ -27,7 +27,7 @@ export function ServicesGrid() {
           {/* Section header */}
           <div className="flex items-center gap-3 mb-16">
             <span className="text-xs uppercase tracking-[0.3em] text-foreground/60">
-              Services
+              Capabilities
             </span>
             <div className="h-px flex-1 bg-border" />
           </div>

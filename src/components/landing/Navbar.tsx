@@ -4,9 +4,8 @@ import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const navLinks = [
-  { label: "Product", href: "#what-aetea-is" },
-  { label: "How it works", href: "#how-it-works" },
-  { label: "Who it's for", href: "#who-its-for" },
+  { label: "Pricing", to: "/pricing" },
+  { label: "Advisory", to: "/advisory" },
 ];
 
 export function Navbar() {
@@ -41,13 +40,13 @@ export function Navbar() {
             {/* Desktop Nav - left aligned with favicon */}
             <div className="hidden md:flex items-center gap-10">
               {navLinks.map((link) => (
-                <a
+                <Link
                   key={link.label}
-                  href={link.href}
+                  to={link.to}
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-300"
                 >
                   {link.label}
-                </a>
+                </Link>
               ))}
             </div>
           </div>
@@ -88,14 +87,14 @@ export function Navbar() {
           <div className="md:hidden absolute top-full left-0 right-0 glass p-6 mt-2 mx-4 rounded-2xl animate-fade-in">
             <div className="flex flex-col gap-4">
               {navLinks.map((link) => (
-                <a
+                <Link
                   key={link.label}
-                  href={link.href}
+                  to={link.to}
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
                   onClick={() => setMobileOpen(false)}
                 >
                   {link.label}
-                </a>
+                </Link>
               ))}
               <div className="flex flex-col gap-3 pt-4 mt-2 border-t border-border">
                 <Link to="/auth" onClick={() => setMobileOpen(false)}>

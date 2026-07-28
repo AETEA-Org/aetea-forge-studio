@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 
 export function FinalCTA() {
   return (
-    <section className="py-32 md:py-40 relative grain overflow-hidden">
+    <section className="py-24 md:py-32 relative grain overflow-hidden">
       {/* Pure black background */}
       <div className="absolute inset-0 bg-black" />
       
@@ -17,7 +17,7 @@ export function FinalCTA() {
             Ready to turn direction into deliverables?
           </h2>
           
-          <p className="text-xl text-foreground/70 mb-12">
+          <p className="text-xl text-foreground/70 mb-12 leading-relaxed">
             Start your first brief and see what AETEA can do for you.
           </p>
 
@@ -34,10 +34,10 @@ export function FinalCTA() {
             <a href="mailto:hello@aetea.ai?subject=Demo%20Request">
               <Button 
                 size="lg" 
-                variant="ghost" 
-                className="text-foreground/70 hover:text-foreground hover:bg-transparent rounded-full px-8 h-14 text-base"
+                variant="outline" 
+                className="border-foreground/20 text-foreground hover:bg-foreground/10 hover:border-foreground/40 rounded-full px-8 h-14 text-base"
               >
-                Book a Demo
+                Watch demo
               </Button>
             </a>
           </div>

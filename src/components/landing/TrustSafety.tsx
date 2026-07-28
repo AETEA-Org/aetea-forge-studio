@@ -9,7 +9,7 @@ const trustPoints = [
 
 export function TrustSafety() {
   return (
-    <section className="py-32 md:py-40 relative overflow-hidden">
+    <section className="py-24 md:py-28 relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-card/30 to-transparent" />
       
       <div className="container relative px-6 lg:px-12">

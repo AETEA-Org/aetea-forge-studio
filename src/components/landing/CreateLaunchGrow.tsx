@@ -2,68 +2,72 @@ import { useState } from "react";
 
 const pillars = [
   {
-    id: "create",
-    title: "Create",
-    tagline: "Turn your vision into a clear direction people feel.",
+    id: "research",
+    title: "Research",
+    tagline: "See what matters.",
     capabilities: [
-      "Brand strategy, positioning, naming, messaging",
-      "Campaign ideas, content concepts, creative direction",
-      "Copywriting, design direction, scripts, storyboards",
-      "Lyrics, music direction, hooks, creative writing",
+      "Industry and market landscape",
+      "Audience needs and behaviour",
+      "Competitor positions and gaps",
+      "Tensions, opportunities, and questions to pursue",
     ],
-    outcome: "Clarity + taste + a plan your team can execute.",
+    outcome: "A focused view of the context.",
   },
   {
-    id: "launch",
-    title: "Launch",
-    tagline: "Produce real assets, in the formats the market needs.",
+    id: "strategy",
+    title: "Strategy",
+    tagline: "Choose the way forward.",
     capabilities: [
-      "Film/video production and editing",
-      "Voiceover and audio production",
-      "Web, apps, and digital experiences",
-      "PR, email marketing, and publishing",
+      "Positioning and narrative",
+      "Audience segments, personas, and journeys",
+      "Messaging and creative foundation",
+      "Channels, rollout, and measurement",
     ],
-    outcome: "Campaign-ready deliverables — faster, cleaner, on-brand.",
+    outcome: "Decisions ready to guide the work.",
   },
   {
-    id: "grow",
-    title: "Grow",
-    tagline: "Measure what matters, learn faster, scale what works.",
+    id: "creative",
+    title: "Creative",
+    tagline: "Give the direction form.",
     capabilities: [
-      "Performance summaries and analytics",
-      "Content scheduling and calendar management",
-      "Monitoring and reporting dashboards",
-      "Growth strategy and iteration loops",
+      "Campaign key visuals and content concepts",
+      "Copy, scripts, and storyboards",
+      "Visual, film, audio, print, out-of-home, point-of-sale, PR, event, and digital assets",
+      "Deliverables and rollout packs",
     ],
-    outcome: "Stronger feedback loops and smarter growth decisions.",
+    outcome: "Work ready to make, test, and use.",
   },
 ];
 
 export function CreateLaunchGrow() {
-  const [activeTab, setActiveTab] = useState("create");
+  const [activeTab, setActiveTab] = useState("research");
   const activePillar = pillars.find((p) => p.id === activeTab)!;
 
   return (
-    <section className="py-32 md:py-40 relative grain">
+    <section className="py-24 md:py-32 relative grain">
       <div className="container px-6 lg:px-12">
         <div className="max-w-5xl mx-auto">
           {/* Section header */}
-          <div className="text-center mb-20">
+          <div className="text-center mb-14 md:mb-16">
             <div className="flex items-center justify-center gap-3 mb-8">
               <div className="h-px w-12 bg-border" />
               <span className="text-xs uppercase tracking-[0.3em] text-foreground/60">
-                The Journey
+                The Work
               </span>
               <div className="h-px w-12 bg-border" />
             </div>
             
-            <h2 className="font-display text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight">
-              <span className={activeTab === "create" ? "text-primary" : "text-foreground/35 cursor-pointer transition-colors hover:text-foreground/60"} onClick={() => setActiveTab("create")}>Create</span>
-              <span className="text-foreground/25 mx-2">•</span>
-              <span className={activeTab === "launch" ? "text-primary" : "text-foreground/35 cursor-pointer transition-colors hover:text-foreground/60"} onClick={() => setActiveTab("launch")}>Launch</span>
-              <span className="text-foreground/25 mx-2">•</span>
-              <span className={activeTab === "grow" ? "text-primary" : "text-foreground/35 cursor-pointer transition-colors hover:text-foreground/60"} onClick={() => setActiveTab("grow")}>Grow</span>
+            <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+              <span className={activeTab === "research" ? "text-primary" : "text-foreground/35 cursor-pointer transition-colors hover:text-foreground/60"} onClick={() => setActiveTab("research")}>Research</span>
+              <span className="text-foreground/25">•</span>
+              <span className={activeTab === "strategy" ? "text-primary" : "text-foreground/35 cursor-pointer transition-colors hover:text-foreground/60"} onClick={() => setActiveTab("strategy")}>Strategy</span>
+              <span className="text-foreground/25">•</span>
+              <span className={activeTab === "creative" ? "text-primary" : "text-foreground/35 cursor-pointer transition-colors hover:text-foreground/60"} onClick={() => setActiveTab("creative")}>Creative</span>
             </h2>
+
+            <p className="mt-6 text-lg text-foreground/60">
+              Brainstorm an idea or work through a campaign.
+            </p>
           </div>
 
           {/* Tabs */}

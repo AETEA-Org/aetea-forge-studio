@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import heroLogo from "@/assets/AETEA-logo-blue-transparent.png";
+import heroLogo from "@/assets/aetea-logo-hero.jpeg";
 
 export function HeroSection() {
   return (
@@ -25,62 +25,64 @@ export function HeroSection() {
 
       <div className="container relative z-10 px-6 lg:px-12 py-32 md:py-40 flex justify-center">
         <div className="max-w-[1100px] w-full flex flex-col items-center text-center">
-          {/* Logo */}
+          {/* Logo — cropped wordmark (~prev 683×253 proportions) */}
           <div
-            className="w-[800px] max-w-full mx-auto mb-4 opacity-0 animate-fade-in flex justify-center"
+            className="w-[800px] max-w-full mx-auto mb-2 opacity-0 animate-fade-in flex justify-center"
             style={{ animationDelay: '0.1s' }}
           >
             <img
               src={heroLogo}
               alt="AETEA"
               className="w-full h-auto object-contain"
-              style={{ aspectRatio: '683 / 253' }}
+              style={{ aspectRatio: '1350 / 405' }}
             />
           </div>
 
-          {/* Headline - 70px font size, arrows inherit and scale with text */}
+          {/* Headline */}
           <h1
-            className="font-display font-bold tracking-tight leading-[0.95] mb-8 opacity-0 animate-fade-in"
-            style={{ fontSize: '70px', animationDelay: '0.2s' }}
+            className="font-display font-bold tracking-tight leading-[0.95] mb-5 opacity-0 animate-fade-in"
+            style={{ fontSize: 'clamp(2.25rem, 5.5vw, 64px)', animationDelay: '0.2s' }}
           >
-            <span className="text-foreground">All you need.</span>
-            <br />
-            <span className="text-gradient-blue">Create</span>
-            <span className="text-foreground/30 mx-2">→</span>
-            <span className="text-gradient-blue">Launch</span>
-            <span className="text-foreground/30 mx-2">→</span>
-            <span className="text-gradient-blue">Grow.</span>
+            <span className="text-foreground">Intelligence at work.</span>
           </h1>
 
           {/* Subline */}
           <p
-            className="text-lg sm:text-xl md:text-2xl text-foreground/70 max-w-2xl leading-relaxed mb-12 opacity-0 animate-fade-in mx-auto"
+            className="text-lg sm:text-xl md:text-2xl text-foreground/70 max-w-2xl leading-relaxed mb-5 opacity-0 animate-fade-in mx-auto"
+            style={{ animationDelay: '0.3s' }}
+          >
+            From brief to market. From response to what follows.
+          </p>
+
+          {/* Body */}
+          <p
+            className="text-base sm:text-lg text-foreground/60 max-w-2xl leading-[1.75] mb-10 opacity-0 animate-fade-in mx-auto"
             style={{ animationDelay: '0.4s' }}
           >
-            AETEA is your creative intelligence—backed by everything required to envision, execute, and excel.
+            AETEA is an intelligence at work across research, strategy, creative, assets, channel deployment, and performance analysis, available by subscription.
           </p>
 
           {/* CTAs */}
           <div
-            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20 opacity-0 animate-fade-in"
+            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16 opacity-0 animate-fade-in"
             style={{ animationDelay: '0.6s' }}
           >
             <Link to="/auth">
               <Button 
                 size="lg" 
-                className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full px-8 h-14 text-base group transition-all duration-300 hover:scale-105 hover:shadow-[0_0_30px_hsla(220,100%,60%,0.4)]"
+                className="bg-foreground text-background hover:bg-foreground/90 rounded-full px-8 h-14 text-base group transition-all duration-300 hover:scale-105"
               >
                 Start a Brief
                 <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Button>
             </Link>
-            <a href="#what-aetea-is">
+            <a href="mailto:hello@aetea.ai?subject=Demo%20Request">
               <Button 
                 size="lg" 
                 variant="outline" 
                 className="border-foreground/20 text-foreground hover:bg-foreground/10 hover:border-foreground/40 rounded-full px-8 h-14 text-base transition-all duration-300"
               >
-                Learn more
+                Watch demo
               </Button>
             </a>
           </div>
@@ -90,12 +92,8 @@ export function HeroSection() {
             className="flex flex-wrap justify-center items-center gap-x-8 gap-y-4 opacity-0 animate-fade-in"
             style={{ animationDelay: '0.8s' }}
           >
-            {[
-              "Strategy + Creative + Production",
-              "Multi-format outputs",
-              "AETEA-assisted, human-checked",
-            ].map((point, i) => (
-              <div key={i} className="flex items-center gap-3">
+            {["Research", "Strategy", "Creative"].map((point) => (
+              <div key={point} className="flex items-center gap-3">
                 <div className="w-1.5 h-1.5 rounded-full bg-primary" />
                 <span className="text-sm text-foreground/60">{point}</span>
               </div>

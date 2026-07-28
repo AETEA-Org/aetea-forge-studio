@@ -19,7 +19,7 @@ const steps = [
     number: "03",
     icon: Package,
     title: "Create deliverables",
-    description: "Production-ready assets across channels — designed, written, and formatted for launch.",
+    description: "Production-ready assets designed, written, and formatted for launch across channels.",
   },
   {
     number: "04",
@@ -31,7 +31,7 @@ const steps = [
 
 export function HowItWorks() {
   return (
-    <section id="how-it-works" className="py-32 md:py-40 relative overflow-hidden grain">
+    <section id="how-it-works" className="py-28 md:py-36 relative overflow-hidden grain">
       {/* Subtle background gradient */}
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/5 to-transparent" />
       
