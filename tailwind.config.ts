@@ -61,6 +61,8 @@ export default {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         display: ['Syne', 'sans-serif'],
+        brush: ['Kolker Brush', 'cursive'],
+        price: ['Tauri', 'sans-serif'],
       },
       borderRadius: {
         lg: "var(--radius)",
