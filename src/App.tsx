@@ -11,6 +11,7 @@ import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import Landing from "./pages/Landing";
 import Pricing from "./pages/Pricing";
+import Advisory from "./pages/Advisory";
 import Auth from "./pages/Auth";
 import AppPage from "./pages/App";
 import { CampaignShell } from "./layouts/CampaignShell";
@@ -32,6 +33,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Landing />} />
               <Route path="/pricing" element={<Pricing />} />
+              <Route path="/advisory" element={<Advisory />} />
               <Route path="/auth" element={<Auth />} />
               
               {/* Protected App Routes */}

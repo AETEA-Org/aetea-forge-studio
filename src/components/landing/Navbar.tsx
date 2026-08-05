@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const navLinks = [
   { label: "Pricing", to: "/pricing" },
@@ -11,6 +12,7 @@ const navLinks = [
 export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const { pathname } = useLocation();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -39,15 +41,24 @@ export function Navbar() {
             </Link>
             {/* Desktop Nav - left aligned with favicon */}
             <div className="hidden md:flex items-center gap-10">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.label}
-                  to={link.to}
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-300"
-                >
-                  {link.label}
-                </Link>
-              ))}
+              {navLinks.map((link) => {
+                const isActive = pathname === link.to;
+                return (
+                  <Link
+                    key={link.label}
+                    to={link.to}
+                    aria-current={isActive ? "page" : undefined}
+                    className={cn(
+                      "text-sm transition-colors duration-300",
+                      isActive
+                        ? "text-foreground"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {link.label}
+                  </Link>
+                );
+              })}
             </div>
           </div>
 
@@ -86,16 +97,25 @@ export function Navbar() {
         {mobileOpen && (
           <div className="md:hidden absolute top-full left-0 right-0 glass p-6 mt-2 mx-4 rounded-2xl animate-fade-in">
             <div className="flex flex-col gap-4">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.label}
-                  to={link.to}
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  {link.label}
-                </Link>
-              ))}
+              {navLinks.map((link) => {
+                const isActive = pathname === link.to;
+                return (
+                  <Link
+                    key={link.label}
+                    to={link.to}
+                    aria-current={isActive ? "page" : undefined}
+                    className={cn(
+                      "text-sm transition-colors py-2",
+                      isActive
+                        ? "text-foreground"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    {link.label}
+                  </Link>
+                );
+              })}
               <div className="flex flex-col gap-3 pt-4 mt-2 border-t border-border">
                 <Link to="/auth" onClick={() => setMobileOpen(false)}>
                   <Button variant="ghost" size="sm" className="w-full justify-center">
