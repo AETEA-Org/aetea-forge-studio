@@ -16,6 +16,10 @@ import {
   Video,
   MessageSquare,
   ChevronDown,
+  SkipBack,
+  SkipForward,
+  Users,
+  Plus,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -40,6 +44,9 @@ import { ChatContextIndicator } from "./ChatContextIndicator";
 import { cn } from "@/lib/utils";
 import { partitionChatFiles, validateChatFile } from "@/lib/chatFileValidation";
 import { useStyleCards } from "@/hooks/useStyleCards";
+import { useCharacters, useCreateCharacter } from "@/hooks/useCharacters";
+import { CharacterCreateDialog } from "./CharacterCreateDialog";
+import type { Character } from "@/types/api";
 
 export type ChatMode = "brainstorm" | "campaign";
 export type GenerationMode = "general" | "image" | "video";
@@ -51,6 +58,17 @@ export type GenerationOptions = {
   resolution?: string;
   duration_seconds?: number;
   audio?: boolean;
+  first_frame_asset_id?: string;
+  last_frame_asset_id?: string;
+  character_ids?: string[];
+};
+
+/** Image assets selectable as a video's exact opening/closing frame. */
+export type FrameAsset = {
+  id: string;
+  file_name: string;
+  view_url: string;
+  mime_type: string;
 };
 
 export type ChatSendMeta = {
@@ -82,6 +100,8 @@ interface ChatInputProps {
   variant?: "default" | "floating";
   /** Task-canvas only: General / Image / Video mode switch + option pickers. */
   enableGenerationModes?: boolean;
+  /** Task-canvas only: images offered as a video's first/last frame. */
+  frameAssets?: FrameAsset[];
 }
 
 export interface ChatInputHandle {
@@ -191,6 +211,139 @@ function StyleCardPicker({
   );
 }
 
+function FramePicker({
+  assets,
+  selectedId,
+  disabled,
+  onToggle,
+}: {
+  assets: FrameAsset[];
+  selectedId?: string;
+  disabled?: boolean;
+  onToggle: (id: string) => void;
+}) {
+  if (assets.length === 0) {
+    return (
+      <p className="text-xs text-muted-foreground py-2">
+        No images in this chat yet
+      </p>
+    );
+  }
+  return (
+    <div className="grid grid-cols-3 gap-1.5">
+      {assets.map((asset) => {
+        const active = selectedId === asset.id;
+        const label = asset.file_name || asset.id.slice(0, 8);
+        return (
+          <button
+            key={asset.id}
+            type="button"
+            disabled={disabled}
+            title={label}
+            onClick={() => onToggle(asset.id)}
+            className={cn(
+              "relative aspect-square rounded-md border overflow-hidden transition-colors",
+              active
+                ? "border-primary ring-2 ring-primary/30"
+                : "border-border hover:border-primary/50"
+            )}
+          >
+            <img
+              src={asset.view_url}
+              alt={label}
+              className="h-full w-full object-cover"
+            />
+            <span className="absolute inset-x-0 bottom-0 bg-background/80 px-1 py-0.5 text-[9px] truncate text-center">
+              {label}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function CharacterPicker({
+  characters,
+  selectedIds,
+  disabled,
+  onToggle,
+  onCreate,
+}: {
+  characters: Character[];
+  selectedIds: string[];
+  disabled?: boolean;
+  onToggle: (id: string) => void;
+  onCreate: () => void;
+}) {
+  return (
+    <div className="space-y-1.5">
+      {characters.length === 0 ? (
+        <p className="text-xs text-muted-foreground py-1">
+          No characters yet
+        </p>
+      ) : (
+        <div className="grid grid-cols-3 gap-1.5">
+          {characters.map((character) => {
+            const active = selectedIds.includes(character.id);
+            const ready = character.status === "ready";
+            const label = character.name || character.id.slice(0, 8);
+            const title = ready
+              ? `${label} — ${character.description}`
+              : character.status === "pending"
+                ? `${label} — still preparing`
+                : `${label} — ${character.status_message || "could not be prepared"}`;
+            return (
+              <button
+                key={character.id}
+                type="button"
+                disabled={disabled || !ready}
+                title={title}
+                onClick={() => onToggle(character.id)}
+                className={cn(
+                  "relative aspect-square rounded-md border overflow-hidden transition-colors",
+                  active
+                    ? "border-primary ring-2 ring-primary/30"
+                    : "border-border hover:border-primary/50",
+                  !ready && "opacity-50"
+                )}
+              >
+                {character.preview_url ? (
+                  <img
+                    src={character.preview_url}
+                    alt={label}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="h-full w-full bg-muted flex items-center justify-center px-1">
+                    <span className="text-[10px] text-muted-foreground text-center line-clamp-2">
+                      {label}
+                    </span>
+                  </div>
+                )}
+                <span className="absolute inset-x-0 bottom-0 bg-background/80 px-1 py-0.5 text-[9px] truncate text-center">
+                  {character.status === "pending" ? `${label}…` : label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="w-full h-7 justify-start text-xs"
+        disabled={disabled}
+        onClick={onCreate}
+      >
+        <Plus className="h-3.5 w-3.5 mr-1.5" />
+        New character
+      </Button>
+    </div>
+  );
+}
+
 function IconTipButton({
   tip,
   disabled,
@@ -285,6 +438,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     inputPlaceholder = "Ask a question...",
     variant = "default",
     enableGenerationModes = false,
+    frameAssets,
   },
   ref
 ) {
@@ -302,6 +456,15 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     (generationMode === "image" || generationMode === "video");
   const { data: styleData } = useStyleCards(loadStyles ? 30 : 0);
   const styleCards = styleData?.style_cards ?? [];
+  const frameOptions = (frameAssets ?? []).filter((a) =>
+    a.mime_type?.startsWith("image/")
+  );
+  const loadCharacters = enableGenerationModes && generationMode === "video";
+  const { data: characterData } = useCharacters(loadCharacters);
+  const characters = characterData?.characters ?? [];
+  const createCharacter = useCreateCharacter();
+  const [characterDialogOpen, setCharacterDialogOpen] = useState(false);
+  const selectedCharacterIds = generationOptions.character_ids ?? [];
 
   useImperativeHandle(ref, () => ({
     addFiles: (incoming: File[]) => {
@@ -820,6 +983,101 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
                 <Palette className="h-3.5 w-3.5" />
               </OptionPopover>
 
+              <OptionPopover
+                tip="Characters"
+                disabled={pickerDisabled}
+                active={selectedCharacterIds.length > 0}
+                contentClassName="w-56 max-h-64 overflow-y-auto"
+                content={
+                  <>
+                    <p className="text-[11px] text-muted-foreground mb-1.5">
+                      Keep these subjects identical (max 3)
+                    </p>
+                    <CharacterPicker
+                      characters={characters}
+                      selectedIds={selectedCharacterIds}
+                      disabled={pickerDisabled}
+                      onToggle={(id) => {
+                        const next = selectedCharacterIds.includes(id)
+                          ? selectedCharacterIds.filter((c) => c !== id)
+                          : [...selectedCharacterIds, id].slice(0, 3);
+                        patchOptions({
+                          character_ids: next.length > 0 ? next : undefined,
+                        });
+                      }}
+                      onCreate={() => setCharacterDialogOpen(true)}
+                    />
+                  </>
+                }
+              >
+                <Users className="h-3.5 w-3.5" />
+              </OptionPopover>
+
+              <OptionPopover
+                tip="Start frame"
+                disabled={pickerDisabled}
+                active={!!generationOptions.first_frame_asset_id}
+                contentClassName="w-56 max-h-64 overflow-y-auto"
+                content={
+                  <>
+                    <p className="text-[11px] text-muted-foreground mb-1.5">
+                      Open the video on this image
+                    </p>
+                    <FramePicker
+                      assets={frameOptions}
+                      selectedId={generationOptions.first_frame_asset_id}
+                      disabled={pickerDisabled}
+                      onToggle={(id) => {
+                        const clearing =
+                          generationOptions.first_frame_asset_id === id;
+                        patchOptions({
+                          first_frame_asset_id: clearing ? undefined : id,
+                          // An end frame needs a start frame, so drop it too.
+                          ...(clearing ? { last_frame_asset_id: undefined } : {}),
+                        });
+                      }}
+                    />
+                  </>
+                }
+              >
+                <SkipBack className="h-3.5 w-3.5" />
+              </OptionPopover>
+
+              <OptionPopover
+                tip={
+                  generationOptions.first_frame_asset_id
+                    ? "End frame"
+                    : "End frame — pick a start frame first"
+                }
+                disabled={
+                  pickerDisabled || !generationOptions.first_frame_asset_id
+                }
+                active={!!generationOptions.last_frame_asset_id}
+                contentClassName="w-56 max-h-64 overflow-y-auto"
+                content={
+                  <>
+                    <p className="text-[11px] text-muted-foreground mb-1.5">
+                      End the video on this image
+                    </p>
+                    <FramePicker
+                      assets={frameOptions}
+                      selectedId={generationOptions.last_frame_asset_id}
+                      disabled={pickerDisabled}
+                      onToggle={(id) =>
+                        patchOptions({
+                          last_frame_asset_id:
+                            generationOptions.last_frame_asset_id === id
+                              ? undefined
+                              : id,
+                        })
+                      }
+                    />
+                  </>
+                }
+              >
+                <SkipForward className="h-3.5 w-3.5" />
+              </OptionPopover>
+
               <IconTipButton
                 tip={generationOptions.audio === false ? "Audio off" : "Audio on"}
                 disabled={pickerDisabled}
@@ -840,6 +1098,23 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           )}
         </div>
       )}
+
+      <CharacterCreateDialog
+        open={characterDialogOpen}
+        onOpenChange={setCharacterDialogOpen}
+        assets={frameOptions}
+        isSaving={createCharacter.isPending}
+        error={
+          createCharacter.error instanceof Error
+            ? createCharacter.error.message
+            : null
+        }
+        onConfirm={(payload) =>
+          createCharacter.mutate(payload, {
+            onSuccess: () => setCharacterDialogOpen(false),
+          })
+        }
+      />
     </div>
   );
 });

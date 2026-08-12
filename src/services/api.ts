@@ -20,6 +20,8 @@ import type {
   Asset,
   CreativeState,
   StyleCardsResponse,
+  Character,
+  CharactersResponse,
   CampaignTasksResponse,
   CampaignTask,
   DeliverableObjectsResponse,
@@ -681,6 +683,49 @@ export async function getStyleCards(
     throw new Error(error.detail || 'Failed to fetch style cards');
   }
   
+  return response.json();
+}
+
+// Characters (GET /characters) — reusable subject identities for video
+export async function getCharacters(
+  userEmail: string
+): Promise<CharactersResponse> {
+  const response = await fetch(
+    buildUrl('/characters', { user_id: userEmail }),
+    {
+      headers: getHeaders(),
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to fetch characters');
+  }
+
+  return response.json();
+}
+
+// Create a character (POST /characters)
+export async function createCharacter(
+  userEmail: string,
+  payload: {
+    name: string;
+    description: string;
+    frontal_asset_id: string;
+    angle_asset_ids?: string[];
+  }
+): Promise<Character> {
+  const response = await fetch(buildUrl('/characters'), {
+    method: 'POST',
+    headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id: userEmail, ...payload }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to create character');
+  }
+
   return response.json();
 }
 

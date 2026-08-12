@@ -389,6 +389,25 @@ export interface StyleCardsResponse {
   total: number | null;
 }
 
+// Characters (GET/POST /characters) — reusable subject identities
+export type CharacterStatus = 'pending' | 'ready' | 'failed';
+
+export interface Character {
+  id: string;
+  name: string;
+  description: string;
+  status: CharacterStatus;
+  status_message: string | null;
+  frontal_asset_id: string | null;
+  angle_asset_ids: string[];
+  preview_url: string | null;
+  created_at: string | null;
+}
+
+export interface CharactersResponse {
+  characters: Character[];
+}
+
 // Campaign tasks (GET /campaigns/{id}/tasks)
 export type CampaignTaskStatus = 'todo' | 'in_progress' | 'under_review' | 'done';
 

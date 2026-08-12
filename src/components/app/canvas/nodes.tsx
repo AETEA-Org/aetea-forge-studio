@@ -173,6 +173,7 @@ export const ChatWindowNode = memo(function ChatWindowNode() {
               textareaMaxHeight={140}
               variant="floating"
               enableGenerationModes
+              frameAssets={threadAssets}
             />
           </div>
         </ChatPanelDropZone>
