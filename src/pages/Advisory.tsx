@@ -14,7 +14,7 @@ import { AdvisoryPhilosophy } from "@/components/landing/advisory/AdvisoryPhilos
 export default function Advisory() {
   useEffect(() => {
     const previousTitle = document.title;
-    document.title = "Advisory · AETEA";
+    document.title = "The 80 Ones Advisory · AETEA";
     return () => {
       document.title = previousTitle;
     };
