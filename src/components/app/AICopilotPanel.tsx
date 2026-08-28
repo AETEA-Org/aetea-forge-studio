@@ -9,7 +9,10 @@ import { useChatMessages } from "@/hooks/useChats";
 import { useChatContext } from "@/hooks/useChatContext";
 import { useModification } from "@/hooks/useModification";
 import { useAutoMessage } from "@/hooks/useAutoMessage";
-import { sendChatMessage, resolveStreamAssetHints } from "@/services/api";
+import { resolveStreamAssetHints } from "@/services/api";
+import { cancelRun, runTurn, type ProgressStep } from "@/services/agentRun";
+import { AgentThinking } from "@/components/app/AgentThinking";
+import { AgentSteps } from "@/components/app/AgentSteps";
 import { useAuth } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -37,6 +40,8 @@ export function AICopilotPanel({
 }: AICopilotPanelProps) {
   const [streamingContent, setStreamingContent] = useState("");
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
+  const [thinkingText, setThinkingText] = useState("");
+  const [steps, setSteps] = useState<ProgressStep[]>([]);
   const [optimisticMessages, setOptimisticMessages] = useState<ChatMessage[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [streamingAssets, setStreamingAssets] = useState<ChatRenderableAsset[]>([]);
@@ -144,120 +149,111 @@ export function AICopilotPanel({
       });
 
       try {
-        await sendChatMessage(
-          user.email,
-          chatId,
-          message,
-          'campaign', // mode is always campaign in campaign view
-          ctxToUse,
-          files,
-          // onUpdate
-          (content: string) => {
-            console.log('📝 Update:', content.substring(0, 50));
-            setUpdateMessage(content);
+        await runTurn(
+          {
+            userEmail: user.email,
+            chatId,
+            message,
+            mode: "campaign",
+            files,
           },
-          // onContent
-          (content: string) => {
-            console.log('💬 Content chunk received, length:', content.length);
-            // Delay clearing update so progress messages (e.g. "Creating image") are visible
-            // even when content arrives immediately after
-            if (updateClearTimeoutRef.current) {
-              clearTimeout(updateClearTimeoutRef.current);
-            }
-            updateClearTimeoutRef.current = setTimeout(() => {
-              setUpdateMessage(null);
-              updateClearTimeoutRef.current = null;
-            }, 500);
-            setStreamingContent(content);
-          },
-          // onEvent
-          (eventName: string) => {
-            console.log('🎯 Event received:', eventName);
-            if (eventName === 'campaign_modifying') {
-              if (!isModifyingActiveRef.current) {
-                console.log('🔵 Activating modification overlay');
-                isModifyingActiveRef.current = true;
-                setIsModifying(true, ctxToUse);
+          {
+            onToken: (_delta, accumulated) => {
+              if (updateClearTimeoutRef.current) {
+                clearTimeout(updateClearTimeoutRef.current);
               }
-            } else if (eventName === 'campaign_modified') {
-              console.log('🔄 Campaign modified - refetching data');
-              queryClient
-                .invalidateQueries({
-                  queryKey: ['campaign'],
-                })
-                .catch((err) => {
-                  console.error('Error invalidating campaign data:', err);
-                });
-              // Creative + assets use separate query roots from ['campaign', …] (see useCreativeState, useAssets).
+              updateClearTimeoutRef.current = setTimeout(() => {
+                setUpdateMessage(null);
+                updateClearTimeoutRef.current = null;
+              }, 500);
+              setStreamingContent(accumulated);
+            },
+            onThinking: (_delta, accumulated) => setThinkingText(accumulated),
+            onProgress: (step) => {
+              setUpdateMessage(step.label);
+              setSteps((current) => {
+                const at = current.findIndex((s) => s.step_id === step.step_id);
+                if (at === -1) return [...current, step];
+                const next = [...current];
+                next[at] = step;
+                return next;
+              });
+            },
+            onAssets: (assets) => {
+              mergeStreamAssets(
+                assets.map((a) => ({ id: a.id, mime_type: a.mime_type ?? "" }))
+              ).catch(() => {});
+            },
+            onCampaign: () => {
+              // A section landed: refresh the tab showing it.
+              queryClient.invalidateQueries({ queryKey: ["campaign"] });
               if (campaignId && user?.email) {
                 queryClient.invalidateQueries({
-                  queryKey: ['creative', campaignId, user.email],
+                  queryKey: ["creative", campaignId, user.email],
                 });
               }
+            },
+            onDataChanged: () => {
+              queryClient.invalidateQueries({ queryKey: ["campaign"] });
               if (user?.email) {
-                queryClient.invalidateQueries({ queryKey: ['asset-urls'] });
+                queryClient.invalidateQueries({ queryKey: ["asset-urls"] });
                 queryClient.invalidateQueries({
-                  queryKey: ['assets', chatId, user.email],
+                  queryKey: ["assets", chatId, user.email],
                 });
               }
-            }
-            override?.onEvent?.(eventName);
-          },
-          (hints: StreamAssetHint[]) => {
-            mergeStreamAssets(hints).catch(() => {});
-          },
-          // onComplete
-          async (content: string) => {
-            console.log('✅ Complete');
-            if (updateClearTimeoutRef.current) {
-              clearTimeout(updateClearTimeoutRef.current);
-              updateClearTimeoutRef.current = null;
-            }
-            setUpdateMessage(null);
-            
-            // WAIT for chat messages to load so complete message is visible
-            console.log('💾 Refetching chat messages...');
-            await queryClient.refetchQueries({
-              queryKey: ['chat-messages', chatId],
-            });
-            console.log('✅ Chat messages loaded - complete message now visible');
-            
-            // Now clear streaming state after messages are loaded
-            setStreamingContent("");
-            setStreamingAssets([]);
-            setIsStreaming(false);
-            setOptimisticMessages([]);
-
-            // Remove blur if modification was active
-            if (isModifyingActiveRef.current) {
-              console.log('🔴 Removing modification overlay');
-              setIsModifying(false, null);
+            },
+            onCancelled: () => {
+              setUpdateMessage(null);
+              setStreamingContent("");
+              setSteps([]);
+              setThinkingText("");
+              setIsStreaming(false);
+              setOptimisticMessages([]);
+              queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
+            },
+            onComplete: async () => {
+              if (updateClearTimeoutRef.current) {
+                clearTimeout(updateClearTimeoutRef.current);
+                updateClearTimeoutRef.current = null;
+              }
+              setUpdateMessage(null);
+              await queryClient.refetchQueries({
+                queryKey: ["chat-messages", chatId],
+              });
+              setStreamingContent("");
+              setStreamingAssets([]);
+              setThinkingText("");
+              setSteps([]);
+              setIsStreaming(false);
+              setOptimisticMessages([]);
+              if (isModifyingActiveRef.current) {
+                setIsModifying(false, null);
+                isModifyingActiveRef.current = false;
+              }
+              override?.onComplete?.();
+            },
+            onError: (errorMsg: string) => {
+              if (updateClearTimeoutRef.current) {
+                clearTimeout(updateClearTimeoutRef.current);
+                updateClearTimeoutRef.current = null;
+              }
+              setUpdateMessage(null);
+              setStreamingContent("");
+              setStreamingAssets([]);
+              setThinkingText("");
+              setSteps([]);
+              setIsStreaming(false);
+              setOptimisticMessages([]);
+              setError(errorMsg);
               isModifyingActiveRef.current = false;
-            }
-            override?.onComplete?.();
-          },
-          // onError
-          (errorMsg: string) => {
-            console.error('❌ Error from server:', errorMsg);
-            if (updateClearTimeoutRef.current) {
-              clearTimeout(updateClearTimeoutRef.current);
-              updateClearTimeoutRef.current = null;
-            }
-            setUpdateMessage(null);
-            setStreamingContent("");
-            setStreamingAssets([]);
-            setIsStreaming(false);
-            setOptimisticMessages([]);
-            setError(errorMsg);
-            isModifyingActiveRef.current = false;
-            setIsModifying(false, null);
-            
-            toast({
-              title: "Error",
-              description: errorMsg,
-              variant: "destructive",
-            });
-            override?.onError?.(errorMsg);
+              setIsModifying(false, null);
+              toast({
+                title: "Something went wrong",
+                description: errorMsg,
+                variant: "destructive",
+              });
+              override?.onError?.(errorMsg);
+            },
           }
         );
       } catch (error) {
@@ -481,6 +477,35 @@ export function AICopilotPanel({
               <p className="text-xs text-destructive">{error}</p>
             </div>
           )}
+          {(thinkingText || steps.length > 0) && (
+            <div className="space-y-2 px-4 pb-2">
+              <AgentThinking text={thinkingText} />
+              <AgentSteps steps={steps} />
+            </div>
+          )}
+
+          {isStreaming && (
+            <div className="px-4 pb-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  if (!user?.email || !chatId) return;
+                  await cancelRun(chatId, user.email);
+                  setIsStreaming(false);
+                  setSteps([]);
+                  setThinkingText("");
+                  setStreamingContent("");
+                  await queryClient.refetchQueries({
+                    queryKey: ["chat-messages", chatId],
+                  });
+                }}
+              >
+                Stop
+              </Button>
+            </div>
+          )}
+
           <ChatInput
             ref={chatInputRef}
             onSend={handleSendMessage}

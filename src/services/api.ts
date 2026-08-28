@@ -10,7 +10,6 @@ import type {
   StrategyModel,
   SectionName,
   SSEMessage,
-  AgentStreamMessage,
   StreamAssetHint,
   ChatRenderableAsset,
   ChatMessagesResponse,
@@ -30,8 +29,7 @@ import type {
 } from "@/types/api";
 
 // Direct API base URL (bypassing Supabase Edge Function)
-const API_BASE_URL = 'https://m-abdur2024-aetea.hf.space';
-const API_TOKEN = import.meta.env.VITE_AETEA_API_TOKEN;
+import { API_BASE_URL, API_TOKEN } from '@/services/config';
 
 // Helper to build URL with params
 function buildUrl(path: string, params?: Record<string, string>): string {
@@ -305,85 +303,37 @@ export async function getProjectTasks(projectId: string, userEmail: string): Pro
 }
 
 // Create campaign via AETEA chat (SSE streaming)
+/**
+ * Ask the agent to build a campaign in a new conversation.
+ *
+ * Progress comes from the campaign lifecycle rather than from matching text in
+ * the reply: "creating" means the build has begun, "created" means it is done.
+ * Named steps replace the old percentage, which had to guess.
+ */
 export async function createCampaignViaChat(
   userEmail: string,
   chatId: string,
   message: string,
   files?: File[],
-  onUpdate?: (content: string) => void,
-  onEvent?: (eventName: string) => void,
+  onProgress?: (label: string) => void,
+  onStarted?: () => void,
   onComplete?: () => void,
   onError?: (message: string) => void
 ): Promise<void> {
-  const formData = new FormData();
-  formData.append('user_id', userEmail);
-  formData.append('chat_id', chatId);
-  formData.append('message', message);
-  formData.append('mode', 'campaign');
-  formData.append('branch_id', 'main');
-  
-  if (files && files.length > 0) {
-    files.forEach((file) => {
-      formData.append('files', file);
-    });
-  }
-
-  const url = buildUrl('/ai/chat');
-  
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: getHeaders(), // Don't set Content-Type for FormData, browser will set it with boundary
-    body: formData,
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Campaign creation failed');
-  }
-
-  const reader = response.body?.getReader();
-  if (!reader) {
-    throw new Error('No response body');
-  }
-
-  const decoder = new TextDecoder();
-  let buffer = '';
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    
-    // Keep the last incomplete line in buffer
-    buffer = lines.pop() || '';
-
-    for (const line of lines) {
-      if (line.startsWith('data: ')) {
-        try {
-          const data: AgentStreamMessage = JSON.parse(line.slice(6));
-          
-          if (data.status === 'update') {
-            onUpdate?.(data.content);
-          } else if (data.status === 'event') {
-            onEvent?.(data.content);
-          } else if (data.status === 'assets') {
-            /* campaign creation stream may emit asset hints; no UI consumer yet */
-          } else if (data.status === 'complete') {
-            onComplete?.();
-          } else if (data.status === 'error') {
-            onError?.(data.content);
-          }
-        } catch (e) {
-          console.error('Failed to parse SSE message:', line, e);
-        }
-      }
+  const { runTurn } = await import('@/services/agentRun');
+  await runTurn(
+    { userEmail, chatId, message, mode: 'campaign', files },
+    {
+      onProgress: (step) => onProgress?.(step.label),
+      onCampaign: (_id, state) => {
+        if (state === 'creating') onStarted?.();
+      },
+      onComplete: () => onComplete?.(),
+      onError: (detail) => onError?.(detail),
     }
-  }
+  );
 }
 
-// Delete chat
 export async function deleteChatById(chatId: string, userEmail: string): Promise<DeleteChatResponse> {
   const response = await fetch(
     buildUrl(`/chats/${chatId}`, { user_id: userEmail }),
@@ -785,211 +735,6 @@ export async function resolveStreamAssetHints(
 }
 
 // Chat functions
-export async function sendChatMessage(
-  userEmail: string,
-  chatId: string,
-  message: string,
-  mode: string,
-  context?: string,
-  files?: File[],
-  onUpdate?: (content: string) => void,
-  onContent?: (content: string) => void,
-  onEvent?: (eventName: string) => void,
-  onAssets?: (items: StreamAssetHint[]) => void,
-  onComplete?: (content: string) => void,
-  onError?: (message: string) => void,
-  branchId: string = 'main',
-  referenceAssetIds?: string[],
-  generationMode?: 'general' | 'image' | 'video',
-  generationOptions?: Record<string, string | number | boolean>
-): Promise<void> {
-  const url = buildUrl('/ai/chat');
-  
-  const formData = new FormData();
-  formData.append('user_id', userEmail);
-  formData.append('chat_id', chatId);
-  formData.append('message', message);
-  formData.append('mode', mode);
-  formData.append('branch_id', branchId);
-  
-  if (context) {
-    formData.append('context', context);
-  }
-
-  if (referenceAssetIds && referenceAssetIds.length > 0) {
-    referenceAssetIds.forEach((id) => {
-      formData.append('reference_asset_ids', id);
-    });
-  }
-
-  if (generationMode && generationMode !== 'general') {
-    formData.append('generation_mode', generationMode);
-  }
-  if (generationOptions && Object.keys(generationOptions).length > 0) {
-    formData.append('generation_options', JSON.stringify(generationOptions));
-  }
-  
-  if (files && files.length > 0) {
-    files.forEach((file) => {
-      formData.append('files', file);
-    });
-  }
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: getHeaders(), // Don't set Content-Type for FormData, browser will set it with boundary
-    body: formData,
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Chat message failed');
-  }
-
-  const reader = response.body?.getReader();
-  if (!reader) {
-    throw new Error('No response body');
-  }
-
-  const decoder = new TextDecoder();
-  let buffer = '';
-  let accumulatedContent = '';
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    
-    // Keep the last incomplete line in buffer
-    buffer = lines.pop() || '';
-
-    for (const line of lines) {
-      if (line.startsWith('data: ')) {
-        try {
-          const data: AgentStreamMessage = JSON.parse(line.slice(6));
-          
-          if (data.status === 'update') {
-            onUpdate?.(data.content);
-          } else if (data.status === 'content') {
-            accumulatedContent += data.content;
-            onContent?.(accumulatedContent);
-          } else if (data.status === 'event') {
-            onEvent?.(data.content);
-          } else if (data.status === 'assets') {
-            const hints = parseSSEAssetPayload(data.content);
-            if (hints.length) onAssets?.(hints);
-          } else if (data.status === 'complete') {
-            onComplete?.(accumulatedContent || data.content);
-          } else if (data.status === 'error') {
-            onError?.(data.content);
-          }
-        } catch (e) {
-          console.error('Failed to parse SSE message:', line, e);
-        }
-      }
-    }
-  }
-}
-
-// Pending brainstorm stream: set by landing when Start Brainstorming is pressed, consumed by ChatView
-let pendingBrainstormStream: {
-  chatId: string;
-  userMessage: string;
-  reader: ReadableStreamDefaultReader<Uint8Array>;
-} | null = null;
-
-/** Start first brainstorm message (POST /ai/chat — AETEA). Stores the response stream for ChatView to consume. Does not await stream. */
-export async function startBrainstormFirstMessage(
-  userEmail: string,
-  chatId: string,
-  message: string,
-  files?: File[]
-): Promise<void> {
-  const url = buildUrl('/ai/chat');
-  const formData = new FormData();
-  formData.append('user_id', userEmail);
-  formData.append('chat_id', chatId);
-  formData.append('message', message);
-  formData.append('mode', 'brainstorm');
-  formData.append('branch_id', 'main');
-  if (files && files.length > 0) {
-    files.forEach((file) => formData.append('files', file));
-  }
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: getHeaders(),
-    body: formData,
-  });
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err.detail || 'Brainstorm request failed');
-  }
-  const reader = response.body?.getReader();
-  if (!reader) {
-    throw new Error('No response body');
-  }
-  pendingBrainstormStream = { chatId, userMessage: message, reader };
-}
-
-/** Get and clear pending brainstorm stream for this chat (used by ChatView on mount). */
-export function getAndClearPendingBrainstormStream(chatId: string): {
-  userMessage: string;
-  reader: ReadableStreamDefaultReader<Uint8Array>;
-} | null {
-  if (!pendingBrainstormStream || pendingBrainstormStream.chatId !== chatId) {
-    return null;
-  }
-  const { userMessage, reader } = pendingBrainstormStream;
-  pendingBrainstormStream = null;
-  return { userMessage, reader };
-}
-
-/** Consume an AETEA chat SSE stream (reader) and invoke callbacks. */
-export async function consumeAgentStream(
-  reader: ReadableStreamDefaultReader<Uint8Array>,
-  callbacks: {
-    onUpdate?: (content: string) => void;
-    onContent?: (content: string) => void;
-    onEvent?: (eventName: string) => void;
-    onAssets?: (items: StreamAssetHint[]) => void;
-    onComplete?: (content: string) => void;
-    onError?: (message: string) => void;
-  }
-): Promise<void> {
-  const decoder = new TextDecoder();
-  let buffer = '';
-  let accumulatedContent = '';
-  const { onUpdate, onContent, onEvent, onAssets, onComplete, onError } = callbacks;
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() || '';
-    for (const line of lines) {
-      if (!line.startsWith('data: ')) continue;
-      try {
-        const data: AgentStreamMessage = JSON.parse(line.slice(6));
-        if (data.status === 'update') onUpdate?.(data.content);
-        else if (data.status === 'content') {
-          accumulatedContent += data.content;
-          onContent?.(accumulatedContent);
-        }         else if (data.status === 'event') onEvent?.(data.content);
-        else if (data.status === 'assets') {
-          const hints = parseSSEAssetPayload(data.content);
-          if (hints.length) onAssets?.(hints);
-        } else if (data.status === 'complete') onComplete?.(accumulatedContent || data.content);
-        else if (data.status === 'error') onError?.(data.content);
-      } catch (e) {
-        console.error('Failed to parse SSE message:', line, e);
-      }
-    }
-  }
-}
-
-// List chats for a project
 export async function listChats(
   userEmail: string,
   projectId: string

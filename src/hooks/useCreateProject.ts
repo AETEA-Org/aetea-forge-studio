@@ -46,20 +46,18 @@ export function useCreateProject() {
         newChatId,
         message,
         files,
-        // onUpdate - only show if we're in loading screen
-        (content: string) => {
+        // onProgress - named steps, only while the loading screen is up
+        (label: string) => {
           if (loadingScreenActive) {
-            setProgress(content);
+            setProgress(label);
           }
         },
-        // onEvent
-        (eventName: string) => {
-          if (eventName === 'campaign_creation_started') {
-            campaignCreationStarted = true;
-            loadingScreenActive = true;
-            setShowLoadingScreen(true);
-            setIsSubmitting(false); // Button loading done, now full screen loading
-          }
+        // onStarted - the campaign build has actually begun
+        () => {
+          campaignCreationStarted = true;
+          loadingScreenActive = true;
+          setShowLoadingScreen(true);
+          setIsSubmitting(false); // Button loading done, now full screen loading
         },
         // onComplete
         async () => {

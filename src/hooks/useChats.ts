@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { listChats, getChatMessages, sendChatMessage, deleteChat } from "@/services/api";
+import { listChats, getChatMessages, deleteChat } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 import type { ChatMessage } from "@/types/api";
 
@@ -33,79 +33,6 @@ export function useChatMessages(chatId: string | undefined, branchId: string = '
     enabled: !!chatId && !!userEmail,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
-}
-
-export function useSendChatMessage(
-  projectId: string | undefined,
-  chatId: string | undefined,
-  context: string,
-  callbacks?: UseSendChatMessageOptions
-) {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [willModify, setWillModify] = useState(false);
-
-  const mutation = useMutation({
-    mutationFn: async (message: string) => {
-      if (!user?.email || !projectId || !chatId) {
-        throw new Error('Missing required parameters');
-      }
-
-      setIsStreaming(true);
-      setWillModify(false);
-
-      await sendChatMessage(
-        user.email,
-        projectId,
-        chatId,
-        context,
-        message,
-        // onUpdate
-        (content, willModifyFlag) => {
-          if (willModifyFlag) setWillModify(true);
-          callbacks?.onUpdate?.(content, willModifyFlag);
-        },
-        // onContent
-        (content, willModifyFlag) => {
-          if (willModifyFlag) setWillModify(true);
-          callbacks?.onContent?.(content, willModifyFlag);
-        },
-        // onComplete
-        async (content, willModifyFlag) => {
-          if (willModifyFlag) {
-            setWillModify(true);
-            // Invalidate relevant queries based on context
-            if (['tab:brief', 'tab:research', 'tab:strategy'].includes(context)) {
-              const tab = context.replace('tab:', '');
-              await queryClient.invalidateQueries({
-                queryKey: ['campaign', projectId, tab],
-              });
-            }
-          }
-          setIsStreaming(false);
-          setWillModify(false);
-          // Invalidate messages to refetch
-          await queryClient.invalidateQueries({
-            queryKey: ['chat-messages', chatId],
-          });
-          callbacks?.onComplete?.(content, willModifyFlag);
-        },
-        // onError
-        (error) => {
-          setIsStreaming(false);
-          setWillModify(false);
-          callbacks?.onError?.(error);
-        }
-      );
-    },
-  });
-
-  return {
-    ...mutation,
-    isStreaming,
-    willModify,
-  };
 }
 
 export function useDeleteChat() {

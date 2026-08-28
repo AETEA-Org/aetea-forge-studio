@@ -7,7 +7,6 @@ import {
   getChat,
   getCampaignTask,
   getCampaignTaskDeliverables,
-  sendChatMessage,
   resolveStreamAssetHints,
   patchDeliverableObjectPosition,
   approveDeliverableObject,
@@ -16,6 +15,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useModification } from "@/hooks/useModification";
 import { useToast } from "@/hooks/use-toast";
+import { runTurn } from "@/services/agentRun";
 import { useChatMessages } from "@/hooks/useChats";
 import { useCreativeState } from "@/hooks/useCreativeState";
 import { ModificationOverlay } from "@/components/app/ModificationOverlay";
@@ -242,22 +242,28 @@ export default function DeliverableCanvasPage() {
       const refs = selectedAssetIds;
 
       try {
-        await sendChatMessage(
-          user.email,
-          chatId,
-          message,
-          "campaign",
-          `task:${taskId}`,
-          files,
-          (content: string) => setUpdateMessage(content),
-          (content: string) => {
-            setUpdateMessage(null);
-            setStreamingContent(content);
+        await runTurn(
+          {
+            userEmail: user.email,
+            chatId,
+            message,
+            mode: "campaign",
+            branchId,
+            activeTaskId: taskId,
+            files,
           },
-          (eventName: string) => {
-            if (eventName === "campaign_modifying") {
-              setIsModifying(true, `task:${taskId}`);
-            } else if (eventName === "campaign_modified") {
+          {
+            onToken: (_delta, accumulated) => {
+              setUpdateMessage(null);
+              setStreamingContent(accumulated);
+            },
+            onProgress: (step) => setUpdateMessage(step.label),
+            onAssets: (assets) => {
+              mergeStreamAssets(
+                assets.map((a) => ({ id: a.id, mime_type: a.mime_type ?? "" }))
+              ).catch(() => {});
+            },
+            onDataChanged: () => {
               queryClient.invalidateQueries({
                 queryKey: ["campaign-task", taskId, user.email],
               });
@@ -269,46 +275,43 @@ export default function DeliverableCanvasPage() {
                   queryKey: ["creative", campaignId, user.email],
                 });
               }
-            }
-          },
-          (hints: StreamAssetHint[]) => {
-            mergeStreamAssets(hints).catch(() => {});
-          },
-          async () => {
-            await queryClient.refetchQueries({
-              queryKey: ["chat-messages", chatId, branchId],
-            });
-            queryClient.invalidateQueries({
-              queryKey: ["campaign-task", taskId, user.email],
-            });
-            queryClient.invalidateQueries({
-              queryKey: ["campaign-task-deliverable-objects", taskId, user.email],
-            });
-            if (campaignId) {
-              queryClient.invalidateQueries({
-                queryKey: ["creative", campaignId, user.email],
+            },
+            onComplete: async () => {
+              await queryClient.refetchQueries({
+                queryKey: ["chat-messages", chatId, branchId],
               });
-            }
-            setIsModifying(false, null);
-            setStreamingContent("");
-            setStreamingAssets([]);
-            setUpdateMessage(null);
-            setOptimisticMessages([]);
-            setIsStreaming(false);
-          },
-          (errorMsg: string) => {
-            setIsModifying(false, null);
-            setStreamingContent("");
-            setStreamingAssets([]);
-            setUpdateMessage(null);
-            setOptimisticMessages([]);
-            setIsStreaming(false);
-            toast({ title: "Error", description: errorMsg, variant: "destructive" });
-          },
-          branchId,
-          refs,
-          meta?.generationMode,
-          meta?.generationOptions
+              queryClient.invalidateQueries({
+                queryKey: ["campaign-task", taskId, user.email],
+              });
+              queryClient.invalidateQueries({
+                queryKey: ["campaign-task-deliverable-objects", taskId, user.email],
+              });
+              if (campaignId) {
+                queryClient.invalidateQueries({
+                  queryKey: ["creative", campaignId, user.email],
+                });
+              }
+              setIsModifying(false, null);
+              setStreamingContent("");
+              setStreamingAssets([]);
+              setUpdateMessage(null);
+              setOptimisticMessages([]);
+              setIsStreaming(false);
+            },
+            onError: (errorMsg: string) => {
+              setIsModifying(false, null);
+              setStreamingContent("");
+              setStreamingAssets([]);
+              setUpdateMessage(null);
+              setOptimisticMessages([]);
+              setIsStreaming(false);
+              toast({
+                title: "Something went wrong",
+                description: errorMsg,
+                variant: "destructive",
+              });
+            },
+          }
         );
       } catch (e) {
         setIsModifying(false, null);

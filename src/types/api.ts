@@ -274,10 +274,6 @@ export type SSEMessage = SSEProgressMessage | SSECompleteMessage | SSEErrorMessa
 export type SectionName = 'overview' | 'brief' | 'research' | 'strategy';
 
 // Chat types
-export interface AgentStreamMessage {
-  status: 'content' | 'update' | 'event' | 'assets' | 'complete' | 'error';
-  content: string;
-}
 
 /** Payload inside SSE `assets` frame (`content` is JSON string). */
 export interface StreamAssetHint {

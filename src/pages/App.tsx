@@ -7,7 +7,7 @@ import { useCreateProject } from "@/hooks/useCreateProject";
 import { BriefAnalysisLoading } from "@/components/app/BriefAnalysisLoading";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { startBrainstormFirstMessage } from "@/services/api";
+import { startTurn } from "@/services/agentRun";
 import { cn } from "@/lib/utils";
 
 export default function App() {
@@ -102,7 +102,15 @@ export default function App() {
     const message = briefText.trim();
     setIsStartingBrainstorm(true);
     try {
-      await startBrainstormFirstMessage(user.email, newChatId, message, files.length > 0 ? files : undefined);
+      // The run continues on the server, so navigating away from here does not
+      // interrupt it — the chat view attaches to it on arrival.
+      await startTurn({
+        userEmail: user.email,
+        chatId: newChatId,
+        message,
+        mode: "brainstorm",
+        files: files.length > 0 ? files : undefined,
+      });
       navigate(`/app/chat/${newChatId}`);
     } catch {
       toast({

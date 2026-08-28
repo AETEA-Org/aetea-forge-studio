@@ -202,7 +202,7 @@ export function BriefTab({ campaignId, isModifying }: BriefTabProps) {
 
           <div>
             <div className="mb-4">
-              <p className="text-xs text-muted-foreground mb-2">Color Palette</p>
+              <p className="text-xs text-muted-foreground mb-2">Colour Palette</p>
               <div className="flex flex-wrap gap-3">
                 {colors.map((color, i) => (
                   <div key={i} className="flex items-center gap-2">

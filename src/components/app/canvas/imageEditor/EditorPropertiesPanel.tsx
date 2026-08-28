@@ -198,7 +198,7 @@ export function EditorPropertiesPanel({
           {tool === "draw" && (
             <>
               <ColorField
-                label="Color"
+                label="Colour"
                 value={style.brushColor}
                 onChange={(v) => patch({ brushColor: v })}
               />
@@ -282,7 +282,7 @@ export function EditorPropertiesPanel({
             <ToggleGroupItem value="left" aria-label="Align left">
               <AlignLeft className="h-4 w-4" />
             </ToggleGroupItem>
-            <ToggleGroupItem value="center" aria-label="Align center">
+            <ToggleGroupItem value="center" aria-label="Align centre">
               <AlignCenter className="h-4 w-4" />
             </ToggleGroupItem>
             <ToggleGroupItem value="right" aria-label="Align right">
@@ -290,7 +290,7 @@ export function EditorPropertiesPanel({
             </ToggleGroupItem>
           </ToggleGroup>
           <ColorField
-            label="Color"
+            label="Colour"
             value={style.textColor}
             onChange={(v) => patch({ textColor: v })}
           />

@@ -12,15 +12,23 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import {
-  sendChatMessage,
   getChat,
-  getAndClearPendingBrainstormStream,
-  consumeAgentStream,
   deleteChatById,
   resolveStreamAssetHints,
 } from "@/services/api";
 import type { ChatMessage, ChatRenderableAsset, StreamAssetHint } from "@/types/api";
 import { AssetsModal } from "@/components/app/AssetsModal";
+import { AgentThinking } from "@/components/app/AgentThinking";
+import { AgentSteps } from "@/components/app/AgentSteps";
+import { CampaignModeOffer } from "@/components/app/CampaignModeOffer";
+import {
+  acceptCampaignMode,
+  cancelRun,
+  followRun,
+  getRunStatus,
+  runTurn,
+  type ProgressStep,
+} from "@/services/agentRun";
 
 export default function ChatView() {
   const { chatId } = useParams<{ chatId: string }>();
@@ -35,6 +43,9 @@ export default function ChatView() {
   const [streamingContent, setStreamingContent] = useState("");
   const [optimisticMessages, setOptimisticMessages] = useState<ChatMessage[]>([]);
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
+  const [thinkingText, setThinkingText] = useState("");
+  const [steps, setSteps] = useState<ProgressStep[]>([]);
+  const [modeProposal, setModeProposal] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [showCampaignLoading, setShowCampaignLoading] = useState(false);
   const [campaignProgress, setCampaignProgress] = useState("");
@@ -86,64 +97,74 @@ export default function ChatView() {
       setIsStreaming(true);
 
       try {
-        await sendChatMessage(
-          user.email,
-          chatId,
-          message,
-          mode,
-          undefined,
-          files,
-          (content: string) => {
-            if (mode === "campaign") setCampaignProgress(content);
-            setUpdateMessage(content);
+        await runTurn(
+          {
+            userEmail: user.email,
+            chatId,
+            message,
+            mode,
+            files,
           },
-          (content: string) => {
-            setUpdateMessage(null);
-            setStreamingContent(content);
-          },
-          (eventName: string) => {
-            if (eventName === "campaign_creation_started") {
-              setShowCampaignLoading(true);
+          {
+            onToken: (_delta, accumulated) => {
+              setUpdateMessage(null);
+              setStreamingContent(accumulated);
+            },
+            onThinking: (_delta, accumulated) => setThinkingText(accumulated),
+            onProgress: (step) => {
+              setSteps((current) => {
+                const at = current.findIndex((s) => s.step_id === step.step_id);
+                if (at === -1) return [...current, step];
+                const next = [...current];
+                next[at] = step;
+                return next;
+              });
+            },
+            onCampaign: (_id, state) => {
+              // The campaign build has its own view; leave it up until the
+              // campaign exists rather than guessing a percentage.
+              if (state === "creating") setShowCampaignLoading(true);
+              if (state === "created") setShowCampaignLoading(false);
+            },
+            onModeProposal: (rationale) => setModeProposal(rationale),
+            onAssets: (assets) => {
+              mergeStreamAssets(
+                assets.map((a) => ({ id: a.id, mime_type: a.mime_type ?? "" }))
+              ).catch(() => {});
+            },
+            onCancelled: () => {
               setIsStreaming(false);
-            }
-          },
-          (hints: StreamAssetHint[]) => {
-            mergeStreamAssets(hints).catch(() => {});
-          },
-          async () => {
-            setShowCampaignLoading(false);
-            setUpdateMessage(null);
-            await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
-            queryClient.invalidateQueries({ queryKey: ["chat", chatId, user?.email] });
-            setStreamingContent("");
-            setStreamingAssets([]);
-            setIsStreaming(false);
-            setOptimisticMessages([]);
-
-            if (mode === "campaign") {
-              const chat = await getChat(chatId, user.email);
-              queryClient.setQueryData(["chat", chatId, user.email], chat);
-              if (!chat.campaign_id) {
-                toast({
-                  title: "Campaign could not be created",
-                  description: "Please try again or add more details.",
-                  variant: "destructive",
-                });
-              }
-            }
-          },
-          (errorMsg: string) => {
-            setShowCampaignLoading(false);
-            setUpdateMessage(null);
-            setStreamingContent("");
-            setStreamingAssets([]);
-            setIsStreaming(false);
-            setOptimisticMessages([]);
-            toast({
-              title: "Error",
-              description: errorMsg,
-              variant: "destructive",
-            });
+              setStreamingContent("");
+              setSteps([]);
+              queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
+            },
+            onComplete: async () => {
+              setShowCampaignLoading(false);
+              setUpdateMessage(null);
+              await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
+              queryClient.invalidateQueries({ queryKey: ["chat", chatId, user?.email] });
+              setStreamingContent("");
+              setStreamingAssets([]);
+              setThinkingText("");
+              setSteps([]);
+              setIsStreaming(false);
+              setOptimisticMessages([]);
+            },
+            onError: (errorMsg: string) => {
+              setShowCampaignLoading(false);
+              setUpdateMessage(null);
+              setStreamingContent("");
+              setStreamingAssets([]);
+              setThinkingText("");
+              setSteps([]);
+              setIsStreaming(false);
+              setOptimisticMessages([]);
+              toast({
+                title: "Something went wrong",
+                description: errorMsg,
+                variant: "destructive",
+              });
+            },
           }
         );
       } catch (err) {
@@ -151,11 +172,13 @@ export default function ChatView() {
         setUpdateMessage(null);
         setStreamingContent("");
         setStreamingAssets([]);
+        setThinkingText("");
+        setSteps([]);
         setIsStreaming(false);
         setOptimisticMessages([]);
         toast({
-          title: "Failed to send message",
-          description: err instanceof Error ? err.message : "Something went wrong",
+          title: "Could not send that message",
+          description: err instanceof Error ? err.message : "Please try again",
           variant: "destructive",
         });
       }
@@ -172,69 +195,82 @@ export default function ChatView() {
     consumedPendingRef.current = false;
   }, [chatId]);
 
-  // Consume pending brainstorm stream from Start Brainstorming (landing): show user message + streaming AETEA reply; on error delete chat and redirect
+  // Attach to a run already in progress.
+  //
+  // This covers both arriving from the landing page, where the first message
+  // was started before navigating, and reloading the page mid-answer. The run
+  // belongs to the server, so there is nothing to hand over — we just ask
+  // where it got to and follow from there.
   useEffect(() => {
-    if (!chatId || !user?.email) return;
-    const pending = getAndClearPendingBrainstormStream(chatId);
-    if (!pending || consumedPendingRef.current) return;
-    consumedPendingRef.current = true;
-    const { userMessage, reader } = pending;
-    const optimisticMessage: ChatMessage = {
-      message_id: `temp-${Date.now()}`,
-      role: "user",
-      content: userMessage,
-      timestamp: new Date().toISOString(),
-    };
-    setOptimisticMessages([optimisticMessage]);
-    setStreamingContent("");
-    setStreamingAssets([]);
-    setUpdateMessage(null);
-    setIsStreaming(true);
-    consumeAgentStream(reader, {
-      onUpdate: (content) => setUpdateMessage(content),
-      onContent: (content) => {
-        setUpdateMessage(null);
-        setStreamingContent(content);
-      },
-      onAssets: (hints) => {
-        mergeStreamAssets(hints).catch(() => {});
-      },
-      onComplete: async () => {
-        setUpdateMessage(null);
-        await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
-        queryClient.invalidateQueries({ queryKey: ["chats"] });
-        queryClient.invalidateQueries({ queryKey: ["chat", chatId, user?.email] });
-        setStreamingContent("");
-        setStreamingAssets([]);
-        setIsStreaming(false);
-        setOptimisticMessages([]);
-      },
-      onError: () => {
-        setStreamingContent("");
-        setStreamingAssets([]);
-        setIsStreaming(false);
-        setOptimisticMessages([]);
-        deleteChatById(chatId, user.email).catch(() => {});
-        navigate("/app");
-        toast({
-          title: "Brainstorming failed",
-          description: "Please try again later.",
-          variant: "destructive",
-        });
-      },
-    }).catch(() => {
-      setStreamingContent("");
-      setIsStreaming(false);
-      setOptimisticMessages([]);
-      deleteChatById(chatId, user.email).catch(() => {});
-      navigate("/app");
-      toast({
-        title: "Brainstorming failed",
-        description: "Please try again later.",
-        variant: "destructive",
-      });
-    });
-  }, [chatId, user?.email, queryClient, navigate, toast, mergeStreamAssets]);
+    if (!chatId || !user?.email || consumedPendingRef.current) return;
+    const controller = new AbortController();
+    const email = user.email;
+
+    getRunStatus(chatId, email)
+      .then((status) => {
+        if (!status.active || controller.signal.aborted) return;
+        consumedPendingRef.current = true;
+        setIsStreaming(true);
+        return followRun(
+          chatId,
+          email,
+          {
+            onToken: (_delta, accumulated) => {
+              setUpdateMessage(null);
+              setStreamingContent(accumulated);
+            },
+            onThinking: (_delta, accumulated) => setThinkingText(accumulated),
+            onProgress: (step) =>
+              setSteps((current) => {
+                const at = current.findIndex((s) => s.step_id === step.step_id);
+                if (at === -1) return [...current, step];
+                const next = [...current];
+                next[at] = step;
+                return next;
+              }),
+            onModeProposal: (rationale) => setModeProposal(rationale),
+            onAssets: (assets) => {
+              mergeStreamAssets(
+                assets.map((a) => ({ id: a.id, mime_type: a.mime_type ?? "" }))
+              ).catch(() => {});
+            },
+            onComplete: async () => {
+              setUpdateMessage(null);
+              await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
+              queryClient.invalidateQueries({ queryKey: ["chats"] });
+              queryClient.invalidateQueries({ queryKey: ["chat", chatId, email] });
+              setStreamingContent("");
+              setStreamingAssets([]);
+              setThinkingText("");
+              setSteps([]);
+              setIsStreaming(false);
+              setOptimisticMessages([]);
+            },
+            onCancelled: () => {
+              setIsStreaming(false);
+              setStreamingContent("");
+              setSteps([]);
+              setThinkingText("");
+            },
+            onError: (message) => {
+              setStreamingContent("");
+              setIsStreaming(false);
+              setThinkingText("");
+              setSteps([]);
+              toast({
+                title: "Something went wrong",
+                description: message,
+                variant: "destructive",
+              });
+            },
+          },
+          { signal: controller.signal }
+        );
+      })
+      .catch(() => undefined);
+
+    return () => controller.abort();
+  }, [chatId, user?.email, queryClient, toast, mergeStreamAssets]);
 
   if (!chatId) {
     return (
@@ -277,6 +313,47 @@ export default function ChatView() {
           isStreaming={isStreaming}
           updateMessage={updateMessage}
         />
+
+        {(thinkingText || steps.length > 0 || modeProposal) && (
+          <div className="space-y-2 px-4 pb-2">
+            <AgentThinking text={thinkingText} />
+            <AgentSteps steps={steps} />
+            {modeProposal && (
+              <CampaignModeOffer
+                rationale={modeProposal}
+                onAccept={async () => {
+                  if (!user?.email || !chatId) return;
+                  await acceptCampaignMode(chatId, user.email);
+                  setModeProposal(null);
+                  setMode("campaign");
+                  queryClient.invalidateQueries({ queryKey: ["chat", chatId, user.email] });
+                }}
+                onDecline={() => setModeProposal(null)}
+              />
+            )}
+          </div>
+        )}
+
+        {isStreaming && (
+          <div className="px-4 pb-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                if (!user?.email || !chatId) return;
+                await cancelRun(chatId, user.email);
+                setIsStreaming(false);
+                setSteps([]);
+                setThinkingText("");
+                setStreamingContent("");
+                await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
+              }}
+            >
+              Stop
+            </Button>
+          </div>
+        )}
+
         <ChatInput
           ref={chatInputRef}
           onSend={handleSendMessage}
