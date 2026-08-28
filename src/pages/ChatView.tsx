@@ -62,6 +62,12 @@ export default function ChatView() {
   const messages = [...serverMessages, ...optimisticMessages];
   const chatTitle = chatData?.title ?? "Chat";
 
+  useEffect(() => {
+    if (chatData?.mode === "campaign" || chatData?.mode === "brainstorm") {
+      setMode(chatData.mode);
+    }
+  }, [chatData?.mode]);
+
   const mergeStreamAssets = useCallback(async (hints: StreamAssetHint[]) => {
     if (!user?.email || hints.length === 0) return;
     const resolved = await resolveStreamAssetHints(user.email, hints);
@@ -95,6 +101,9 @@ export default function ChatView() {
       setUpdateMessage(null);
       setIsStreaming(true);
 
+      const needsCampaignThisTurn = mode === "campaign" && !chatData?.campaign_id;
+      let campaignCreationStarted = false;
+
       try {
         await runTurn(
           {
@@ -122,7 +131,10 @@ export default function ChatView() {
             onCampaign: (_id, state) => {
               // The campaign build has its own view; leave it up until the
               // campaign exists rather than guessing a percentage.
-              if (state === "creating") setShowCampaignLoading(true);
+              if (state === "creating") {
+                campaignCreationStarted = true;
+                setShowCampaignLoading(true);
+              }
               if (state === "created") setShowCampaignLoading(false);
             },
             onModeProposal: (rationale) => setModeProposal(rationale),
@@ -138,6 +150,23 @@ export default function ChatView() {
               queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
             },
             onComplete: async () => {
+              if (needsCampaignThisTurn && !campaignCreationStarted) {
+                setShowCampaignLoading(false);
+                setUpdateMessage(null);
+                setStreamingContent("");
+                setStreamingAssets([]);
+                setThinkingText("");
+                setSteps([]);
+                setIsStreaming(false);
+                setOptimisticMessages([]);
+                toast({
+                  title: "Campaign not created",
+                  description: "Campaign creation failed. Please try again later.",
+                  variant: "destructive",
+                });
+                await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
+                return;
+              }
               setShowCampaignLoading(false);
               setUpdateMessage(null);
               await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
@@ -182,7 +211,7 @@ export default function ChatView() {
         });
       }
     },
-    [chatId, mode, user, queryClient, toast, mergeStreamAssets]
+    [chatId, mode, user, queryClient, toast, mergeStreamAssets, chatData?.campaign_id]
   );
 
   useEffect(() => {
