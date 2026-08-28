@@ -239,8 +239,6 @@ export default function DeliverableCanvasPage() {
       setUpdateMessage(null);
       setIsStreaming(true);
 
-      const refs = selectedAssetIds;
-
       try {
         await runTurn(
           {
@@ -251,6 +249,9 @@ export default function DeliverableCanvasPage() {
             branchId,
             activeTaskId: taskId,
             files,
+            referenceAssetIds: selectedAssetIds,
+            generationMode: meta?.generationMode,
+            generationOptions: meta?.generationOptions,
           },
           {
             onToken: (_delta, accumulated) => {

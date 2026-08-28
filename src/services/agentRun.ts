@@ -52,6 +52,11 @@ export interface StartTurnRequest {
   branchId?: string;
   activeTaskId?: string;
   files?: File[];
+  /** Canvas cards the user selected as references for this message. */
+  referenceAssetIds?: string[];
+  /** Task-canvas pickers: which kind of output, and the settings chosen for it. */
+  generationMode?: string;
+  generationOptions?: Record<string, unknown>;
 }
 
 export interface RunStatus {
@@ -85,6 +90,13 @@ export async function startTurn(req: StartTurnRequest): Promise<{ run_id: string
   form.append("mode", req.mode);
   form.append("branch_id", req.branchId ?? "main");
   if (req.activeTaskId) form.append("active_task_id", req.activeTaskId);
+  (req.referenceAssetIds ?? []).forEach((id) =>
+    form.append("reference_asset_ids", id)
+  );
+  if (req.generationMode) form.append("generation_mode", req.generationMode);
+  if (req.generationOptions && Object.keys(req.generationOptions).length > 0) {
+    form.append("generation_options", JSON.stringify(req.generationOptions));
+  }
   (req.files ?? []).forEach((file) => form.append("files", file));
 
   const response = await fetch(url("/ai/chat"), {
