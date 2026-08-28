@@ -315,7 +315,7 @@ export async function createCampaignViaChat(
   chatId: string,
   message: string,
   files?: File[],
-  onProgress?: (label: string) => void,
+  onProgress?: (step: { step_id: string; label: string; state: string }) => void,
   onStarted?: () => void,
   onComplete?: () => void,
   onError?: (message: string) => void
@@ -324,7 +324,7 @@ export async function createCampaignViaChat(
   await runTurn(
     { userEmail, chatId, message, mode: 'campaign', files },
     {
-      onProgress: (step) => onProgress?.(step.label),
+      onProgress: (step) => onProgress?.(step),
       onCampaign: (_id, state) => {
         if (state === 'creating') onStarted?.();
       },

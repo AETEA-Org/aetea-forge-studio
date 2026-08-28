@@ -48,7 +48,6 @@ export default function ChatView() {
   const [modeProposal, setModeProposal] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [showCampaignLoading, setShowCampaignLoading] = useState(false);
-  const [campaignProgress, setCampaignProgress] = useState("");
   const [assetsOpen, setAssetsOpen] = useState(false);
   const [streamingAssets, setStreamingAssets] = useState<ChatRenderableAsset[]>([]);
 
@@ -183,7 +182,7 @@ export default function ChatView() {
         });
       }
     },
-    [chatId, mode, user, queryClient, toast, showCampaignLoading, mergeStreamAssets]
+    [chatId, mode, user, queryClient, toast, mergeStreamAssets]
   );
 
   useEffect(() => {
@@ -281,7 +280,7 @@ export default function ChatView() {
   }
 
   if (showCampaignLoading) {
-    return <BriefAnalysisLoading progress={campaignProgress} />;
+    return <BriefAnalysisLoading steps={steps} />;
   }
 
   return (

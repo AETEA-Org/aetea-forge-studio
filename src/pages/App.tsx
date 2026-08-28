@@ -20,7 +20,7 @@ export default function App() {
   const [isStartingBrainstorm, setIsStartingBrainstorm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const { createProject, isSubmitting, showLoadingScreen, progress, error, reset } = useCreateProject();
+  const { createProject, isSubmitting, showLoadingScreen, steps, error, reset } = useCreateProject();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -125,7 +125,7 @@ export default function App() {
 
   // Show loading screen when campaign creation started
   if (showLoadingScreen) {
-    return <BriefAnalysisLoading progress={progress} />;
+    return <BriefAnalysisLoading steps={steps} />;
   }
 
   // Show form when NOT submitting

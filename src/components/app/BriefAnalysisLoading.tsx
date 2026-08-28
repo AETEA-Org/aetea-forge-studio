@@ -1,75 +1,57 @@
-import { useRef } from "react";
-import { Sparkles, FileText, TrendingUp, Target, CheckSquare, Save } from "lucide-react";
+import { Sparkles } from "lucide-react";
+import { AgentSteps } from "@/components/app/AgentSteps";
+import type { ProgressStep } from "@/services/agentRun";
 
 interface BriefAnalysisLoadingProps {
-  progress: string;
+  /** Steps the agent has reported so far, in order. */
+  steps: ProgressStep[];
 }
 
-// Map progress messages to icons and progress percentages
-const progressSteps: Record<string, { icon: typeof Sparkles; percentage: number }> = {
-  'Analyzing your brief and documents': { icon: FileText, percentage: 15 },
-  'Researching market, audience, and competitors': { icon: TrendingUp, percentage: 35 },
-  'Developing campaign strategy': { icon: Target, percentage: 55 },
-  'Planning creative tasks': { icon: CheckSquare, percentage: 75 },
-  'Setting up creative direction': { icon: Sparkles, percentage: 90 },
-  'Finalizing your campaign': { icon: Save, percentage: 95 },
-};
-
-const FIRST_STEP = { icon: FileText, percentage: 15 };
-
-export function BriefAnalysisLoading({ progress }: BriefAnalysisLoadingProps) {
-  // An unrecognised message used to fall back to 50%, so the bar opened near
-  // halfway and then jumped *backwards* to 15% on the first real step. Start at
-  // the first step instead, and never let the displayed value decrease.
-  const step = progressSteps[progress] ?? FIRST_STEP;
-  const highWaterMark = useRef(step.percentage);
-  highWaterMark.current = Math.max(highWaterMark.current, step.percentage);
-
-  const currentStep = { icon: step.icon, percentage: highWaterMark.current };
-  const Icon = currentStep.icon;
+/**
+ * Shown while a campaign is being built.
+ *
+ * There is no percentage. An earlier version mapped the pipeline's step names
+ * to fixed percentages, which meant the bar guessed how far along it was — and
+ * silently froze the moment those names changed. Named steps cannot drift out
+ * of sync with the work, and cannot move backwards.
+ */
+export function BriefAnalysisLoading({ steps }: BriefAnalysisLoadingProps) {
+  const current = steps.filter((s) => s.state === "started").at(-1);
+  const done = steps.filter((s) => s.state === "done").length;
 
   return (
     <div className="min-h-full flex items-center justify-center p-8">
-      <div className="max-w-md w-full">
-        {/* Animated Icon */}
-        <div className="flex justify-center mb-8">
+      <div className="w-full max-w-md">
+        <div className="mb-8 flex justify-center">
           <div className="relative">
-            {/* Pulsing glow effect */}
             <div className="absolute inset-0 rounded-full bg-primary/20 blur-2xl animate-pulse" />
-            
-            {/* Icon container */}
-            <div className="relative w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center backdrop-blur-sm border border-primary/20">
-              <Icon className="h-12 w-12 text-primary animate-pulse" />
+            <div className="relative flex h-24 w-24 items-center justify-center rounded-full border border-primary/20 bg-primary/10 backdrop-blur-sm">
+              <Sparkles className="h-12 w-12 animate-pulse text-primary" />
             </div>
           </div>
         </div>
 
-        {/* Title */}
-        <h2 className="text-2xl font-bold text-center mb-3">
-          Creating Your Campaign
+        <h2 className="mb-3 text-center text-2xl font-bold">
+          Building your campaign
         </h2>
-
-        {/* Progress Message */}
-        <p className="text-lg text-primary text-center mb-8 animate-pulse min-h-[1.75rem]">
-          {progress || "Starting analysis..."}
+        <p className="mb-8 min-h-[1.75rem] animate-pulse text-center text-lg text-primary">
+          {current?.label ?? "Getting started..."}
         </p>
 
-        {/* Progress Bar */}
-        <div className="space-y-2 mb-6">
-          <div className="h-2 bg-muted rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-primary rounded-full transition-all duration-500 ease-out"
-              style={{ width: `${currentStep.percentage}%` }}
-            />
+        {steps.length > 0 ? (
+          <div className="mb-6">
+            <AgentSteps steps={steps} />
           </div>
-          <p className="text-sm text-muted-foreground text-center">
-            {currentStep.percentage}% complete
-          </p>
-        </div>
+        ) : (
+          <div className="mb-6 h-1.5 overflow-hidden rounded-full bg-muted">
+            <div className="h-full w-1/3 animate-[shimmer_1.4s_ease-in-out_infinite] rounded-full bg-primary" />
+          </div>
+        )}
 
-        {/* Info Text */}
-        <p className="text-sm text-muted-foreground text-center">
-          This may take a few moments. We're analyzing your brief and generating comprehensive campaign insights.
+        <p className="text-center text-sm text-muted-foreground">
+          {done > 0
+            ? `${done} of ${steps.length} steps done. This takes a few moments.`
+            : "This takes a few moments while the brief is read and the campaign is put together."}
         </p>
       </div>
     </div>

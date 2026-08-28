@@ -1,6 +1,14 @@
 import { memo, useState } from "react";
 import { NodeResizer, type NodeProps } from "@xyflow/react";
-import { Check, Download, Eye, FileText, GripVertical, Loader2 } from "lucide-react";
+import {
+  Check,
+  Download,
+  Eye,
+  FileText,
+  GripVertical,
+  Loader2,
+  Presentation,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Markdown } from "@/components/ui/markdown";
 import {
@@ -230,6 +238,21 @@ function ObjectPreview({ obj }: { obj: DeliverableObject }) {
   }
   if (kind === "text") {
     return <TextPreview url={url} />;
+  }
+  if (kind === "document") {
+    const isDeck =
+      (obj.file_name ?? "").toLowerCase().endsWith(".pptx") ||
+      (obj.mime_type ?? "").includes("presentationml");
+    const Icon = isDeck ? Presentation : FileText;
+    return (
+      <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-3 text-center">
+        <Icon className="h-9 w-9 text-primary" />
+        <p className="text-sm font-medium break-words">{obj.file_name || label}</p>
+        <p className="text-xs text-muted-foreground">
+          {isDeck ? "Presentation" : "Document"} — open to read
+        </p>
+      </div>
+    );
   }
   return (
     <div className="nowheel h-full w-full overflow-y-auto p-3">

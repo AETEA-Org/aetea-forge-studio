@@ -25,7 +25,7 @@ import type { DeliverableObject } from "@/types/api";
 import { useCanvas } from "./canvasContext";
 import { ImageEditorDialog } from "./imageEditor/ImageEditorDialog";
 
-export type ObjectKind = "image" | "video" | "pdf" | "text" | "other";
+export type ObjectKind = "image" | "video" | "pdf" | "text" | "document" | "other";
 
 /** Classify an object so preview + viewer render the right thing. */
 export function objectKind(obj: DeliverableObject): ObjectKind {
@@ -45,6 +45,19 @@ export function objectKind(obj: DeliverableObject): ObjectKind {
     name.endsWith(".txt")
   ) {
     return "text";
+  }
+  // Word and PowerPoint. No browser renders these inline, so they are shown as
+  // a card the user opens in the application that owns them.
+  if (
+    type === "document" ||
+    mime.includes("wordprocessingml") ||
+    mime.includes("presentationml") ||
+    mime === "application/msword" ||
+    mime === "application/vnd.ms-powerpoint" ||
+    name.endsWith(".docx") ||
+    name.endsWith(".pptx")
+  ) {
+    return "document";
   }
   return "other";
 }
@@ -357,7 +370,10 @@ function ObjectViewerBody({
           )}
         </div>
       )}
-      {kind === "other" && (
+      {/* Word and PowerPoint cannot render in a browser, so they get the same
+          honest message as anything else without an inline preview. Without
+          "document" here the dialog opens empty. */}
+      {(kind === "document" || kind === "other") && (
         <p className="text-sm text-muted-foreground py-6">
           No inline preview for this file type. Use Download to open it.
         </p>

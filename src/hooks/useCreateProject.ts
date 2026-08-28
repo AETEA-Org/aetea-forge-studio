@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { createCampaignViaChat, deleteChatById, getChat } from "@/services/api";
+import type { ProgressStep } from "@/services/agentRun";
 import { useAuth } from "@/hooks/useAuth";
 
 export function useCreateProject() {
@@ -11,7 +12,7 @@ export function useCreateProject() {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showLoadingScreen, setShowLoadingScreen] = useState(false);
-  const [progress, setProgress] = useState<string>("");
+  const [steps, setSteps] = useState<ProgressStep[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [chatId, setChatId] = useState<string | null>(null);
 
@@ -31,7 +32,7 @@ export function useCreateProject() {
     setChatId(newChatId);
     setIsSubmitting(true);
     setShowLoadingScreen(false);
-    setProgress("");
+    setSteps([]);
     setError(null);
 
     // Always prepend the message, even if briefText is empty
@@ -46,11 +47,16 @@ export function useCreateProject() {
         newChatId,
         message,
         files,
-        // onProgress - named steps, only while the loading screen is up
-        (label: string) => {
-          if (loadingScreenActive) {
-            setProgress(label);
-          }
+        // onProgress - the steps the loading screen shows
+        (step: ProgressStep) => {
+          if (!loadingScreenActive) return;
+          setSteps((current) => {
+            const at = current.findIndex((s) => s.step_id === step.step_id);
+            if (at === -1) return [...current, step];
+            const next = [...current];
+            next[at] = step;
+            return next;
+          });
         },
         // onStarted - the campaign build has actually begun
         () => {
@@ -116,7 +122,7 @@ export function useCreateProject() {
 
   const reset = useCallback(() => {
     setError(null);
-    setProgress("");
+    setSteps([]);
     setChatId(null);
   }, []);
 
@@ -124,7 +130,7 @@ export function useCreateProject() {
     createProject,
     isSubmitting,
     showLoadingScreen,
-    progress,
+    steps,
     error,
     reset,
   };
