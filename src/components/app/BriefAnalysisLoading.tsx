@@ -44,7 +44,7 @@ export function BriefAnalysisLoading({ steps }: BriefAnalysisLoadingProps) {
           </div>
         ) : (
           <div className="mb-6 h-1.5 overflow-hidden rounded-full bg-muted">
-            <div className="h-full w-1/3 animate-[shimmer_1.4s_ease-in-out_infinite] rounded-full bg-primary" />
+            <div className="h-full w-1/3 animate-shimmer rounded-full bg-primary" />
           </div>
         )}
 

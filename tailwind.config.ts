@@ -70,6 +70,12 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       keyframes: {
+        // Indeterminate progress: a band travelling across the track, for when
+        // there is genuinely nothing to report a position against.
+        shimmer: {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(400%)" },
+        },
         "accordion-down": {
           from: { height: "0" },
           to: { height: "var(--radix-accordion-content-height)" },
@@ -107,6 +113,7 @@ export default {
         "slide-up": "slide-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards",
         "scale-in": "scale-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards",
         "blur-in": "blur-in 0.8s ease-out forwards",
+        shimmer: "shimmer 1.4s ease-in-out infinite",
       },
     },
   },
