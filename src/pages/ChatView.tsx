@@ -304,7 +304,9 @@ export default function ChatView() {
               });
             },
           },
-          { signal: controller.signal }
+          // Resume from where this client got to, rather than replaying the
+          // whole run from the beginning.
+          { signal: controller.signal, sinceEventId: status.last_event_id }
         );
       })
       .catch(() => undefined);

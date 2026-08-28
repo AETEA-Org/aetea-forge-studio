@@ -10,7 +10,13 @@ import { useChatContext } from "@/hooks/useChatContext";
 import { useModification } from "@/hooks/useModification";
 import { useAutoMessage } from "@/hooks/useAutoMessage";
 import { resolveStreamAssetHints } from "@/services/api";
-import { cancelRun, runTurn, type ProgressStep } from "@/services/agentRun";
+import {
+  cancelRun,
+  followRun,
+  getRunStatus,
+  runTurn,
+  type ProgressStep,
+} from "@/services/agentRun";
 import { AgentThinking } from "@/components/app/AgentThinking";
 import { AgentSteps } from "@/components/app/AgentSteps";
 import { useAuth } from "@/hooks/useAuth";
@@ -65,6 +71,8 @@ export function AICopilotPanel({
   
   // Refs to track modification state
   const isModifyingActiveRef = useRef(false);
+  // One re-attach per mounted chat; sending a message drives its own stream.
+  const reattachedRef = useRef(false);
   const updateClearTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { setIsModifying } = useModification();
@@ -343,6 +351,84 @@ export function AICopilotPanel({
     registerHandler(handler);
     return () => unregisterHandler();
   }, [registerHandler, unregisterHandler]);
+
+  // Re-attach to a run already in flight.
+  //
+  // A chat with a campaign renders this panel rather than ChatView, which had
+  // the only copy of this. Refreshing mid-answer therefore left the run going
+  // on the server with nothing following it, and the reply never arrived.
+  useEffect(() => {
+    if (!chatId || !user?.email || reattachedRef.current) return;
+    const controller = new AbortController();
+    const email = user.email;
+
+    getRunStatus(chatId, email)
+      .then((status) => {
+        if (!status.active || controller.signal.aborted) return;
+        reattachedRef.current = true;
+        setIsStreaming(true);
+        return followRun(
+          chatId,
+          email,
+          {
+            onToken: (_delta, accumulated) => {
+              setUpdateMessage(null);
+              setStreamingContent(accumulated);
+            },
+            onThinking: (_delta, accumulated) => setThinkingText(accumulated),
+            onProgress: (step) => {
+              setUpdateMessage(step.label);
+              setSteps((current) => {
+                const at = current.findIndex((s) => s.step_id === step.step_id);
+                if (at === -1) return [...current, step];
+                const next = [...current];
+                next[at] = step;
+                return next;
+              });
+            },
+            onAssets: (assets) => {
+              mergeStreamAssets(
+                assets.map((a) => ({ id: a.id, mime_type: a.mime_type ?? "" }))
+              ).catch(() => {});
+            },
+            onDataChanged: () => {
+              queryClient.invalidateQueries({ queryKey: ["campaign"] });
+              queryClient.invalidateQueries({ queryKey: ["assets", chatId, email] });
+            },
+            onComplete: async () => {
+              setUpdateMessage(null);
+              await queryClient.refetchQueries({
+                queryKey: ["chat-messages", chatId],
+              });
+              setStreamingContent("");
+              setThinkingText("");
+              setSteps([]);
+              setIsStreaming(false);
+            },
+            onCancelled: () => {
+              setUpdateMessage(null);
+              setStreamingContent("");
+              setThinkingText("");
+              setSteps([]);
+              setIsStreaming(false);
+            },
+            onError: () => {
+              setUpdateMessage(null);
+              setStreamingContent("");
+              setThinkingText("");
+              setSteps([]);
+              setIsStreaming(false);
+            },
+          },
+          // Resume from where this client got to, rather than replaying the
+          // whole run from the beginning.
+          { signal: controller.signal, sinceEventId: status.last_event_id },
+        );
+      })
+      .catch(() => undefined);
+
+    return () => controller.abort();
+  }, [chatId, user?.email, queryClient, mergeStreamAssets]);
 
   // Stopping is the send button's other job while a run is going, so the
   // handler lives with the send path rather than beside a separate control.
