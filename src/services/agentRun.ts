@@ -17,12 +17,6 @@ export interface ProgressStep {
   state: ProgressState;
 }
 
-export interface TodoItem {
-  content?: string;
-  status?: string;
-  [key: string]: unknown;
-}
-
 export interface AssetHint {
   id: string;
   file_name?: string;
@@ -34,7 +28,6 @@ export interface AgentTurnHandlers {
   onToken?: (delta: string, accumulated: string) => void;
   onThinking?: (delta: string, accumulated: string) => void;
   onProgress?: (step: ProgressStep) => void;
-  onTodos?: (items: TodoItem[]) => void;
   onAssets?: (assets: AssetHint[]) => void;
   onDataChanged?: (entity: string, ids: string[]) => void;
   onCampaign?: (campaignId: string, state: CampaignState, section?: string) => void;
@@ -251,9 +244,6 @@ export async function followRun(
             }
             case "progress":
               handlers.onProgress?.(data as unknown as ProgressStep);
-              break;
-            case "todos":
-              handlers.onTodos?.((data.items as TodoItem[]) ?? []);
               break;
             case "asset":
               handlers.onAssets?.((data.assets as AssetHint[]) ?? []);

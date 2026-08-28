@@ -97,52 +97,6 @@ export async function createChat(
   return response.json();
 }
 
-// Get project section
-export async function getProjectSection<T>(
-  projectId: string,
-  section: SectionName,
-  userEmail: string
-): Promise<SectionResponse<T>> {
-  console.log('API: Fetching section', { projectId, section, userEmail });
-  
-  const response = await fetch(
-    buildUrl(`/projects/${projectId}/section/${section}`, { user_id: userEmail }),
-    {
-      headers: getHeaders(),
-    }
-  );
-  
-  console.log('API: Response status', response.status, response.ok);
-  
-  if (!response.ok) {
-    const error = await response.json();
-    console.error('API: Error response', error);
-    throw new Error(error.detail || `Failed to fetch ${section}`);
-  }
-  
-  const result = await response.json();
-  console.log('API: Section data received', { section, data: result });
-  
-  return result;
-}
-
-// Convenience methods for specific sections
-export async function getProjectOverview(projectId: string, userEmail: string) {
-  return getProjectSection<OverviewModel>(projectId, 'overview', userEmail);
-}
-
-export async function getProjectBrief(projectId: string, userEmail: string) {
-  return getProjectSection<BriefModel>(projectId, 'brief', userEmail);
-}
-
-export async function getProjectResearch(projectId: string, userEmail: string) {
-  return getProjectSection<ResearchModel>(projectId, 'research', userEmail);
-}
-
-export async function getProjectStrategy(projectId: string, userEmail: string) {
-  return getProjectSection<StrategyModel>(projectId, 'strategy', userEmail);
-}
-
 // Get a single chat
 export async function getChat(
   chatId: string,
@@ -284,21 +238,6 @@ export async function selectCreativeTerritory(
     throw new Error(error.detail || 'Failed to select creative territory');
   }
 
-  return response.json();
-}
-
-// Get project tasks
-export async function getProjectTasks(projectId: string, userEmail: string): Promise<TasksResponse> {
-  const response = await fetch(
-    buildUrl(`/projects/${projectId}/tasks`, { user_id: userEmail }),
-    {
-      headers: getHeaders(),
-    }
-  );
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Failed to fetch tasks');
-  }
   return response.json();
 }
 
