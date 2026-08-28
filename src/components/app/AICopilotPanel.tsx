@@ -344,6 +344,19 @@ export function AICopilotPanel({
     return () => unregisterHandler();
   }, [registerHandler, unregisterHandler]);
 
+  // Stopping is the send button's other job while a run is going, so the
+  // handler lives with the send path rather than beside a separate control.
+  const handleStop = useCallback(async () => {
+    if (!user?.email || !chatId) return;
+    await cancelRun(chatId, user.email);
+    setIsStreaming(false);
+    setSteps([]);
+    setThinkingText("");
+    setStreamingContent("");
+    setUpdateMessage(null);
+    await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
+  }, [user?.email, chatId, queryClient]);
+
   const handlePrefillComplete = useCallback(() => {
     const pending = autoMessageRef.current;
     if (!pending) return;
@@ -513,32 +526,11 @@ export function AICopilotPanel({
             </div>
           )}
 
-          {isStreaming && (
-            <div className="px-4 pb-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={async () => {
-                  if (!user?.email || !chatId) return;
-                  await cancelRun(chatId, user.email);
-                  setIsStreaming(false);
-                  setSteps([]);
-                  setThinkingText("");
-                  setStreamingContent("");
-                  await queryClient.refetchQueries({
-                    queryKey: ["chat-messages", chatId],
-                  });
-                }}
-              >
-                Stop
-              </Button>
-            </div>
-          )}
-
           <ChatInput
             ref={chatInputRef}
             onSend={handleSendMessage}
             isStreaming={isStreaming}
+            onStop={handleStop}
             disabled={false}
             prefillMessage={autoMessage?.text ?? null}
             onPrefillComplete={handlePrefillComplete}

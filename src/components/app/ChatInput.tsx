@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, forwardRef, useImperativeHandle, type ReactNode } from "react";
 import {
-  Send,
+  Send, Square,
   Loader2,
   Paperclip,
   X,
@@ -78,6 +78,9 @@ export type ChatSendMeta = {
 interface ChatInputProps {
   onSend: (message: string, files?: File[], meta?: ChatSendMeta) => void;
   isStreaming: boolean;
+  /** Stop the run in progress. When given, the send button becomes the stop
+   *  control while streaming, which is where people look for it. */
+  onStop?: () => void;
   disabled?: boolean;
   /** When provided, shows mode toggle (icon + label) and uses this as current mode */
   mode?: ChatMode;
@@ -422,6 +425,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   {
     onSend,
     isStreaming,
+    onStop,
     disabled,
     mode,
     onModeToggle,
@@ -593,6 +597,8 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   }, [message]);
 
   const pickerDisabled = isStreaming || disabled;
+  // Only a run that can actually be stopped turns the button into a stop.
+  const canStop = isStreaming && !!onStop;
   const ModeIcon = GENERATION_MODE_META[generationMode].icon;
   const modeLabel = GENERATION_MODE_META[generationMode].label;
 
@@ -697,10 +703,16 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
-              type="submit"
+              // While a run is going this is the stop control, so it must not
+              // submit the form or be disabled by an empty box.
+              type={canStop ? "button" : "submit"}
+              onClick={canStop ? onStop : undefined}
+              aria-label={canStop ? "Stop" : "Send"}
               disabled={
-                isPrefillActive ||
-                ((!message.trim() && files.length === 0) || isStreaming || disabled)
+                canStop
+                  ? false
+                  : isPrefillActive ||
+                    ((!message.trim() && files.length === 0) || isStreaming || disabled)
               }
               size="icon"
               className={cn(
@@ -708,14 +720,16 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
                 variant === "floating" && "rounded-xl"
               )}
             >
-              {isStreaming ? (
+              {canStop ? (
+                <Square className="h-3.5 w-3.5 fill-current" />
+              ) : isStreaming ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Send className="h-4 w-4" />
               )}
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="top">Send</TooltipContent>
+          <TooltipContent side="top">{canStop ? "Stop" : "Send"}</TooltipContent>
         </Tooltip>
       </form>
 

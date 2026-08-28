@@ -68,6 +68,18 @@ export default function ChatView() {
     }
   }, [chatData?.mode]);
 
+  // Stopping is the send button's other job while a run is going.
+  const handleStop = useCallback(async () => {
+    if (!user?.email || !chatId) return;
+    await cancelRun(chatId, user.email);
+    setIsStreaming(false);
+    setSteps([]);
+    setThinkingText("");
+    setStreamingContent("");
+    setUpdateMessage(null);
+    await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
+  }, [user?.email, chatId, queryClient]);
+
   const mergeStreamAssets = useCallback(async (hints: StreamAssetHint[]) => {
     if (!user?.email || hints.length === 0) return;
     const resolved = await resolveStreamAssetHints(user.email, hints);
@@ -362,30 +374,11 @@ export default function ChatView() {
           </div>
         )}
 
-        {isStreaming && (
-          <div className="px-4 pb-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={async () => {
-                if (!user?.email || !chatId) return;
-                await cancelRun(chatId, user.email);
-                setIsStreaming(false);
-                setSteps([]);
-                setThinkingText("");
-                setStreamingContent("");
-                await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
-              }}
-            >
-              Stop
-            </Button>
-          </div>
-        )}
-
         <ChatInput
           ref={chatInputRef}
           onSend={handleSendMessage}
           isStreaming={isStreaming}
+          onStop={handleStop}
           disabled={showCampaignLoading}
           mode={mode}
           onModeToggle={() => setMode((m) => (m === "brainstorm" ? "campaign" : "brainstorm"))}
