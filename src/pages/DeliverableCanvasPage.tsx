@@ -16,6 +16,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useModification } from "@/hooks/useModification";
 import { useToast } from "@/hooks/use-toast";
 import { runTurn } from "@/services/agentRun";
+import { invalidateForDataChange } from "@/services/dataChanged";
 import { useChatMessages } from "@/hooks/useChats";
 import { useCreativeState } from "@/hooks/useCreativeState";
 import { ModificationOverlay } from "@/components/app/ModificationOverlay";
@@ -264,18 +265,13 @@ export default function DeliverableCanvasPage() {
                 assets.map((a) => ({ id: a.id, mime_type: a.mime_type ?? "" }))
               ).catch(() => {});
             },
-            onDataChanged: () => {
-              queryClient.invalidateQueries({
-                queryKey: ["campaign-task", taskId, user.email],
+            onDataChanged: (entity) => {
+              invalidateForDataChange(queryClient, entity, {
+                chatId,
+                campaignId,
+                taskId,
+                userEmail: user.email,
               });
-              queryClient.invalidateQueries({
-                queryKey: ["campaign-task-deliverable-objects", taskId, user.email],
-              });
-              if (campaignId) {
-                queryClient.invalidateQueries({
-                  queryKey: ["creative", campaignId, user.email],
-                });
-              }
             },
             onComplete: async () => {
               await queryClient.refetchQueries({

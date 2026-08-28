@@ -17,6 +17,7 @@ import {
   runTurn,
   type ProgressStep,
 } from "@/services/agentRun";
+import { invalidateForDataChange } from "@/services/dataChanged";
 import { AgentThinking } from "@/components/app/AgentThinking";
 import { AgentSteps } from "@/components/app/AgentSteps";
 import { useAuth } from "@/hooks/useAuth";
@@ -226,14 +227,12 @@ export function AICopilotPanel({
                 });
               }
             },
-            onDataChanged: () => {
-              queryClient.invalidateQueries({ queryKey: ["campaign"] });
-              if (user?.email) {
-                queryClient.invalidateQueries({ queryKey: ["asset-urls"] });
-                queryClient.invalidateQueries({
-                  queryKey: ["assets", chatId, user.email],
-                });
-              }
+            onDataChanged: (entity) => {
+              invalidateForDataChange(queryClient, entity, {
+                chatId,
+                campaignId,
+                userEmail: user?.email,
+              });
             },
             onCancelled: () => {
               setUpdateMessage(null);
@@ -391,9 +390,12 @@ export function AICopilotPanel({
                 assets.map((a) => ({ id: a.id, mime_type: a.mime_type ?? "" }))
               ).catch(() => {});
             },
-            onDataChanged: () => {
-              queryClient.invalidateQueries({ queryKey: ["campaign"] });
-              queryClient.invalidateQueries({ queryKey: ["assets", chatId, email] });
+            onDataChanged: (entity) => {
+              invalidateForDataChange(queryClient, entity, {
+                chatId,
+                campaignId,
+                userEmail: email,
+              });
             },
             onComplete: async () => {
               setUpdateMessage(null);
@@ -428,7 +430,7 @@ export function AICopilotPanel({
       .catch(() => undefined);
 
     return () => controller.abort();
-  }, [chatId, user?.email, queryClient, mergeStreamAssets]);
+  }, [chatId, campaignId, user?.email, queryClient, mergeStreamAssets]);
 
   // Stopping is the send button's other job while a run is going, so the
   // handler lives with the send path rather than beside a separate control.
