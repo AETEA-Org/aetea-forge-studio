@@ -43,7 +43,7 @@ export function HeroSection() {
             className="font-display font-bold tracking-tight leading-[0.95] mb-5 opacity-0 animate-fade-in"
             style={{ fontSize: 'clamp(2.25rem, 5.5vw, 64px)', animationDelay: '0.2s' }}
           >
-            <span className="text-foreground">Intelligence at work.</span>
+            <span className="text-foreground">Intelligence at work</span>
           </h1>
 
           {/* Subline */}
@@ -72,7 +72,7 @@ export function HeroSection() {
                 size="lg" 
                 className="bg-foreground text-background hover:bg-foreground/90 rounded-full px-8 h-14 text-base group transition-all duration-300 hover:scale-105"
               >
-                Start a Brief
+                Start a brief
                 <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Button>
             </Link>

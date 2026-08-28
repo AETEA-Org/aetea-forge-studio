@@ -27,7 +27,7 @@ export function FinalCTA() {
                 size="lg" 
                 className="bg-foreground text-background hover:bg-foreground/90 rounded-full px-8 h-14 text-base group"
               >
-                Start a Brief
+                Start a brief
                 <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Button>
             </Link>

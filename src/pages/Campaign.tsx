@@ -21,6 +21,9 @@ interface CampaignProps {
   outletContext?: ChatOrCampaignOutletContext | null;
 }
 
+/** How long to wait for a target section to render before abandoning the jump. */
+const SECTION_SCROLL_TIMEOUT_MS = 15000;
+
 export default function Campaign({ outletContext: outletContextProp }: CampaignProps = {}) {
   const { chatId } = useParams<{ chatId: string }>();
   
@@ -67,28 +70,36 @@ export default function Campaign({ outletContext: outletContextProp }: CampaignP
   useEffect(() => {
     if (!pendingScroll || pendingScroll.tab !== activeTab) return;
 
-    let attempts = 0;
-    let timer: number | undefined;
+    let settled = false;
 
-    const tryScroll = () => {
+    const scrollIfReady = () => {
+      if (settled) return true;
       const target = document.getElementById(pendingScroll.sectionId);
-      if (target) {
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        setPendingScroll(null);
-        return;
-      }
-      attempts += 1;
-      if (attempts < 20) {
-        timer = window.setTimeout(tryScroll, 75);
-      }
+      if (!target) return false;
+      settled = true;
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setPendingScroll(null);
+      return true;
     };
 
-    timer = window.setTimeout(tryScroll, 0);
+    if (scrollIfReady()) return;
+
+    // A tab only renders its sections once its own query resolves, which can take
+    // longer than any fixed poll window — watching the DOM means the jump lands
+    // whenever the section appears instead of silently giving up at the top.
+    const observer = new MutationObserver(() => {
+      if (scrollIfReady()) observer.disconnect();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    const giveUp = window.setTimeout(() => {
+      observer.disconnect();
+      if (!settled) setPendingScroll(null);
+    }, SECTION_SCROLL_TIMEOUT_MS);
 
     return () => {
-      if (timer !== undefined) {
-        window.clearTimeout(timer);
-      }
+      observer.disconnect();
+      window.clearTimeout(giveUp);
     };
   }, [activeTab, pendingScroll]);
 

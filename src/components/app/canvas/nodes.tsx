@@ -120,11 +120,6 @@ export const ChatWindowNode = memo(function ChatWindowNode() {
     referenceCount,
   } = useCanvas();
 
-  const contextLabel =
-    referenceCount > 0
-      ? `${referenceCount} reference${referenceCount === 1 ? "" : "s"} attached`
-      : "Task Execution";
-
   return (
     <div className="group relative h-full w-full flex flex-col rounded-xl border border-border bg-card shadow-sm overflow-hidden">
       <NodeResizer
@@ -168,7 +163,6 @@ export const ChatWindowNode = memo(function ChatWindowNode() {
               ref={chatInputRef}
               onSend={onSend}
               isStreaming={isStreaming}
-              contextLabel={contextLabel}
               inputPlaceholder="Describe what to generate or refine..."
               textareaMaxHeight={140}
               variant="floating"

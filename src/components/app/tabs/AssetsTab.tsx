@@ -26,6 +26,7 @@ import {
   buildAssetsByFolder,
   childFoldersOf,
   getTopFolders,
+  isPreviewable,
 } from "@/components/app/assets/assetTreeUtils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +47,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { AssetPreviewDialog } from "@/components/app/assets/AssetPreviewDialog";
 import { cn } from "@/lib/utils";
 import type { Asset, AssetFolder } from "@/types/api";
 import { toast } from "sonner";
@@ -285,6 +287,7 @@ function FolderTreeNode({
 export function AssetsTab({ chatId, isModifying }: AssetsTabProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [previewAssetId, setPreviewAssetId] = useState<string | null>(null);
   const [refreshingUrls, setRefreshingUrls] = useState<Set<string>>(new Set());
   const [pendingDelete, setPendingDelete] = useState<Asset | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -352,17 +355,38 @@ export function AssetsTab({ chatId, isModifying }: AssetsTabProps) {
     ]);
   }, [chatId, queryClient]);
 
-  const handleView = useCallback(
+  const handleDownload = useCallback(
     async (asset: Asset) => {
-      const url = await getValidUrl(asset, "view_url");
+      const url = await getValidUrl(asset, "download_url");
       window.open(url, "_blank");
     },
     [getValidUrl]
   );
 
-  const handleDownload = useCallback(
+  // Arrows step through the previewable files sitting in the same folder, which
+  // is the grouping the user is looking at when they open one.
+  const previewSiblings = useMemo(() => {
+    if (!previewAssetId) return [];
+    const opened = (assetsData?.assets ?? []).find((a) => a.id === previewAssetId);
+    if (!opened) return [];
+    const key = opened.folder_id ?? "__none__";
+    return (assetsByFolder.get(key) ?? []).filter(isPreviewable);
+  }, [previewAssetId, assetsData, assetsByFolder]);
+
+  const previewIndex = useMemo(() => {
+    if (!previewAssetId) return null;
+    const at = previewSiblings.findIndex((a) => a.id === previewAssetId);
+    return at === -1 ? null : at;
+  }, [previewAssetId, previewSiblings]);
+
+  const handleView = useCallback(
     async (asset: Asset) => {
-      const url = await getValidUrl(asset, "download_url");
+      if (isPreviewable(asset)) {
+        setPreviewAssetId(asset.id);
+        return;
+      }
+      // Nothing we can render inline (docs, archives) — hand it to the browser.
+      const url = await getValidUrl(asset, "view_url");
       window.open(url, "_blank");
     },
     [getValidUrl]
@@ -499,6 +523,15 @@ export function AssetsTab({ chatId, isModifying }: AssetsTabProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AssetPreviewDialog
+        assets={previewSiblings}
+        index={previewIndex}
+        onIndexChange={(next) => setPreviewAssetId(previewSiblings[next]?.id ?? null)}
+        onClose={() => setPreviewAssetId(null)}
+        resolveUrl={getValidUrl}
+        onDownload={handleDownload}
+      />
     </div>
   );
 }

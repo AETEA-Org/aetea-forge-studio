@@ -31,8 +31,10 @@ export function DeleteProjectDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>Delete Project</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete <span className="font-semibold text-foreground">"{projectTitle}"</span>? 
-            This action cannot be undone and will permanently delete all project data including research, strategy, and tasks.
+            Are you sure you want to delete <span className="font-semibold text-foreground">"{projectTitle}"</span>?
+            This action cannot be undone. It permanently deletes the whole project — its
+            conversation, campaign, research, strategy, tasks, and every generated or
+            uploaded file in it.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

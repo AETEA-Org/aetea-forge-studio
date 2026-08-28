@@ -30,3 +30,13 @@ export function childFoldersOf(
 ): AssetFolder[] {
   return folders.filter((f) => f.parent_folder_id === parentId);
 }
+
+/** True when the preview dialog can render this asset inline. */
+export function isPreviewable(asset: Asset): boolean {
+  const mime = (asset.mime_type || "").toLowerCase();
+  return (
+    mime.startsWith("image/") ||
+    mime.startsWith("video/") ||
+    mime === "application/pdf"
+  );
+}

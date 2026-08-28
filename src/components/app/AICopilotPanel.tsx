@@ -485,7 +485,6 @@ export function AICopilotPanel({
             ref={chatInputRef}
             onSend={handleSendMessage}
             isStreaming={isStreaming}
-            contextLabel={contextLabel}
             disabled={false}
             prefillMessage={autoMessage?.text ?? null}
             onPrefillComplete={handlePrefillComplete}

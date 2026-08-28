@@ -40,7 +40,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ChatContextIndicator } from "./ChatContextIndicator";
 import { cn } from "@/lib/utils";
 import { partitionChatFiles, validateChatFile } from "@/lib/chatFileValidation";
 import { useStyleCards } from "@/hooks/useStyleCards";
@@ -79,10 +78,7 @@ export type ChatSendMeta = {
 interface ChatInputProps {
   onSend: (message: string, files?: File[], meta?: ChatSendMeta) => void;
   isStreaming: boolean;
-  contextLabel: string;
   disabled?: boolean;
-  /** When false, hide the "Context: ..." label (e.g. in Chat View; only relevant in campaign view). Default true. */
-  showContextIndicator?: boolean;
   /** When provided, shows mode toggle (icon + label) and uses this as current mode */
   mode?: ChatMode;
   onModeToggle?: () => void;
@@ -426,9 +422,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   {
     onSend,
     isStreaming,
-    contextLabel,
     disabled,
-    showContextIndicator = true,
     mode,
     onModeToggle,
     textareaMaxHeight = 120,
@@ -615,8 +609,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      {showContextIndicator && <ChatContextIndicator contextLabel={contextLabel} />}
-
       {files.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {files.map((file, index) => (

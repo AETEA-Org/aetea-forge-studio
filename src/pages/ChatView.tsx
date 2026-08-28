@@ -281,8 +281,6 @@ export default function ChatView() {
           ref={chatInputRef}
           onSend={handleSendMessage}
           isStreaming={isStreaming}
-          contextLabel={mode === "brainstorm" ? "Brainstorm" : "Campaign"}
-          showContextIndicator={false}
           disabled={showCampaignLoading}
           mode={mode}
           onModeToggle={() => setMode((m) => (m === "brainstorm" ? "campaign" : "brainstorm"))}

@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { ADVISORY_CALENDLY_URL } from "@/components/landing/advisory/advisoryData";
 
 const navLinks = [
   { label: "Pricing", to: "/pricing" },
@@ -64,21 +65,22 @@ export function Navbar() {
 
           {/* Desktop CTAs */}
           <div className="hidden md:flex items-center gap-4">
-            <Link to="/auth">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="text-muted-foreground hover:text-foreground hover:bg-transparent"
-              >
-                Sign in
-              </Button>
-            </Link>
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-foreground hover:bg-transparent"
+            >
+              <a href={ADVISORY_CALENDLY_URL} target="_blank" rel="noopener noreferrer">
+                Book time
+              </a>
+            </Button>
             <Link to="/auth">
               <Button 
                 size="sm" 
                 className="bg-foreground text-background hover:bg-foreground/90 rounded-full px-5"
               >
-                Start a Brief
+                Start a brief
               </Button>
             </Link>
           </div>
@@ -117,14 +119,19 @@ export function Navbar() {
                 );
               })}
               <div className="flex flex-col gap-3 pt-4 mt-2 border-t border-border">
-                <Link to="/auth" onClick={() => setMobileOpen(false)}>
-                  <Button variant="ghost" size="sm" className="w-full justify-center">
-                    Sign in
-                  </Button>
-                </Link>
+                <Button asChild variant="ghost" size="sm" className="w-full justify-center">
+                  <a
+                    href={ADVISORY_CALENDLY_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    Book time
+                  </a>
+                </Button>
                 <Link to="/auth" onClick={() => setMobileOpen(false)}>
                   <Button size="sm" className="w-full bg-foreground text-background hover:bg-foreground/90 rounded-full">
-                    Start a Brief
+                    Start a brief
                   </Button>
                 </Link>
               </div>

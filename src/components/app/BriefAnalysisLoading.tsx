@@ -1,4 +1,5 @@
-import { Sparkles, FileText, Search, TrendingUp, Target, CheckSquare, LayoutDashboard, Save } from "lucide-react";
+import { useRef } from "react";
+import { Sparkles, FileText, TrendingUp, Target, CheckSquare, Save } from "lucide-react";
 
 interface BriefAnalysisLoadingProps {
   progress: string;
@@ -14,9 +15,17 @@ const progressSteps: Record<string, { icon: typeof Sparkles; percentage: number 
   'Finalizing your campaign': { icon: Save, percentage: 95 },
 };
 
+const FIRST_STEP = { icon: FileText, percentage: 15 };
+
 export function BriefAnalysisLoading({ progress }: BriefAnalysisLoadingProps) {
-  // Find the matching step or default
-  const currentStep = progressSteps[progress] || { icon: Sparkles, percentage: 50 };
+  // An unrecognised message used to fall back to 50%, so the bar opened near
+  // halfway and then jumped *backwards* to 15% on the first real step. Start at
+  // the first step instead, and never let the displayed value decrease.
+  const step = progressSteps[progress] ?? FIRST_STEP;
+  const highWaterMark = useRef(step.percentage);
+  highWaterMark.current = Math.max(highWaterMark.current, step.percentage);
+
+  const currentStep = { icon: step.icon, percentage: highWaterMark.current };
   const Icon = currentStep.icon;
 
   return (
