@@ -20,6 +20,19 @@ import type { ChatMessage, ChatRenderableAsset, StreamAssetHint } from "@/types/
 import type { CampaignTab } from "./CampaignTabs";
 import type { AutoSendOptions } from "@/contexts/AutoMessageContext";
 
+/**
+ * The tab a progress step is rewriting, when it is rewriting one.
+ *
+ * The backend names a section write `section-<key>` and the creative direction
+ * `creative`; those keys are the tab ids, so the overlay can cover exactly the
+ * view whose data is mid-write and leave the others readable.
+ */
+function modifyingTabForStep(stepId: string): string | null {
+  if (stepId === "creative") return "creative";
+  if (stepId.startsWith("section-")) return stepId.slice("section-".length);
+  return null;
+}
+
 interface AICopilotPanelProps {
   chatId: string;
   /** Present whenever the chat is linked to a campaign (same as AppLayout `hasCampaign`). */
@@ -171,6 +184,18 @@ export function AICopilotPanel({
             onThinking: (_delta, accumulated) => setThinkingText(accumulated),
             onProgress: (step) => {
               setUpdateMessage(step.label);
+              // A section write in flight covers the tab showing that section,
+              // so a half-written brief is never read as the finished one.
+              const tab = modifyingTabForStep(step.step_id);
+              if (tab) {
+                if (step.state === "started") {
+                  isModifyingActiveRef.current = true;
+                  setIsModifying(true, `tab:${tab}`);
+                } else if (isModifyingActiveRef.current) {
+                  isModifyingActiveRef.current = false;
+                  setIsModifying(false, null);
+                }
+              }
               setSteps((current) => {
                 const at = current.findIndex((s) => s.step_id === step.step_id);
                 if (at === -1) return [...current, step];
@@ -209,6 +234,10 @@ export function AICopilotPanel({
               setThinkingText("");
               setIsStreaming(false);
               setOptimisticMessages([]);
+              if (isModifyingActiveRef.current) {
+                isModifyingActiveRef.current = false;
+                setIsModifying(false, null);
+              }
               queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
             },
             onComplete: async () => {

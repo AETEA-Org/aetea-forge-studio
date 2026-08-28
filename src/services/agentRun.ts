@@ -195,7 +195,16 @@ export async function followRun(
           signal: options.signal,
         }
       );
-      if (response.status === 404) return; // nothing running
+      if (response.status === 404) {
+        // No run to attach to. Either it finished and was forgotten, or the
+        // server restarted under it. Either way the caller has to be told:
+        // returning quietly leaves a "thinking" state that never resolves.
+        handlers.onError?.(
+          "That run is no longer available. Reload the conversation to see " +
+          "where it got to."
+        );
+        return;
+      }
       if (!response.body) throw new Error("No response body");
 
       attempts = 0;

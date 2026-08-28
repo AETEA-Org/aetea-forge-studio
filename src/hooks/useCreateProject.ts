@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { createCampaignViaChat, deleteChatById, getChat } from "@/services/api";
+import { createCampaignViaChat, getChat } from "@/services/api";
 import type { ProgressStep } from "@/services/agentRun";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -68,17 +68,17 @@ export function useCreateProject() {
         // onComplete
         async () => {
           if (!campaignCreationStarted) {
-            // Error case: complete without campaign_creation_started
-            setError("Campaign creation failed. Please try again later.");
+            // The turn finished without a campaign being created. The
+            // conversation is kept either way: the run happens in the
+            // background, so a client-side failure says nothing about whether
+            // work is still going on the server.
+            setError(
+              "That did not turn into a campaign. Open the conversation to see " +
+              "what AETEA said, or try again with more detail."
+            );
             setIsSubmitting(false);
             setShowLoadingScreen(false);
-            
-            // Silently delete the chat that was created
-            try {
-              await deleteChatById(newChatId, user.email);
-            } catch (deleteError) {
-              console.error('Failed to delete chat after error:', deleteError);
-            }
+            queryClient.invalidateQueries({ queryKey: ['chats'] });
             return;
           }
 
@@ -96,13 +96,9 @@ export function useCreateProject() {
           setError(message);
           setIsSubmitting(false);
           setShowLoadingScreen(false);
-          
-          // Silently delete the chat if it was created
-          if (newChatId) {
-            deleteChatById(newChatId, user.email).catch((deleteError) => {
-              console.error('Failed to delete chat after error:', deleteError);
-            });
-          }
+          // Losing the stream is not losing the work: the run continues on the
+          // server, so the conversation stays and the user can reopen it.
+          queryClient.invalidateQueries({ queryKey: ['chats'] });
         }
       );
     } catch (err) {
@@ -110,13 +106,7 @@ export function useCreateProject() {
       setError(message);
       setIsSubmitting(false);
       setShowLoadingScreen(false);
-      
-      // Silently delete the chat if it was created
-      if (newChatId) {
-        deleteChatById(newChatId, user.email).catch((deleteError) => {
-          console.error('Failed to delete chat after error:', deleteError);
-        });
-      }
+      queryClient.invalidateQueries({ queryKey: ['chats'] });
     }
   }, [user?.email, navigate, queryClient]);
 
