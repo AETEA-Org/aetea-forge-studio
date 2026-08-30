@@ -365,10 +365,29 @@ export default function ChatView() {
                 rationale={modeProposal}
                 onAccept={async () => {
                   if (!user?.email || !chatId) return;
-                  await acceptCampaignMode(chatId, user.email);
+                  try {
+                    await acceptCampaignMode(chatId, user.email);
+                  } catch {
+                    // Without this the rejection was silent: the card stayed
+                    // put, nothing switched, and the person had no idea the
+                    // click had failed.
+                    toast({
+                      title: "Could not switch to campaign mode",
+                      description: "Try again in a moment.",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
                   setModeProposal(null);
                   setMode("campaign");
                   queryClient.invalidateQueries({ queryKey: ["chat", chatId, user.email] });
+                  // Flipping the flag only decides what the *next* turn sees.
+                  // The agent has just said it will build the campaign once
+                  // accepted, so accepting has to start that turn — otherwise
+                  // the offer is accepted and visibly nothing happens.
+                  void handleSendMessage(
+                    "Yes — switch to campaign mode and build the campaign."
+                  );
                 }}
                 onDecline={() => setModeProposal(null)}
               />
