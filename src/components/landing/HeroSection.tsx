@@ -64,7 +64,7 @@ export function HeroSection() {
 
           {/* CTAs */}
           <div
-            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16 opacity-0 animate-fade-in"
+            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8 opacity-0 animate-fade-in"
             style={{ animationDelay: '0.6s' }}
           >
             <Link to="/auth">
@@ -86,24 +86,11 @@ export function HeroSection() {
               </Button>
             </a>
           </div>
-
-          {/* Proof Points */}
-          <div
-            className="flex flex-wrap justify-center items-center gap-x-8 gap-y-4 opacity-0 animate-fade-in"
-            style={{ animationDelay: '0.8s' }}
-          >
-            {["Research", "Strategy", "Creative"].map((point) => (
-              <div key={point} className="flex items-center gap-3">
-                <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                <span className="text-sm text-foreground/60">{point}</span>
-              </div>
-            ))}
-          </div>
         </div>
       </div>
 
       {/* Scroll indicator - outside grid div so opacity isn't inherited */}
-      <div className="absolute bottom-12 left-1/2 -translate-x-1/2 opacity-0 animate-fade-in" style={{ animationDelay: '1.2s' }}>
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 opacity-0 animate-fade-in" style={{ animationDelay: '0.9s' }}>
         <div className="w-6 h-10 rounded-full border border-foreground/20 flex items-start justify-center p-2">
           <div className="w-1 h-2 rounded-full bg-foreground/40 animate-bounce" />
         </div>
