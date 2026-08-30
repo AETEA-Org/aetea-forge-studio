@@ -163,6 +163,9 @@ export const ChatWindowNode = memo(function ChatWindowNode() {
               isStreaming={isStreaming}
               updateMessage={updateMessage}
               showEmptyState={false}
+              surface="canvas"
+              // On the canvas a published file becomes its own card, so showing
+              // it in the bubble as well would say the same thing twice.
               suppressInlineAssets
             />
           </div>

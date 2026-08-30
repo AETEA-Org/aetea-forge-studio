@@ -31,9 +31,35 @@ function isImageMime(m: string) {
 interface ChatMessageAssetsProps {
   assets: ChatRenderableAsset[];
   className?: string;
+  /** Which chat surface this is in. Tailwind's `sm:` is a viewport breakpoint,
+   *  so it cannot tell a 450px side panel from a full-width conversation on
+   *  the same screen — the surface has to say which it is. */
+  surface?: ChatAssetSurface;
 }
 
-export function ChatMessageAssets({ assets, className }: ChatMessageAssetsProps) {
+/** The three places a conversation appears, which are three different widths. */
+export type ChatAssetSurface = "wide" | "panel" | "canvas";
+
+const SURFACE_GRID: Record<ChatAssetSurface, string> = {
+  // Full-width brainstorm view: room for several across.
+  wide: "grid-cols-[repeat(auto-fill,minmax(120px,1fr))]",
+  // Campaign side panel, ~450px and resizable, inside an 80% bubble.
+  panel: "grid-cols-[repeat(auto-fill,minmax(84px,1fr))]",
+  // A chat node on the canvas, narrower still.
+  canvas: "grid-cols-[repeat(auto-fill,minmax(72px,1fr))]",
+};
+
+const SURFACE_TILE: Record<ChatAssetSurface, string> = {
+  wide: "max-h-36",
+  panel: "max-h-28",
+  canvas: "max-h-24",
+};
+
+export function ChatMessageAssets({
+  assets,
+  className,
+  surface = "wide",
+}: ChatMessageAssetsProps) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   const open = openIndex !== null && openIndex >= 0 && openIndex < assets.length;
@@ -48,7 +74,7 @@ export function ChatMessageAssets({ assets, className }: ChatMessageAssetsProps)
       <div
         className={cn(
           "grid gap-2 w-full min-w-0 max-w-full",
-          "grid-cols-[repeat(auto-fill,minmax(100px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(120px,1fr))]",
+          SURFACE_GRID[surface],
           className
         )}
       >
@@ -59,7 +85,8 @@ export function ChatMessageAssets({ assets, className }: ChatMessageAssetsProps)
             onClick={() => setOpenIndex(index)}
             className={cn(
               "relative rounded-lg border border-border/80 bg-muted/40 overflow-hidden min-w-0 max-w-full",
-              "aspect-square max-h-32 sm:max-h-36 flex flex-col items-center justify-center p-1",
+              "aspect-square flex flex-col items-center justify-center p-1",
+              SURFACE_TILE[surface],
               "hover:ring-2 hover:ring-primary/40 transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             )}
           >

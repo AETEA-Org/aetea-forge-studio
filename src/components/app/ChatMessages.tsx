@@ -4,7 +4,11 @@ import { cn } from "@/lib/utils";
 import { Markdown } from "@/components/ui/markdown";
 import { formatDistanceFromUTC } from "@/lib/dateUtils";
 import type { Asset, ChatMessage, ChatRenderableAsset } from "@/types/api";
-import { ChatMessageAssets, assetToRenderable } from "@/components/app/ChatMessageAssets";
+import {
+  ChatMessageAssets,
+  assetToRenderable,
+  type ChatAssetSurface,
+} from "@/components/app/ChatMessageAssets";
 
 const NEAR_BOTTOM_PX = 80;
 
@@ -24,6 +28,8 @@ interface ChatMessagesProps {
   showEmptyState?: boolean;
   /** When true, skip inline asset thumbnails (canvas chat — objects appear as cards). */
   suppressInlineAssets?: boolean;
+  /** Which surface this conversation is on, so attachments are sized for it. */
+  surface?: ChatAssetSurface;
 }
 
 export function ChatMessages({
@@ -35,6 +41,7 @@ export function ChatMessages({
   updateMessage,
   showEmptyState = true,
   suppressInlineAssets = false,
+  surface = "wide",
 }: ChatMessagesProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const prevMessageCountRef = useRef<number>(0);
@@ -146,6 +153,7 @@ export function ChatMessages({
                 {showAssets ? (
                   <ChatMessageAssets
                     assets={msgAssets}
+                    surface={surface}
                     className={message.role === "user" ? "[&_button]:border-primary-foreground/20" : undefined}
                   />
                 ) : null}
@@ -191,7 +199,7 @@ export function ChatMessages({
               style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}
             >
               {!suppressInlineAssets && streamingAssets.length > 0 ? (
-                <ChatMessageAssets assets={streamingAssets} />
+                <ChatMessageAssets assets={streamingAssets} surface={surface} />
               ) : null}
               {streamingContent ? (
                 <Markdown className="text-sm leading-relaxed break-words">{streamingContent}</Markdown>

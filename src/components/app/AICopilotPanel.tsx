@@ -595,6 +595,7 @@ export function AICopilotPanel({
           onFilesDropped={(files) => chatInputRef.current?.addFiles(files)}
         >
           <ChatMessages
+            surface="panel"
             messages={messages}
             threadAssets={messagesData?.assets ?? []}
             streamingAssets={streamingAssets}
