@@ -9,12 +9,20 @@ export function AdvisoryHowWeWork() {
           <h2 className={ADVISORY_TITLE}>{ADVISORY_HOW_WE_WORK.title}</h2>
 
           <div className="mt-10 space-y-6">
-            {ADVISORY_HOW_WE_WORK.paragraphs.map((paragraph) => (
+            {ADVISORY_HOW_WE_WORK.intro.map((paragraph) => (
               <p key={paragraph} className={ADVISORY_BODY}>
                 {paragraph}
               </p>
             ))}
           </div>
+
+          <blockquote className="mt-10 space-y-6 border-l-2 border-foreground/20 pl-6 md:pl-8">
+            {ADVISORY_HOW_WE_WORK.quote.map((paragraph) => (
+              <p key={paragraph} className={`${ADVISORY_BODY} text-foreground/60 italic`}>
+                {paragraph}
+              </p>
+            ))}
+          </blockquote>
         </div>
       </div>
     </section>

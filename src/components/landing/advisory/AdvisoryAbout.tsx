@@ -24,7 +24,7 @@ export function AdvisoryAbout() {
               <img
                 src="/advisory/ash-tal.jpg"
                 alt="Ash and Tal, founders of AETEA"
-                className="h-full w-full object-cover object-top"
+                className="h-full w-full object-cover object-[42%_top]"
               />
             </div>
           </div>
@@ -86,12 +86,14 @@ export function AdvisoryAbout() {
             </div>
           </div>
 
-          <p className={`mt-16 max-w-3xl ${ADVISORY_BODY}`}>
-            {ADVISORY_ABOUT.closing}
-          </p>
+          <div className="mt-16 flex flex-col items-center text-center">
+            <p className={`max-w-2xl ${ADVISORY_BODY}`}>
+              {ADVISORY_ABOUT.closing}
+            </p>
 
-          <div className="mt-10">
-            <AdvisoryBookButton />
+            <div className="mt-10">
+              <AdvisoryBookButton />
+            </div>
           </div>
         </div>
       </div>

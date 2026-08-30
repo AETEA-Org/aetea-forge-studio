@@ -39,7 +39,7 @@ export function AeteaAlly() {
                   Brought to life
                 </span>
                 <p className="text-foreground/70 leading-relaxed">
-                  AETEA is a family venture founded by Ash Tal with Abdur Rehman.
+                  AETEA is a family venture founded by Ash Tal with Abdur.
                 </p>
               </div>
             </div>

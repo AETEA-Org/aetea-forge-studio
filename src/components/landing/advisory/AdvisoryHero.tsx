@@ -22,7 +22,7 @@ export function AdvisoryHero() {
       />
 
       <div className="container relative z-10 flex justify-center px-6 py-32 lg:px-12 md:py-40">
-        <div className="flex w-[800px] max-w-full flex-col items-center text-center">
+        <div className="flex w-[900px] max-w-full flex-col items-center text-center">
           <div
             className="mb-6 flex w-full justify-center opacity-0 animate-fade-in"
             style={{ animationDelay: "0.1s" }}
@@ -30,34 +30,45 @@ export function AdvisoryHero() {
             <img
               src="/advisory/the-80-ones-wordmark.png"
               alt={ADVISORY_HERO.title}
-              className="h-auto w-full object-contain"
-              style={{ aspectRatio: "3717 / 1491" }}
+              className="h-auto w-full max-w-[820px] object-contain"
+              style={{ aspectRatio: "2019 / 921" }}
             />
           </div>
 
-          <div
-            className="flex w-full items-center gap-3 opacity-0 animate-fade-in sm:gap-5"
+          <h1
+            className={`mb-8 opacity-0 animate-fade-in ${ADVISORY_TITLE}`}
             style={{ animationDelay: "0.2s" }}
           >
+            {ADVISORY_HERO.wisdomTagline}
+          </h1>
+
+          <div
+            className="flex w-full max-w-3xl items-center gap-3 opacity-0 animate-fade-in sm:gap-5"
+            style={{ animationDelay: "0.3s" }}
+          >
             <div className="h-px min-w-8 flex-1 bg-foreground/30" />
-            <h1 className={`shrink-0 text-center ${ADVISORY_TITLE}`}>
+            <p className={`shrink-0 text-center ${ADVISORY_TITLE}`}>
               {ADVISORY_HERO.tagline}
-            </h1>
+            </p>
             <div className="h-px min-w-8 flex-1 bg-foreground/30" />
           </div>
 
           <div
-            className="mx-auto mt-6 w-[min(100%,52rem)] space-y-4 opacity-0 animate-fade-in"
+            className="mx-auto mt-10 grid w-full max-w-5xl gap-8 text-left opacity-0 animate-fade-in md:grid-cols-2 md:gap-12"
             style={{ animationDelay: "0.4s" }}
           >
-            <p className={ADVISORY_BODY}>{ADVISORY_HERO.subscriptionNote}</p>
-            <p className={ADVISORY_BODY}>{ADVISORY_HERO.distinction}</p>
-            <p className={ADVISORY_BODY}>{ADVISORY_HERO.uncertainty}</p>
-            <p className={ADVISORY_BODY}>{ADVISORY_HERO.closing}</p>
+            <div className="space-y-4">
+              <p className={ADVISORY_BODY}>{ADVISORY_HERO.subscriptionNote}</p>
+              <p className={ADVISORY_BODY}>{ADVISORY_HERO.distinction}</p>
+            </div>
+            <div className="space-y-4">
+              <p className={ADVISORY_BODY}>{ADVISORY_HERO.uncertainty}</p>
+              <p className={ADVISORY_BODY}>{ADVISORY_HERO.closing}</p>
+            </div>
           </div>
 
           <div
-            className="mt-8 flex justify-center opacity-0 animate-fade-in md:mt-10"
+            className="mt-10 flex justify-center opacity-0 animate-fade-in md:mt-12"
             style={{ animationDelay: "0.6s" }}
           >
             <AdvisoryBookButton />

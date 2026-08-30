@@ -1,10 +1,19 @@
 import { Link } from "react-router-dom";
+import { Facebook, Instagram, Linkedin } from "lucide-react";
 
 const socialLinks = [
-  { label: "LinkedIn", href: "https://www.linkedin.com/company/aetea-studio/" },
-  { label: "Instagram", href: "https://www.instagram.com/aetea.studio" },
-  { label: "Facebook", href: "https://www.facebook.com/profile.php?id=61591948855223" },
-  { label: "X", href: "https://x.com/AETEAstudio" },
+  { label: "LinkedIn", href: "https://www.linkedin.com/company/aetea-studio/", Icon: Linkedin },
+  { label: "Instagram", href: "https://www.instagram.com/aetea.studio", Icon: Instagram },
+  { label: "Facebook", href: "https://www.facebook.com/profile.php?id=61591948855223", Icon: Facebook },
+  {
+    label: "X",
+    href: "https://x.com/AETEAstudio",
+    Icon: ({ className }: { className?: string }) => (
+      <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+      </svg>
+    ),
+  },
 ];
 
 export function Footer() {
@@ -12,7 +21,6 @@ export function Footer() {
     <footer className="py-12 border-t border-border">
       <div className="container px-6 lg:px-12">
         <div className="flex flex-col items-center gap-6">
-          {/* Equal columns keep Pricing/Advisory on the true center axis with socials */}
           <div className="grid w-full grid-cols-1 gap-6 md:grid-cols-3 md:items-center">
             <div className="flex justify-center md:justify-start">
               <Link to="/">
@@ -38,19 +46,18 @@ export function Footer() {
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-sm text-muted-foreground">
-            {socialLinks.map((social, i) => (
-              <span key={social.label} className="flex items-center gap-3">
-                {i > 0 && <span aria-hidden="true">·</span>}
-                <a
-                  href={social.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-foreground transition-colors"
-                >
-                  {social.label}
-                </a>
-              </span>
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            {socialLinks.map(({ label, href, Icon }) => (
+              <a
+                key={label}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={label}
+                className="text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <Icon className="h-5 w-5" />
+              </a>
             ))}
           </div>
         </div>

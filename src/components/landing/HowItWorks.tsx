@@ -91,7 +91,7 @@ export function HowItWorks() {
                 size="lg"
                 className="bg-foreground text-background hover:bg-foreground/90 rounded-full px-8 h-14 text-base group transition-all duration-300 hover:scale-105"
               >
-                Start Your First Brief
+                Start a brief with AETEA
                 <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Button>
             </Link>

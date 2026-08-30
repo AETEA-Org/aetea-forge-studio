@@ -1,7 +1,7 @@
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ADVISORY_BOOK_CTA, ADVISORY_CALENDLY_URL } from "./advisoryData";
+import { ADVISORY_BOOK_CTA, ADVISORY_BOOKING_URL } from "./advisoryData";
 
 type AdvisoryBookButtonProps = {
   className?: string;
@@ -18,7 +18,7 @@ export function AdvisoryBookButton({ className }: AdvisoryBookButtonProps) {
       )}
     >
       <a
-        href={ADVISORY_CALENDLY_URL}
+        href={ADVISORY_BOOKING_URL}
         target="_blank"
         rel="noopener noreferrer"
       >

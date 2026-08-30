@@ -1,6 +1,4 @@
-import { ADVISORY_BOOK_CTA } from "./advisoryData";
 import { AdvisoryBookButton } from "./AdvisoryBookButton";
-import { ADVISORY_BODY } from "./advisoryStyles";
 
 export function AdvisoryBookCta() {
   return (
@@ -10,9 +8,6 @@ export function AdvisoryBookCta() {
 
       <div className="container relative z-10 px-6 lg:px-12">
         <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
-          <p className={`mb-12 max-w-xl ${ADVISORY_BODY}`}>
-            {ADVISORY_BOOK_CTA.supporting}
-          </p>
           <AdvisoryBookButton />
         </div>
       </div>

@@ -12,7 +12,7 @@ const audiences = [
   {
     label: "Agencies",
     title: "Creative and marketing pros",
-    description: "Keep research, strategy, creative, and deployment connected as briefs and deadlines multiply—without burning out your team.",
+    description: "Keep research, strategy, creative, deployment, and analysis connected as briefs, contributors, and deadlines multiply. Increase output and reduce workflow chaos without burning out your team.",
   },
   {
     label: "Freelancers",

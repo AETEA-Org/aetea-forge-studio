@@ -1,5 +1,5 @@
-export const ADVISORY_CALENDLY_URL =
-  "https://calendly.com/the80ones-advisory/30min";
+export const ADVISORY_BOOKING_URL =
+  "https://calendar.google.com/calendar/appointments/schedules/AcZssZ2hd5VaNvEad7HJZSJN2NU-RH4kCxUuDRJZ1YrrmdBD5kRsFf7Mpdqrh850o7RU3lsGt4C2Nqk6";
 
 export const ADVISORY_LINKS = {
   ashLinkedIn: "https://www.linkedin.com/in/syedaayesha/",
@@ -9,11 +9,12 @@ export const ADVISORY_LINKS = {
 
 export const ADVISORY_HERO = {
   title: "The 80 Ones Advisory",
+  wisdomTagline: "Wisdom at play",
   tagline: "For consequential uncertainty.",
   subscriptionNote:
     "AETEA is intelligence at work, available by subscription.",
   distinction:
-    "The 80 Ones Advisory is distinct: a direct engagement with Ash Tal, founders of AETEA, for founders and leaders facing choices when the underlying issue, viable path, or consequences are not yet understood.",
+    "The 80 Ones Advisory is distinct: a direct engagement with Ash Tal, founders of AETEA, for decision-makers facing choices when the underlying issue, viable path, or consequences are not yet understood.",
   uncertainty:
     "Consequential uncertainty rarely arrives neatly labelled. It may appear as an intention without form, an unclear offer or position, an unresolved launch or market move, or a team caught between strategy and execution. It may sit in the business, product, audience, purpose, brand, creative, execution, or organisational behaviour—or across several at once.",
   closing:
@@ -47,9 +48,11 @@ export const ADVISORY_CLARIFIES = {
 
 export const ADVISORY_HOW_WE_WORK = {
   title: "How Ash Tal work",
-  paragraphs: [
+  intro: [
     "Ash Tal are engaged for their attention, taste, judgment, diagnosis, direction, perspective, and lived experience.",
     "They ask, listen, challenge, and dissect layers. They separate signal from noise, urgency from importance, truth from opinion, activity from progress, and what must be done from what merely wants to justify its existence.",
+  ],
+  quote: [
     "We do nothing for you except enable you to do right by yourself. We do not staff teams, manage your employees, or serve as a route into employment.",
     "The only thing you pay us for is our calories, time, and mind to see what you miss. If you are looking for a compass to navigate the uncharted, find us.",
   ],
@@ -57,12 +60,11 @@ export const ADVISORY_HOW_WE_WORK = {
 
 export const ADVISORY_AUDIENCE = {
   title: "Who Advisory is and isn’t for",
-  primary:
-    "The Advisory is primarily for founders leading startups or scaleups through consequential choices.",
+  primary: "The Advisory is for decision-makers.",
   alsoRelevant:
-    "It may also be relevant to CEOs, boards, executive teams, CMOs, brand leaders, agencies, purpose-led organisations, and those working in sustainability, circularity, or impact.",
+    "Most often, they are founders of startups or scaleups. They may also be CEOs, senior executives, CMOs, brand heads, or hold comparable responsibility within agencies, purpose-led organisations and institutions, including those working in sustainability, circularity or impact.",
   posture:
-    "Relevance depends less on title than posture: the ability to tolerate truth without becoming defensive, practise self-diagnosis, value candid judgment over performative agreement, and act on what becomes clear.",
+    "Relevance depends less on title or organisation than posture: the ability to tolerate truth without becoming defensive, practise self-diagnosis, value candid judgment over performative agreement, and act on what becomes clear.",
 } as const;
 
 export const ADVISORY_BOUNDARIES = {
@@ -79,17 +81,14 @@ export const ADVISORY_BOUNDARIES = {
 
 export const ADVISORY_BOOK_CTA = {
   label: "Book time with Ash Tal",
-  supporting:
-    "A direct conversation when the underlying issue, path, or consequences are not yet understood.",
 } as const;
 
 export const ADVISORY_ABOUT = {
   eyebrow: "About us",
   jointTitle: "Ash Tal",
-  jointLead:
-    "Ash Tal are founders of AETEA and architects of The 80 Ones.",
+  jointLead: "Founders of AETEA and architects of The 80 Ones.",
   jointBody:
-    "Ash’s experience is centred in creative; Tal’s, in strategy. These distinct foundations inform one combined judgment. The Advisory is one.",
+    "Ash’s experience is centred in creative; Tal’s in strategy. These distinct foundations inform one combined judgment. The Advisory is one.",
   ash: {
     name: "Ash",
     bio: [
@@ -105,5 +104,5 @@ export const ADVISORY_ABOUT = {
     ],
   },
   closing:
-    "Together, Ash Tal connect what is intended with what must be understood, decided, made, and carried into the world.",
+    "Together, they connect what is intended with what must be understood, decided, made, and carried into the world.",
 } as const;
