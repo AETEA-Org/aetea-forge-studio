@@ -381,13 +381,9 @@ export default function ChatView() {
                   setModeProposal(null);
                   setMode("campaign");
                   queryClient.invalidateQueries({ queryKey: ["chat", chatId, user.email] });
-                  // Flipping the flag only decides what the *next* turn sees.
-                  // The agent has just said it will build the campaign once
-                  // accepted, so accepting has to start that turn — otherwise
-                  // the offer is accepted and visibly nothing happens.
-                  void handleSendMessage(
-                    "Yes — switch to campaign mode and build the campaign."
-                  );
+                  // Nothing else to do here. The turn that made the offer is
+                  // still running and waiting on this; it sees the change and
+                  // carries on building the campaign in the same answer.
                 }}
                 onDecline={() => setModeProposal(null)}
               />
