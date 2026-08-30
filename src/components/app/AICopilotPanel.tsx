@@ -12,6 +12,7 @@ import { useAutoMessage } from "@/hooks/useAutoMessage";
 import { resolveStreamAssetHints } from "@/services/api";
 import {
   cancelRun,
+  editTurn,
   followRun,
   getRunStatus,
   runTurn,
@@ -432,6 +433,65 @@ export function AICopilotPanel({
     return () => controller.abort();
   }, [chatId, campaignId, user?.email, queryClient, mergeStreamAssets]);
 
+  // Rewriting a message replaces everything after it, then re-answers.
+  const handleEditMessage = useCallback(
+    async (messageId: string, text: string) => {
+      if (!user?.email || !chatId) return;
+      setStreamingContent("");
+      setThinkingText("");
+      setSteps([]);
+      setIsStreaming(true);
+      try {
+        await editTurn(chatId, messageId, {
+          userEmail: user.email,
+          message: text,
+          mode: "campaign",
+        });
+      } catch (err) {
+        setIsStreaming(false);
+        toast({
+          title: "Could not edit that message",
+          description: err instanceof Error ? err.message : "Try again in a moment.",
+          variant: "destructive",
+        });
+        return;
+      }
+      await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
+      const email = user.email;
+      await followRun(chatId, email, {
+        onToken: (_d, accumulated) => setStreamingContent(accumulated),
+        onThinking: (_d, accumulated) => setThinkingText(accumulated),
+        onProgress: (step) =>
+          setSteps((current) => {
+            const at = current.findIndex((s) => s.step_id === step.step_id);
+            if (at === -1) return [...current, step];
+            const next = [...current];
+            next[at] = step;
+            return next;
+          }),
+        onAssets: (assets) => {
+          mergeStreamAssets(
+            assets.map((a) => ({ id: a.id, mime_type: a.mime_type ?? "" }))
+          ).catch(() => {});
+        },
+        onDataChanged: (entity) =>
+          invalidateForDataChange(queryClient, entity, {
+            chatId, campaignId, userEmail: email,
+          }),
+        onComplete: async () => {
+          await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
+          setStreamingContent("");
+          setThinkingText("");
+          setSteps([]);
+          setIsStreaming(false);
+        },
+        onError: () => setIsStreaming(false),
+        onCancelled: () => setIsStreaming(false),
+      });
+    },
+    [user?.email, chatId, campaignId, queryClient, toast, mergeStreamAssets]
+  );
+
   // Stopping is the send button's other job while a run is going, so the
   // handler lives with the send path rather than beside a separate control.
   const handleStop = useCallback(async () => {
@@ -596,6 +656,7 @@ export function AICopilotPanel({
         >
           <ChatMessages
             surface="panel"
+            onEditMessage={handleEditMessage}
             messages={messages}
             threadAssets={messagesData?.assets ?? []}
             streamingAssets={streamingAssets}

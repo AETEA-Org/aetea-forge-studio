@@ -1,6 +1,7 @@
 import { useEffect, useRef, useMemo, useState, useCallback, useLayoutEffect } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { Markdown } from "@/components/ui/markdown";
 import { formatDistanceFromUTC } from "@/lib/dateUtils";
 import type { Asset, ChatMessage, ChatRenderableAsset } from "@/types/api";
@@ -28,8 +29,81 @@ interface ChatMessagesProps {
   showEmptyState?: boolean;
   /** When true, skip inline asset thumbnails (canvas chat — objects appear as cards). */
   suppressInlineAssets?: boolean;
+  /** Rewrite one of your own messages and answer it again. Omit to hide the
+   *  affordance — the canvas chat has no room for it. */
+  onEditMessage?: (messageId: string, text: string) => void | Promise<void>;
   /** Which surface this conversation is on, so attachments are sized for it. */
   surface?: ChatAssetSurface;
+}
+
+/**
+ * A message being rewritten, in the place the message was.
+ *
+ * Editing replaces everything said after it, so this is deliberately explicit
+ * rather than an inline-contenteditable trick: you can see what you are about
+ * to send, and you can back out.
+ */
+function MessageEditor({
+  initial,
+  onSave,
+  onCancel,
+}: {
+  initial: string;
+  onSave: (text: string) => void;
+  onCancel: () => void;
+}) {
+  const [text, setText] = useState(initial);
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.focus();
+    el.setSelectionRange(el.value.length, el.value.length);
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 320)}px`;
+  }, []);
+
+  const changed = text.trim() && text.trim() !== initial.trim();
+
+  return (
+    <div className="flex flex-col items-end gap-2">
+      <div className="w-[min(80%,100%)] min-w-0 rounded-lg border border-primary/40 bg-background p-2">
+        <textarea
+          ref={ref}
+          value={text}
+          onChange={(e) => {
+            setText(e.target.value);
+            e.target.style.height = "auto";
+            e.target.style.height = `${Math.min(e.target.scrollHeight, 320)}px`;
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              e.preventDefault();
+              onCancel();
+            }
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              if (changed) onSave(text.trim());
+            }
+          }}
+          rows={1}
+          className="w-full resize-none bg-transparent text-sm leading-relaxed outline-none"
+        />
+        <div className="mt-2 flex items-center justify-end gap-2">
+          <Button size="sm" variant="ghost" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button size="sm" disabled={!changed} onClick={() => onSave(text.trim())}>
+            Send
+          </Button>
+        </div>
+      </div>
+      <span className="px-1 text-xs text-muted-foreground">
+        Sending replaces everything after this message.
+      </span>
+    </div>
+  );
 }
 
 export function ChatMessages({
@@ -41,12 +115,14 @@ export function ChatMessages({
   updateMessage,
   showEmptyState = true,
   suppressInlineAssets = false,
+  onEditMessage,
   surface = "wide",
 }: ChatMessagesProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const prevMessageCountRef = useRef<number>(0);
   const prevFirstMessageIdRef = useRef<string | null>(null);
   const [showJumpToBottom, setShowJumpToBottom] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const updateJumpVisibility = useCallback(() => {
     const el = scrollRef.current;
@@ -133,11 +209,33 @@ export function ChatMessages({
           const hasText = Boolean(message.content?.trim());
           const showAssets = !suppressInlineAssets && msgAssets.length > 0;
           if (!showAssets && !hasText) return null;
+          const canEdit =
+            Boolean(onEditMessage) &&
+            message.role === "user" &&
+            hasText &&
+            !isStreaming &&
+            !message.message_id.startsWith("temp-");
+          const isEditing = editingId === message.message_id;
+
+          if (isEditing) {
+            return (
+              <MessageEditor
+                key={message.message_id}
+                initial={message.content}
+                onCancel={() => setEditingId(null)}
+                onSave={async (text) => {
+                  setEditingId(null);
+                  await onEditMessage?.(message.message_id, text);
+                }}
+              />
+            );
+          }
+
           return (
             <div
               key={message.message_id}
               className={cn(
-                "flex flex-col gap-1",
+                "group flex flex-col gap-1",
                 message.role === "user" ? "items-end" : "items-start"
               )}
             >
@@ -168,9 +266,27 @@ export function ChatMessages({
                   </Markdown>
                 ) : null}
               </div>
-              <span className="text-xs text-muted-foreground px-1">
-                {formatDistanceFromUTC(message.timestamp, { addSuffix: true })}
-              </span>
+              <div className="flex items-center gap-1 px-1">
+                {canEdit ? (
+                  <button
+                    type="button"
+                    onClick={() => setEditingId(message.message_id)}
+                    aria-label="Edit message"
+                    title="Edit"
+                    className={cn(
+                      "rounded p-1 text-muted-foreground opacity-0 transition-opacity",
+                      "hover:bg-muted hover:text-foreground",
+                      "group-hover:opacity-100 focus-visible:opacity-100",
+                      "focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    )}
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </button>
+                ) : null}
+                <span className="text-xs text-muted-foreground">
+                  {formatDistanceFromUTC(message.timestamp, { addSuffix: true })}
+                </span>
+              </div>
             </div>
           );
         })}

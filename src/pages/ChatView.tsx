@@ -21,12 +21,15 @@ import { AssetsModal } from "@/components/app/AssetsModal";
 import { AgentThinking } from "@/components/app/AgentThinking";
 import { AgentSteps } from "@/components/app/AgentSteps";
 import { CampaignModeOffer } from "@/components/app/CampaignModeOffer";
+import { invalidateForDataChange } from "@/services/dataChanged";
 import {
   acceptCampaignMode,
   cancelRun,
+  editTurn,
   followRun,
   getRunStatus,
   runTurn,
+  type AgentTurnHandlers,
   type ProgressStep,
 } from "@/services/agentRun";
 
@@ -59,6 +62,69 @@ export default function ChatView() {
   });
   const { data: messagesData } = useChatMessages(chatId);
   const serverMessages: ChatMessage[] = messagesData?.messages ?? [];
+
+  const mergeStreamAssets = useCallback(async (hints: StreamAssetHint[]) => {
+    if (!user?.email || hints.length === 0) return;
+    const resolved = await resolveStreamAssetHints(user.email, hints);
+    setStreamingAssets((prev) => {
+      const m = new Map(prev.map((a) => [a.id, a]));
+      resolved.forEach((a) => m.set(a.id, a));
+      return Array.from(m.values());
+    });
+  }, [user?.email]);
+
+  /** What to do with a stream this view is following. Shared by the edit
+   *  path and the re-attach path, which want identical behaviour. */
+  const streamHandlers = useCallback(
+    (email: string): AgentTurnHandlers => ({
+      onToken: (_delta, accumulated) => {
+        setUpdateMessage(null);
+        setStreamingContent(accumulated);
+      },
+      onThinking: (_delta, accumulated) => setThinkingText(accumulated),
+      onProgress: (step) =>
+        setSteps((current) => {
+          const at = current.findIndex((s) => s.step_id === step.step_id);
+          if (at === -1) return [...current, step];
+          const next = [...current];
+          next[at] = step;
+          return next;
+        }),
+      onModeProposal: (rationale) => setModeProposal(rationale),
+      onAssets: (assets) => {
+        mergeStreamAssets(
+          assets.map((a) => ({ id: a.id, mime_type: a.mime_type ?? "" }))
+        ).catch(() => {});
+      },
+      onDataChanged: (entity) => {
+        invalidateForDataChange(queryClient, entity, { chatId, userEmail: email });
+      },
+      onComplete: async () => {
+        setUpdateMessage(null);
+        await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
+        queryClient.invalidateQueries({ queryKey: ["chats"] });
+        setStreamingContent("");
+        setThinkingText("");
+        setSteps([]);
+        setIsStreaming(false);
+      },
+      onCancelled: () => {
+        setStreamingContent("");
+        setThinkingText("");
+        setSteps([]);
+        setIsStreaming(false);
+      },
+      onError: (msg) => {
+        setStreamingContent("");
+        setThinkingText("");
+        setSteps([]);
+        setIsStreaming(false);
+        toast({ title: "Something went wrong", description: msg, variant: "destructive" });
+      },
+    }),
+    [chatId, queryClient, toast, mergeStreamAssets]
+  );
+
   const messages = [...serverMessages, ...optimisticMessages];
   const chatTitle = chatData?.title ?? "Chat";
 
@@ -67,6 +133,35 @@ export default function ChatView() {
       setMode(chatData.mode);
     }
   }, [chatData?.mode]);
+
+  // Rewriting a message replaces everything after it, then re-answers.
+  const handleEditMessage = useCallback(
+    async (messageId: string, text: string) => {
+      if (!user?.email || !chatId) return;
+      setStreamingContent("");
+      setThinkingText("");
+      setSteps([]);
+      setIsStreaming(true);
+      try {
+        await editTurn(chatId, messageId, {
+          userEmail: user.email,
+          message: text,
+          mode,
+        });
+      } catch (err) {
+        setIsStreaming(false);
+        toast({
+          title: "Could not edit that message",
+          description: err instanceof Error ? err.message : "Try again in a moment.",
+          variant: "destructive",
+        });
+        return;
+      }
+      await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
+      await followRun(chatId, user.email, streamHandlers(user.email));
+    },
+    [user?.email, chatId, mode, queryClient, toast, streamHandlers]
+  );
 
   // Stopping is the send button's other job while a run is going.
   const handleStop = useCallback(async () => {
@@ -80,15 +175,6 @@ export default function ChatView() {
     await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
   }, [user?.email, chatId, queryClient]);
 
-  const mergeStreamAssets = useCallback(async (hints: StreamAssetHint[]) => {
-    if (!user?.email || hints.length === 0) return;
-    const resolved = await resolveStreamAssetHints(user.email, hints);
-    setStreamingAssets((prev) => {
-      const m = new Map(prev.map((a) => [a.id, a]));
-      resolved.forEach((a) => m.set(a.id, a));
-      return Array.from(m.values());
-    });
-  }, [user?.email]);
 
   const handleSendMessage = useCallback(
     async (message: string, files?: File[]) => {
@@ -348,6 +434,7 @@ export default function ChatView() {
         onFilesDropped={(files) => chatInputRef.current?.addFiles(files)}
       >
         <ChatMessages
+          onEditMessage={handleEditMessage}
           messages={messages}
           threadAssets={messagesData?.assets ?? []}
           streamingAssets={streamingAssets}

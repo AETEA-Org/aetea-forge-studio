@@ -128,6 +128,35 @@ export async function cancelRun(chatId: string, userEmail: string): Promise<void
   });
 }
 
+/**
+ * Rewrite one of your messages and answer it again.
+ *
+ * Everything said from that message onward is replaced, in the transcript and
+ * in what the agent remembers. Returns as soon as the run is accepted; the new
+ * answer arrives on the stream like any other turn.
+ */
+export async function editTurn(
+  chatId: string,
+  messageId: string,
+  req: { userEmail: string; message: string; mode: string; branchId?: string }
+): Promise<{ run_id: string }> {
+  const form = new FormData();
+  form.append("user_id", req.userEmail);
+  form.append("message", req.message);
+  form.append("mode", req.mode);
+  form.append("branch_id", req.branchId ?? "main");
+
+  const response = await fetch(
+    url(`/ai/chats/${chatId}/messages/${messageId}/edit`),
+    { method: "POST", headers: authHeaders(), body: form }
+  );
+  if (!response.ok) {
+    const detail = await response.json().catch(() => ({}));
+    throw new Error(detail.detail || "Could not edit that message");
+  }
+  return response.json();
+}
+
 /** Accept the agent's offer to turn this conversation into a campaign. */
 export async function acceptCampaignMode(
   chatId: string,
