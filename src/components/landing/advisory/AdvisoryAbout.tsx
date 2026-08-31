@@ -5,7 +5,7 @@ import { ADVISORY_BODY, ADVISORY_EYEBROW, ADVISORY_TITLE } from "./advisoryStyle
 
 export function AdvisoryAbout() {
   return (
-    <section className="relative py-28 md:py-36">
+    <section className="relative py-20 md:py-28">
       <div className="container px-6 lg:px-12">
         <div className="mx-auto max-w-5xl">
           <div className="grid items-center gap-10 md:grid-cols-[1.15fr_0.85fr] md:gap-12 lg:gap-16">

@@ -2,7 +2,7 @@ import { AdvisoryBookButton } from "./AdvisoryBookButton";
 
 export function AdvisoryBookCta() {
   return (
-    <section className="relative overflow-hidden py-24 md:py-32 grain">
+    <section className="relative overflow-hidden py-20 md:py-24 grain">
       <div className="absolute inset-0 bg-black" />
       <div className="absolute top-1/2 left-1/2 h-[400px] w-[800px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/15 blur-[180px] animate-glow-pulse" />
 

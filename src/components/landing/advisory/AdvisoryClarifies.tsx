@@ -3,7 +3,7 @@ import { ADVISORY_BODY, ADVISORY_TITLE } from "./advisoryStyles";
 
 export function AdvisoryClarifies() {
   return (
-    <section className="relative py-28 md:py-36">
+    <section className="relative py-20 md:py-28">
       <div className="container px-6 lg:px-12">
         <div className="mx-auto max-w-4xl">
           <h2 className={ADVISORY_TITLE}>{ADVISORY_CLARIFIES.title}</h2>

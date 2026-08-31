@@ -3,7 +3,7 @@ import { ADVISORY_BODY, ADVISORY_EYEBROW, ADVISORY_TITLE } from "./advisoryStyle
 
 export function AdvisoryPhilosophy() {
   return (
-    <section className="relative overflow-hidden py-28 md:py-36 grain">
+    <section className="relative overflow-hidden py-20 md:py-28 grain">
       <div className="container px-6 lg:px-12">
         <div className="mx-auto max-w-4xl">
           <div className="mb-12 flex items-center gap-3">

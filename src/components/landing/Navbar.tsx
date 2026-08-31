@@ -10,6 +10,38 @@ const navLinks = [
   { label: "Advisory", to: "/advisory", markSrc: "/advisory/nav-mark.png" },
 ] as const;
 
+const desktopControlClass =
+  "h-9 rounded-full border border-foreground/60 !bg-transparent px-5 text-xs font-normal tracking-[0.08em] !text-foreground transition-colors hover:border-foreground hover:!bg-foreground hover:!text-background focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+
+function BrandControl({
+  label,
+  to,
+  src,
+  active,
+}: {
+  label: string;
+  to: string;
+  src: string;
+  active: boolean;
+}) {
+  return (
+    <Link
+      to={to}
+      aria-label={label}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "group relative rounded-full transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground",
+        active ? "opacity-100" : "opacity-85",
+      )}
+    >
+      <img src={src} alt="" aria-hidden="true" className="h-[30px] w-[30px] rounded-full object-cover" />
+      <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-3 -translate-x-1/2 whitespace-nowrap rounded-full border border-foreground/60 bg-transparent px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-foreground opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100">
+        {label}
+      </span>
+    </Link>
+  );
+}
+
 export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -31,50 +63,28 @@ export function Navbar() {
     >
       <nav className="container mx-auto px-6 lg:px-12">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-6 md:gap-10">
-            <Link to="/" className="relative z-10">
-              <img
-                src="/favicon.png"
-                alt="AETEA"
-                className="h-[30px] w-[30px] rounded-full object-contain transition-opacity hover:opacity-80"
-              />
-            </Link>
+          <div className="flex items-center gap-3">
+            <BrandControl label="AETEA" to="/" src="/favicon.png" active={pathname === "/"} />
 
-            <div className="hidden md:flex items-center gap-8">
+            <div className="hidden md:flex items-center gap-3">
               {navLinks.map((link) => {
                 const isActive = pathname === link.to;
-                return (
-                  <Link
-                    key={link.label}
-                    to={link.to}
-                    aria-current={isActive ? "page" : undefined}
-                    className={cn(
-                      "flex items-center gap-2 text-sm transition-colors duration-300",
-                      isActive
-                        ? "text-foreground"
-                        : "text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    <img
-                      src={link.markSrc}
-                      alt=""
-                      aria-hidden="true"
-                      className="h-[30px] w-[30px] rounded-full object-cover"
-                    />
-                    {link.label}
-                  </Link>
-                );
+                return <BrandControl key={link.label} label={link.label} to={link.to} src={link.markSrc} active={isActive} />;
               })}
             </div>
           </div>
 
           <div className="hidden md:flex items-center gap-4">
-            <Button
-              asChild
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground hover:text-foreground hover:bg-transparent"
-            >
+            <Link to="/auth" title="Begin working with AETEA.">
+              <Button
+                variant="ghost"
+                size="sm"
+                className={desktopControlClass}
+              >
+                Start a brief
+              </Button>
+            </Link>
+            <Button asChild variant="ghost" size="sm" className={desktopControlClass}>
               <a
                 href={ADVISORY_BOOKING_URL}
                 target="_blank"
@@ -84,14 +94,6 @@ export function Navbar() {
                 Book time
               </a>
             </Button>
-            <Link to="/auth" title="Begin working with AETEA.">
-              <Button
-                size="sm"
-                className="bg-foreground text-background hover:bg-foreground/90 rounded-full px-5"
-              >
-                Start a brief
-              </Button>
-            </Link>
           </div>
 
           <button
@@ -132,7 +134,16 @@ export function Navbar() {
                 );
               })}
               <div className="flex flex-col gap-3 pt-4 mt-2 border-t border-border">
-                <Button asChild variant="ghost" size="sm" className="w-full justify-center">
+                <Link
+                  to="/auth"
+                  title="Begin working with AETEA."
+                  onClick={() => setMobileOpen(false)}
+                >
+                  <Button variant="ghost" size="sm" className={`w-full ${desktopControlClass}`}>
+                    Start a brief
+                  </Button>
+                </Link>
+                <Button asChild variant="ghost" size="sm" className={`w-full ${desktopControlClass}`}>
                   <a
                     href={ADVISORY_BOOKING_URL}
                     target="_blank"
@@ -143,15 +154,6 @@ export function Navbar() {
                     Book time
                   </a>
                 </Button>
-                <Link
-                  to="/auth"
-                  title="Begin working with AETEA."
-                  onClick={() => setMobileOpen(false)}
-                >
-                  <Button size="sm" className="w-full bg-foreground text-background hover:bg-foreground/90 rounded-full">
-                    Start a brief
-                  </Button>
-                </Link>
               </div>
             </div>
           </div>

@@ -16,7 +16,7 @@ export const ADVISORY_HERO = {
   distinction:
     "The 80 Ones Advisory is distinct: a direct engagement with Ash Tal, founders of AETEA, for decision-makers facing choices when the underlying issue, viable path, or consequences are not yet understood.",
   uncertainty:
-    "Consequential uncertainty rarely arrives neatly labelled. It may appear as an intention without form, an unclear offer or position, an unresolved launch or market move, or a team caught between strategy and execution. It may sit in the business, product, audience, purpose, brand, creative, execution, or organisational behaviour—or across several at once.",
+    "Consequential uncertainty rarely arrives neatly labelled. It may appear as an intention without form, an unclear offer or position, an unresolved launch or market move, or a team caught between strategy and execution. It may sit in the business, product, audience, purpose, brand, creative, execution, or organizational behaviour—or across several at once.",
   closing:
     "The Advisory begins by examining the whole and locating where judgment is required.",
 } as const;
@@ -62,7 +62,7 @@ export const ADVISORY_AUDIENCE = {
   title: "Who Advisory is and isn’t for",
   primary: "The Advisory is for decision-makers.",
   alsoRelevant:
-    "Most often, they are founders of startups or scaleups. They may also be CEOs, senior executives, CMOs, brand heads, or hold comparable responsibility within agencies, purpose-led organisations and institutions, including those working in sustainability, circularity or impact.",
+    "Most often, they are founders of startups or scaleups. They may also be CEOs, senior executives, CMOs, brand heads, or hold comparable responsibility within agencies, purpose-led organizations and institutions, including those working in sustainability, circularity or impact.",
   posture:
     "Relevance depends less on title or organisation than posture: the ability to tolerate truth without becoming defensive, practise self-diagnosis, value candid judgment over performative agreement, and act on what becomes clear.",
 } as const;
@@ -100,7 +100,7 @@ export const ADVISORY_ABOUT = {
     name: "Tal",
     bio: [
       "Tal is a C-suite strategist with more than 20 years of experience across business, brand, product, marketing, and communications.",
-      "His work spans enterprise and go-to-market strategy, commercial growth, brand architecture, marketing effectiveness, corporate communications, and distributed operations. He has led businesses and teams, translating founder and board priorities into product, market, and organisational action.",
+      "His work spans enterprise and go-to-market strategy, commercial growth, brand architecture, marketing effectiveness, corporate communications, and distributed operations. He has led businesses and teams, translating founder and board priorities into product, market, and organizational action.",
     ],
   },
   closing:
