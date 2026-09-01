@@ -8,7 +8,6 @@ import { AdvisoryBoundaries } from "@/components/landing/advisory/AdvisoryBounda
 import { AdvisoryClarifies } from "@/components/landing/advisory/AdvisoryClarifies";
 import { AdvisoryHero } from "@/components/landing/advisory/AdvisoryHero";
 import { AdvisoryHowWeWork } from "@/components/landing/advisory/AdvisoryHowWeWork";
-import { AdvisoryMobileStickyCta } from "@/components/landing/advisory/AdvisoryMobileStickyCta";
 import { AdvisoryPhilosophy } from "@/components/landing/advisory/AdvisoryPhilosophy";
 
 export default function Advisory() {
@@ -21,7 +20,7 @@ export default function Advisory() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background pb-20 dark md:pb-0">
+    <div className="min-h-screen bg-background dark">
       <Navbar />
       <main>
         <AdvisoryHero />
@@ -34,7 +33,6 @@ export default function Advisory() {
         <AdvisoryAbout />
       </main>
       <Footer />
-      <AdvisoryMobileStickyCta />
     </div>
   );
 }

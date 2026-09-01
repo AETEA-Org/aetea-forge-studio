@@ -19,7 +19,7 @@ const socialLinks = [
 export function Footer() {
   return (
     <footer className="py-12 border-t border-border">
-      <div className="container px-6 lg:px-12">
+      <div className="container px-5 sm:px-6 lg:px-12">
         <div className="flex flex-col items-center gap-6">
           <div className="grid w-full grid-cols-1 gap-6 md:grid-cols-3 md:items-center">
             <div className="flex justify-center md:justify-start">
@@ -32,12 +32,20 @@ export function Footer() {
               </Link>
             </div>
 
-            <nav className="flex items-center justify-center gap-8 text-sm text-muted-foreground">
-              <Link to="/pricing" className="hover:text-foreground transition-colors">
-                Pricing
+            <nav className="flex items-center justify-center gap-4">
+              <Link
+                to="/pricing"
+                aria-label="Pricing"
+                className="rounded-full opacity-60 transition-all hover:scale-105 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground"
+              >
+                <img src="/pricing/pricing-mark.png" alt="" aria-hidden="true" className="h-8 w-8 rounded-full object-cover" />
               </Link>
-              <Link to="/advisory" className="hover:text-foreground transition-colors">
-                Advisory
+              <Link
+                to="/advisory"
+                aria-label="Advisory"
+                className="rounded-full opacity-60 transition-all hover:scale-105 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground"
+              >
+                <img src="/advisory/nav-mark.png" alt="" aria-hidden="true" className="h-8 w-8 rounded-full object-cover" />
               </Link>
             </nav>
 

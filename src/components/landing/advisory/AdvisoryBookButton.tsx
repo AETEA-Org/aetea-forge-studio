@@ -13,7 +13,7 @@ export function AdvisoryBookButton({ className }: AdvisoryBookButtonProps) {
       asChild
       size="lg"
       className={cn(
-        "group h-14 rounded-full bg-foreground px-8 text-base text-background transition-all duration-300 hover:bg-foreground/90 hover:scale-105",
+        "group h-12 max-w-full rounded-full bg-foreground px-5 text-sm text-background transition-all duration-300 hover:bg-foreground/90 hover:scale-105 sm:h-14 sm:px-8 sm:text-base",
         className,
       )}
     >
