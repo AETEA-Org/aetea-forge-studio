@@ -13,6 +13,9 @@ const navLinks = [
 const desktopControlClass =
   "h-9 rounded-full border border-foreground/60 !bg-transparent px-5 text-xs font-normal tracking-[0.08em] !text-foreground transition-colors hover:border-foreground hover:!bg-foreground hover:!text-background focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
+const hoverLabelClass =
+  "pointer-events-none absolute left-1/2 top-full z-20 mt-3 -translate-x-1/2 whitespace-nowrap rounded-full border border-foreground/60 bg-transparent px-2.5 py-0.5 text-[9px] uppercase tracking-[0.14em] text-foreground opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100 group-focus-visible:opacity-100";
+
 function BrandControl({
   label,
   to,
@@ -35,7 +38,7 @@ function BrandControl({
       )}
     >
       <img src={src} alt="" aria-hidden="true" className="h-[30px] w-[30px] rounded-full object-cover" />
-      <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-3 -translate-x-1/2 whitespace-nowrap rounded-full border border-foreground/60 bg-transparent px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-foreground opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100">
+      <span className={hoverLabelClass}>
         {label}
       </span>
     </Link>
@@ -75,7 +78,7 @@ export function Navbar() {
           </div>
 
           <div className="hidden md:flex items-center gap-4">
-            <Link to="/auth" title="Begin working with AETEA.">
+            <Link to="/auth" className="group relative">
               <Button
                 variant="ghost"
                 size="sm"
@@ -83,17 +86,20 @@ export function Navbar() {
               >
                 Start a brief
               </Button>
+              <span className={hoverLabelClass}>Begin working with AETEA</span>
             </Link>
-            <Button asChild variant="ghost" size="sm" className={desktopControlClass}>
-              <a
-                href={ADVISORY_BOOKING_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                title="Begin an Advisory engagement with Ash Tal."
-              >
-                Book time
-              </a>
-            </Button>
+            <div className="group relative">
+              <Button asChild variant="ghost" size="sm" className={desktopControlClass}>
+                <a
+                  href={ADVISORY_BOOKING_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Book time
+                </a>
+              </Button>
+              <span className={hoverLabelClass}>Begin an Advisory engagement with Ash Tal</span>
+            </div>
           </div>
 
           <button

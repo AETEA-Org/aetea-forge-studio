@@ -23,7 +23,7 @@ export function AdvisoryHero() {
           </div>
 
           <h1
-            className="-mt-8 mb-14 font-sans text-4xl font-semibold tracking-tight leading-none text-foreground opacity-0 animate-fade-in md:-mt-16 md:mb-16 md:text-5xl"
+            className="-mt-8 mb-14 font-display text-4xl font-bold tracking-tight leading-none text-foreground opacity-0 animate-fade-in md:-mt-16 md:mb-16 md:text-5xl"
             style={{ animationDelay: "0.2s" }}
           >
             {ADVISORY_HERO.wisdomTagline}
