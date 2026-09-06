@@ -49,6 +49,9 @@ const App = () => (
                 <Route path="chat/:chatId" element={<CampaignShell />}>
                   <Route index element={<ChatOrCampaign />} />
                   <Route path="task/:taskId" element={<DeliverableCanvasPage />} />
+                  {/* The campaign's own canvas: work made outside any task —
+                      key visuals, one-offs asked for in the conversation. */}
+                  <Route path="canvas" element={<DeliverableCanvasPage />} />
                 </Route>
                 <Route path="settings" element={<Settings />} />
               </Route>

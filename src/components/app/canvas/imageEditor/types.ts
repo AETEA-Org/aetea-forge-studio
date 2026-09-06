@@ -89,7 +89,8 @@ export interface ImageEditorDialogProps {
   chatId: string;
   userEmail: string;
   campaignId?: string;
-  taskId?: string;
+  /** Which canvas is open: a task id, or `chat:<id>` for the campaign's own. */
+  canvasKey?: string;
 }
 
 export type BgRef = { current: FabricImage | null };

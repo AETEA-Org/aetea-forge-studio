@@ -729,9 +729,45 @@ export async function getCampaignTaskDeliverables(
   return response.json();
 }
 
+/**
+ * The campaign's own finished work — everything not made against a task.
+ *
+ * A key visual, or anything asked for in the conversation rather than for a
+ * piece of work, is filed against the chat. Until this existed those were
+ * saved and then shown on no canvas at all.
+ */
+export async function getChatDeliverables(
+  chatId: string,
+  userEmail: string
+): Promise<DeliverableObjectsResponse> {
+  const response = await fetch(
+    buildUrl(`/campaigns/chats/${chatId}/deliverable-objects`, { user_id: userEmail }),
+    { headers: getHeaders() }
+  );
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.detail || 'Failed to fetch deliverable objects');
+  }
+  return response.json();
+}
+
 /** PATCH a deliverable object's canvas placement (drag/resize). */
+/**
+ * Which canvas an object lives on: a piece of work, or the campaign itself.
+ *
+ * Everything made outside a task is filed against the chat, so the routes come
+ * in both shapes and callers say which one they mean.
+ */
+export type CanvasScope = { taskId: string } | { chatId: string };
+
+function canvasPath(scope: CanvasScope): string {
+  return "taskId" in scope
+    ? `/campaigns/tasks/${scope.taskId}/deliverable-objects`
+    : `/campaigns/chats/${scope.chatId}/deliverable-objects`;
+}
+
 export async function patchDeliverableObjectPosition(
-  taskId: string,
+  scope: CanvasScope,
   objectId: string,
   userEmail: string,
   position: {
@@ -743,10 +779,7 @@ export async function patchDeliverableObjectPosition(
   }
 ): Promise<DeliverableObject> {
   const response = await fetch(
-    buildUrl(
-      `/campaigns/tasks/${taskId}/deliverable-objects/${objectId}/position`,
-      { user_id: userEmail }
-    ),
+    buildUrl(`${canvasPath(scope)}/${objectId}/position`, { user_id: userEmail }),
     {
       method: 'PATCH',
       headers: getHeaders('application/json'),
@@ -762,15 +795,12 @@ export async function patchDeliverableObjectPosition(
 
 /** PATCH to approve a deliverable object (user-only). */
 export async function approveDeliverableObject(
-  taskId: string,
+  scope: CanvasScope,
   objectId: string,
   userEmail: string
 ): Promise<DeliverableObject> {
   const response = await fetch(
-    buildUrl(
-      `/campaigns/tasks/${taskId}/deliverable-objects/${objectId}/approve`,
-      { user_id: userEmail }
-    ),
+    buildUrl(`${canvasPath(scope)}/${objectId}/approve`, { user_id: userEmail }),
     {
       method: 'PATCH',
       headers: getHeaders(),

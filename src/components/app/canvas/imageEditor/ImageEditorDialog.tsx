@@ -20,7 +20,7 @@ export function ImageEditorDialog({
   chatId,
   userEmail,
   campaignId,
-  taskId,
+  canvasKey,
 }: ImageEditorDialogProps) {
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
@@ -42,9 +42,9 @@ export function ImageEditorDialog({
       deliverable_id?: string | null;
     }) => {
       void queryClient.invalidateQueries({ queryKey: ["assets", chatId] });
-      if (taskId) {
+      if (canvasKey) {
         void queryClient.invalidateQueries({
-          queryKey: ["campaign-task-deliverable-objects", taskId, userEmail],
+          queryKey: ["deliverable-objects", canvasKey, userEmail],
         });
       }
       if (campaignId && (result.mode === "save" || result.key_visual_updated)) {
@@ -53,7 +53,7 @@ export function ImageEditorDialog({
         });
       }
     },
-    [queryClient, chatId, taskId, userEmail, campaignId]
+    [queryClient, chatId, canvasKey, userEmail, campaignId]
   );
 
   const mimeType =

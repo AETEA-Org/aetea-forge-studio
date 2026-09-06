@@ -10,10 +10,16 @@ import type {
 
 /** Everything the canvas nodes need, provided once so the node array stays stable. */
 export interface CanvasContextValue {
-  task: CampaignTask;
-  /** Task deliverable objects — used by the object preview dialog for nav. */
+  /**
+   * The piece of work this canvas is for, or null on the campaign's own canvas
+   * — work made outside any task still needs somewhere to live.
+   */
+  task: CampaignTask | null;
+  /** The canvas's deliverable objects — the preview dialog uses them for nav. */
   objects: DeliverableObject[];
   chatId: string;
+  /** Which canvas this is: a task id, or `chat:<id>` for the campaign's own. */
+  canvasKey: string;
   campaignId?: string;
   userEmail: string;
   // Task-scoped chat (mirrors the old TaskDetailPage chat)

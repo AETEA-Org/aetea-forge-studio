@@ -179,6 +179,10 @@ export function AICopilotPanel({
             message,
             mode: "campaign",
             files,
+            // Without this anything produced here is filed against the
+            // campaign rather than the piece of work being looked at, and
+            // never reaches that task's canvas.
+            activeTaskId: selectedTaskId ?? undefined,
           },
           {
             onToken: (_delta, accumulated) => {
@@ -317,7 +321,7 @@ export function AICopilotPanel({
         override?.onError?.(errorMsg);
       }
     },
-    [chatId, campaignId, context, contextLabel, user, setIsModifying, queryClient, toast, mergeStreamAssets]
+    [chatId, campaignId, context, contextLabel, selectedTaskId, user, setIsModifying, queryClient, toast, mergeStreamAssets]
   );
 
   // Auto-send: ref to read pending data in onPrefillComplete (avoids stale closure)

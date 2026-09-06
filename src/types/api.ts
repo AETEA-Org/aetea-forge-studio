@@ -425,7 +425,8 @@ export interface CampaignTasksResponse {
 
 export interface DeliverableObject {
   id: string;
-  task_id: string;
+  /** Null for work on the campaign's own canvas rather than a task's. */
+  task_id: string | null;
   asset_id: string;
   object_type: string;
   title?: string | null;

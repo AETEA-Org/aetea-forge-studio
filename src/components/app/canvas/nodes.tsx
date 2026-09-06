@@ -68,9 +68,11 @@ function CardHeader({
 /** Fixed task-info card (not a DB row). */
 export const DetailCardNode = memo(function DetailCardNode() {
   const { task } = useCanvas();
-  const status = statusConfig[task.status];
-  const categoryLabel = task.category?.replace(/_/g, " ") || "task";
-  const deadline = task.deadline ? new Date(task.deadline).toLocaleDateString() : null;
+  const status = task ? statusConfig[task.status] : null;
+  const categoryLabel = task?.category?.replace(/_/g, " ") || "campaign";
+  const deadline = task?.deadline
+    ? new Date(task.deadline).toLocaleDateString()
+    : null;
 
   return (
     <div className="group relative h-full w-full flex flex-col rounded-xl border border-border bg-card shadow-sm overflow-hidden">
@@ -83,16 +85,18 @@ export const DetailCardNode = memo(function DetailCardNode() {
         autoScale={false}
       />
       <CardHeader
-        title={task.title}
+        title={task ? task.title : "Campaign work"}
         badge={
-          <span
-            className={cn(
-              "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium",
-              status.className
-            )}
-          >
-            {status.label}
-          </span>
+          status && (
+            <span
+              className={cn(
+                "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium",
+                status.className
+              )}
+            >
+              {status.label}
+            </span>
+          )
         }
       />
       <div className="nowheel flex-1 min-h-0 overflow-y-auto p-3 space-y-3">
@@ -102,19 +106,23 @@ export const DetailCardNode = memo(function DetailCardNode() {
             <span className="px-2 py-0.5 rounded bg-muted">Deadline: {deadline}</span>
           )}
         </div>
-        {task.description ? (
+        {task?.description ? (
           <div className="prose prose-sm dark:prose-invert max-w-none">
             <Markdown className="text-foreground">{task.description}</Markdown>
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">No description provided.</p>
+          <p className="text-sm text-muted-foreground">
+            {task
+              ? "No description provided."
+              : "Work made for the campaign rather than for one piece of work — key visuals, and anything asked for in the conversation."}
+          </p>
         )}
       </div>
     </div>
   );
 });
 
-/** Task-scoped chat window (not a DB row). */
+/** The canvas's chat window (not a DB row). */
 export const ChatWindowNode = memo(function ChatWindowNode() {
   const {
     messages,

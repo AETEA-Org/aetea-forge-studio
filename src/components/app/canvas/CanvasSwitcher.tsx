@@ -17,7 +17,8 @@ import { cn } from "@/lib/utils";
 interface CanvasSwitcherProps {
   chatId: string;
   campaignId: string | undefined;
-  currentTaskId: string;
+  /** The open task, or undefined on the campaign's own canvas. */
+  currentTaskId?: string;
   currentTitle: string;
 }
 
@@ -51,6 +52,23 @@ export function CanvasSwitcher({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="center" side="top" className="w-72">
         <DropdownMenuLabel>Switch deliverable canvas</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {/* Work made outside any task — key visuals, one-offs from the
+            conversation — lives here rather than on no canvas at all. */}
+        <DropdownMenuItem
+          onSelect={() => {
+            if (currentTaskId) navigate(`/app/chat/${chatId}/canvas`);
+          }}
+          className="gap-2"
+        >
+          <Check
+            className={cn(
+              "h-4 w-4 shrink-0",
+              currentTaskId ? "opacity-0" : "opacity-100"
+            )}
+          />
+          <span className="truncate">Campaign</span>
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         {tasks.length === 0 ? (
           <div className="px-2 py-1.5 text-sm text-muted-foreground">No tasks</div>

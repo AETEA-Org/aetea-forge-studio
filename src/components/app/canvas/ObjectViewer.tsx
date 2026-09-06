@@ -118,7 +118,7 @@ export function ObjectViewerDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { chatId, campaignId, userEmail, task } = useCanvas();
+  const { chatId, campaignId, userEmail, canvasKey } = useCanvas();
   const initialIndex = useMemo(() => {
     const idx = objects.findIndex((o) => o.id === initialObjectId);
     return idx >= 0 ? idx : 0;
@@ -312,7 +312,7 @@ export function ObjectViewerDialog({
           chatId={chatId}
           userEmail={userEmail}
           campaignId={campaignId}
-          taskId={editorTarget.task_id || task.id}
+          canvasKey={canvasKey}
         />
       )}
     </>

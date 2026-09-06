@@ -7,6 +7,7 @@ import {
   getChat,
   getCampaignTask,
   getCampaignTaskDeliverables,
+  getChatDeliverables,
   resolveStreamAssetHints,
   patchDeliverableObjectPosition,
   approveDeliverableObject,
@@ -27,6 +28,7 @@ import type {
   DeliverableObject,
   StreamAssetHint,
 } from "@/types/api";
+import type { CanvasScope } from "@/services/api";
 import { cn } from "@/lib/utils";
 import { CanvasContext, type CanvasContextValue } from "@/components/app/canvas/canvasContext";
 import {
@@ -60,6 +62,19 @@ export default function DeliverableCanvasPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const branchId = taskId ? `task:${taskId}` : "main";
+  // Two canvases share this page: a piece of work, and the campaign itself for
+  // everything made outside one. The key identifies whichever is open, so
+  // queries, saved layout and per-canvas state follow the switch.
+  const isCampaignCanvas = !taskId;
+  const canvasKey = taskId ?? `chat:${chatId ?? ""}`;
+  const deliverablesKey = useMemo(
+    () => ["deliverable-objects", canvasKey, user?.email],
+    [canvasKey, user?.email]
+  );
+  const canvasScope = useMemo<CanvasScope | null>(
+    () => (taskId ? { taskId } : chatId ? { chatId } : null),
+    [taskId, chatId]
+  );
 
   const [streamingContent, setStreamingContent] = useState("");
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
@@ -70,7 +85,7 @@ export default function DeliverableCanvasPage() {
   const [approvingIds, setApprovingIds] = useState<Set<string>>(new Set());
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [fixturePositions, setFixturePositions] = useState<FixturePositions>(() =>
-    loadFixturePositions(taskId ?? "")
+    loadFixturePositions(canvasKey)
   );
   const chatInputRef = useRef<ChatInputHandle>(null);
   const placedRef = useRef<Set<string>>(new Set());
@@ -101,6 +116,7 @@ export default function DeliverableCanvasPage() {
     queryFn: () => getCampaignTask(taskId!, user!.email!),
     enabled: !!taskId && !!user?.email,
   });
+  const canvasTitle = isCampaignCanvas ? "Campaign" : task?.title ?? "";
 
   const { data: messagesData } = useChatMessages(chatId, branchId);
   const messages = useMemo<ChatMessage[]>(
@@ -109,9 +125,12 @@ export default function DeliverableCanvasPage() {
   );
 
   const { data: deliverablesData } = useQuery({
-    queryKey: ["campaign-task-deliverable-objects", taskId, user?.email],
-    queryFn: () => getCampaignTaskDeliverables(taskId!, user!.email!),
-    enabled: !!taskId && !!user?.email,
+    queryKey: deliverablesKey,
+    queryFn: () =>
+      taskId
+        ? getCampaignTaskDeliverables(taskId, user!.email!)
+        : getChatDeliverables(chatId!, user!.email!),
+    enabled: !!(taskId || chatId) && !!user?.email,
   });
   const objects = useMemo<DeliverableObject[]>(
     () => deliverablesData?.objects ?? [],
@@ -124,28 +143,34 @@ export default function DeliverableCanvasPage() {
   }, [taskId, setSelectedTaskId]);
 
   // Reset per-task local UI state when the task changes.
+  //
+  // The canvas switcher changes taskId without unmounting this page, so
+  // anything left in state belongs to the task we just left. Streamed assets
+  // were the one thing missed: switch task while a run is going and the
+  // running task's new files rendered on the canvas you had switched to.
   useEffect(() => {
     setSelectedAssetIds([]);
-    setFixturePositions(loadFixturePositions(taskId ?? ""));
+    setStreamingAssets([]);
+    setFixturePositions(loadFixturePositions(canvasKey));
     placedRef.current = new Set();
-  }, [taskId]);
+  }, [canvasKey]);
 
   // Give unplaced objects a grid slot and persist it so layout survives reloads.
   useEffect(() => {
-    if (!taskId || !user?.email) return;
+    if (!canvasScope || !user?.email) return;
     objects.forEach((obj, index) => {
       const needsPlacement = obj.canvas_x == null || obj.canvas_y == null;
       if (!needsPlacement || placedRef.current.has(obj.id)) return;
       placedRef.current.add(obj.id);
       const pos = autoObjectPosition(index);
-      patchDeliverableObjectPosition(taskId, obj.id, user.email, {
+      patchDeliverableObjectPosition(canvasScope, obj.id, user.email, {
         canvas_x: pos.x,
         canvas_y: pos.y,
       }).catch(() => {
         placedRef.current.delete(obj.id);
       });
     });
-  }, [objects, taskId, user?.email]);
+  }, [objects, canvasScope, user?.email]);
 
   const handleBackToCreative = useCallback(() => {
     setActiveTab?.("creative");
@@ -156,44 +181,42 @@ export default function DeliverableCanvasPage() {
     (which: keyof FixturePositions, pos: XY) => {
       setFixturePositions((prev) => {
         const next = { ...prev, [which]: pos };
-        if (taskId) saveFixturePositions(taskId, next);
+        saveFixturePositions(canvasKey, next);
         return next;
       });
     },
-    [taskId]
+    [canvasKey]
   );
 
   const handleObjectMoved = useCallback(
     (objectId: string, pos: XY) => {
-      if (!taskId || !user?.email) return;
-      patchDeliverableObjectPosition(taskId, objectId, user.email, {
+      if (!canvasScope || !user?.email) return;
+      patchDeliverableObjectPosition(canvasScope, objectId, user.email, {
         canvas_x: pos.x,
         canvas_y: pos.y,
       }).catch(() => {});
     },
-    [taskId, user?.email]
+    [canvasScope, user?.email]
   );
 
   const handleObjectResized = useCallback(
     (objectId: string, size: { width: number; height: number }) => {
-      if (!taskId || !user?.email) return;
-      patchDeliverableObjectPosition(taskId, objectId, user.email, {
+      if (!canvasScope || !user?.email) return;
+      patchDeliverableObjectPosition(canvasScope, objectId, user.email, {
         canvas_width: size.width,
         canvas_height: size.height,
       }).catch(() => {});
     },
-    [taskId, user?.email]
+    [canvasScope, user?.email]
   );
 
   const handleApprove = useCallback(
     async (objectId: string) => {
-      if (!taskId || !user?.email) return;
+      if (!canvasScope || !user?.email) return;
       setApprovingIds((prev) => new Set(prev).add(objectId));
       try {
-        await approveDeliverableObject(taskId, objectId, user.email);
-        await queryClient.invalidateQueries({
-          queryKey: ["campaign-task-deliverable-objects", taskId, user.email],
-        });
+        await approveDeliverableObject(canvasScope, objectId, user.email);
+        await queryClient.invalidateQueries({ queryKey: deliverablesKey });
       } catch (e) {
         toast({
           title: "Failed to approve",
@@ -208,7 +231,7 @@ export default function DeliverableCanvasPage() {
         });
       }
     },
-    [taskId, user?.email, queryClient, toast]
+    [canvasScope, deliverablesKey, user?.email, queryClient, toast]
   );
 
   const mergeStreamAssets = useCallback(
@@ -226,7 +249,7 @@ export default function DeliverableCanvasPage() {
 
   const handleSend = useCallback(
     async (message: string, files?: File[], meta?: ChatSendMeta) => {
-      if (!user?.email || !chatId || !taskId || isStreaming) return;
+      if (!user?.email || !chatId || isStreaming) return;
 
       const optimisticMessage: ChatMessage = {
         message_id: `temp-${Date.now()}`,
@@ -270,6 +293,7 @@ export default function DeliverableCanvasPage() {
                 chatId,
                 campaignId,
                 taskId,
+                canvasKey,
                 userEmail: user.email,
               });
             },
@@ -281,7 +305,7 @@ export default function DeliverableCanvasPage() {
                 queryKey: ["campaign-task", taskId, user.email],
               });
               queryClient.invalidateQueries({
-                queryKey: ["campaign-task-deliverable-objects", taskId, user.email],
+                queryKey: deliverablesKey,
               });
               if (campaignId) {
                 queryClient.invalidateQueries({
@@ -328,6 +352,8 @@ export default function DeliverableCanvasPage() {
       branchId,
       campaignId,
       chatId,
+      canvasKey,
+      deliverablesKey,
       isStreaming,
       mergeStreamAssets,
       queryClient,
@@ -340,11 +366,13 @@ export default function DeliverableCanvasPage() {
   );
 
   const canvasContextValue = useMemo<CanvasContextValue | null>(() => {
-    if (!task || !chatId || !user?.email) return null;
+    if (!chatId || !user?.email) return null;
+    if (!isCampaignCanvas && !task) return null;
     return {
-      task,
+      task: task ?? null,
       objects,
       chatId,
+      canvasKey,
       campaignId,
       userEmail: user.email,
       messages,
@@ -360,9 +388,11 @@ export default function DeliverableCanvasPage() {
       referenceCount: selectedAssetIds.length,
     };
   }, [
+    isCampaignCanvas,
     task,
     objects,
     chatId,
+    canvasKey,
     campaignId,
     user,
     messages,
@@ -377,7 +407,7 @@ export default function DeliverableCanvasPage() {
     selectedAssetIds.length,
   ]);
 
-  if (isLoading) {
+  if (isLoading && !isCampaignCanvas) {
     return (
       <div className="h-full flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -385,10 +415,10 @@ export default function DeliverableCanvasPage() {
     );
   }
 
-  if (error || !task || !canvasContextValue) {
+  if ((!isCampaignCanvas && (error || !task)) || !canvasContextValue) {
     return (
       <div className="h-full p-6 flex flex-col items-center justify-center gap-4">
-        <p className="text-destructive">Failed to load task</p>
+        <p className="text-destructive">Failed to load this canvas</p>
         <Button variant="outline" onClick={handleBackToCreative}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Creative
@@ -415,7 +445,7 @@ export default function DeliverableCanvasPage() {
           <CanvasLeftPane
             campaignId={campaignId}
             chatId={chatId!}
-            campaignTitle={chatData?.title || task.title}
+            campaignTitle={chatData?.title || task?.title || "Campaign"}
             onCollapse={() => setLeftCollapsed(true)}
           />
         )}
@@ -449,8 +479,8 @@ export default function DeliverableCanvasPage() {
             <CanvasSwitcher
               chatId={chatId!}
               campaignId={campaignId}
-              currentTaskId={taskId!}
-              currentTitle={task.title}
+              currentTaskId={taskId}
+              currentTitle={task?.title ?? canvasTitle}
             />
           </div>
         </div>

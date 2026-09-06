@@ -17,6 +17,11 @@ export interface DataChangedScope {
   chatId?: string;
   campaignId?: string;
   taskId?: string;
+  /**
+   * Which deliverable canvas is open, if any: a task id, or `chat:<id>` for
+   * the campaign's own canvas. Only the canvas page has one.
+   */
+  canvasKey?: string;
   userEmail?: string;
 }
 
@@ -28,6 +33,12 @@ export function invalidateForDataChange(
   const invalidate = (queryKey: unknown[]) =>
     queryClient.invalidateQueries({ queryKey });
 
+  const invalidateOpenCanvas = () => {
+    if (scope.canvasKey) {
+      invalidate(["deliverable-objects", scope.canvasKey, scope.userEmail]);
+    }
+  };
+
   switch (entity) {
     case "section":
       // Brief, research and strategy all hang off ['campaign', id, section].
@@ -38,12 +49,8 @@ export function invalidateForDataChange(
       invalidate(["campaign"]);
       if (scope.taskId) {
         invalidate(["campaign-task", scope.taskId, scope.userEmail]);
-        invalidate([
-          "campaign-task-deliverable-objects",
-          scope.taskId,
-          scope.userEmail,
-        ]);
       }
+      invalidateOpenCanvas();
       break;
 
     case "creative_state":
@@ -54,13 +61,7 @@ export function invalidateForDataChange(
     case "asset":
       invalidate(["assets"]);
       invalidate(["asset-urls"]);
-      if (scope.taskId) {
-        invalidate([
-          "campaign-task-deliverable-objects",
-          scope.taskId,
-          scope.userEmail,
-        ]);
-      }
+      invalidateOpenCanvas();
       // A published key visual is an asset the Creative tab renders.
       invalidate(["creative"]);
       break;
