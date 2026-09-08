@@ -19,6 +19,8 @@ import {
 import { ChatMessages } from "@/components/app/ChatMessages";
 import { ChatInput } from "@/components/app/ChatInput";
 import { ChatPanelDropZone } from "@/components/app/ChatPanelDropZone";
+import { AgentThinking } from "@/components/app/AgentThinking";
+import { AgentSteps } from "@/components/app/AgentSteps";
 import { cn } from "@/lib/utils";
 import type { CampaignTaskStatus, DeliverableObject } from "@/types/api";
 import { useCanvas } from "./canvasContext";
@@ -131,6 +133,8 @@ export const ChatWindowNode = memo(function ChatWindowNode() {
     streamingContent,
     isStreaming,
     updateMessage,
+    thinkingText,
+    steps,
     onSend,
     chatInputRef,
     referenceCount,
@@ -162,6 +166,12 @@ export const ChatWindowNode = memo(function ChatWindowNode() {
           disabled={isStreaming}
           onFilesDropped={(files) => chatInputRef.current?.addFiles(files)}
         >
+          {(thinkingText || steps.length > 0) && (
+            <div className="px-2 pt-2 space-y-2">
+              <AgentThinking text={thinkingText} />
+              <AgentSteps steps={steps} />
+            </div>
+          )}
           <div className="flex-1 min-h-0">
             <ChatMessages
               messages={messages}

@@ -19,6 +19,7 @@ import {
   type ProgressStep,
 } from "@/services/agentRun";
 import { invalidateForDataChange } from "@/services/dataChanged";
+import { reportSendFailure } from "@/services/sendFailure";
 import { AgentThinking } from "@/components/app/AgentThinking";
 import { AgentSteps } from "@/components/app/AgentSteps";
 import { useAuth } from "@/hooks/useAuth";
@@ -313,10 +314,11 @@ export function AICopilotPanel({
         isModifyingActiveRef.current = false;
         setIsModifying(false, null);
         
-        toast({
-          title: "Failed to send message",
-          description: errorMsg,
-          variant: "destructive",
+        reportSendFailure(error, {
+          toast,
+          chatId,
+          userEmail: user?.email,
+          onStopped: () => setIsStreaming(false),
         });
         override?.onError?.(errorMsg);
       }

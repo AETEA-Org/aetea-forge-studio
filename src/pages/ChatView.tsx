@@ -22,6 +22,7 @@ import { AgentThinking } from "@/components/app/AgentThinking";
 import { AgentSteps } from "@/components/app/AgentSteps";
 import { CampaignModeOffer } from "@/components/app/CampaignModeOffer";
 import { invalidateForDataChange } from "@/services/dataChanged";
+import { reportSendFailure } from "@/services/sendFailure";
 import {
   acceptCampaignMode,
   cancelRun,
@@ -302,10 +303,11 @@ export default function ChatView() {
         setSteps([]);
         setIsStreaming(false);
         setOptimisticMessages([]);
-        toast({
-          title: "Could not send that message",
-          description: err instanceof Error ? err.message : "Please try again",
-          variant: "destructive",
+        reportSendFailure(err, {
+          toast,
+          chatId,
+          userEmail: user?.email,
+          onStopped: () => setIsStreaming(false),
         });
       }
     },

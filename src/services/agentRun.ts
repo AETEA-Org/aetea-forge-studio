@@ -75,6 +75,21 @@ function authHeaders(extra?: HeadersInit): HeadersInit {
 }
 
 /** Begin a turn. Returns as soon as the run is accepted, not when it finishes. */
+/**
+ * The chat is busy with the previous turn.
+ *
+ * Its own class so a surface can offer to stop that turn instead of showing a
+ * red failure — being told you cannot send is not the same as something going
+ * wrong, and it used to arrive as the server's internal sentence naming the
+ * chat by uuid.
+ */
+export class ChatBusyError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ChatBusyError";
+  }
+}
+
 export async function startTurn(req: StartTurnRequest): Promise<{ run_id: string }> {
   const form = new FormData();
   form.append("user_id", req.userEmail);
@@ -99,7 +114,9 @@ export async function startTurn(req: StartTurnRequest): Promise<{ run_id: string
   });
   if (!response.ok) {
     const detail = await response.json().catch(() => ({}));
-    throw new Error(detail.detail || "Could not start the message");
+    const message = detail.detail || "Could not start the message";
+    if (response.status === 409) throw new ChatBusyError(message);
+    throw new Error(message);
   }
   return response.json();
 }
@@ -152,7 +169,9 @@ export async function editTurn(
   );
   if (!response.ok) {
     const detail = await response.json().catch(() => ({}));
-    throw new Error(detail.detail || "Could not edit that message");
+    const message = detail.detail || "Could not edit that message";
+    if (response.status === 409) throw new ChatBusyError(message);
+    throw new Error(message);
   }
   return response.json();
 }

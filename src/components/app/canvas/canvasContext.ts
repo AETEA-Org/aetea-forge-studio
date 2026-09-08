@@ -1,5 +1,6 @@
 import { createContext, useContext } from "react";
 import type { ChatInputHandle, ChatSendMeta } from "@/components/app/ChatInput";
+import type { ProgressStep } from "@/services/agentRun";
 import type {
   Asset,
   CampaignTask,
@@ -29,6 +30,12 @@ export interface CanvasContextValue {
   streamingContent: string;
   isStreaming: boolean;
   updateMessage: string | null;
+  /** The reasoning summary, shown collapsed — the canvas was the one surface
+   *  that never displayed it, which is why it looked frozen while the main
+   *  panel looked busy. */
+  thinkingText: string;
+  /** Named steps, so a long turn shows a checklist rather than one line. */
+  steps: ProgressStep[];
   onSend: (message: string, files?: File[], meta?: ChatSendMeta) => void;
   chatInputRef: React.RefObject<ChatInputHandle>;
   /** Count of selected cards attached as references to the next message. */

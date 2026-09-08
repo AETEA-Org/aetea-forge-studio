@@ -16,8 +16,10 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useModification } from "@/hooks/useModification";
 import { useToast } from "@/hooks/use-toast";
-import { runTurn } from "@/services/agentRun";
+import { runTurn, followRun, getRunStatus } from "@/services/agentRun";
+import type { ProgressStep } from "@/services/agentRun";
 import { invalidateForDataChange } from "@/services/dataChanged";
+import { reportSendFailure } from "@/services/sendFailure";
 import { useChatMessages } from "@/hooks/useChats";
 import { useCreativeState } from "@/hooks/useCreativeState";
 import { ModificationOverlay } from "@/components/app/ModificationOverlay";
@@ -78,6 +80,8 @@ export default function DeliverableCanvasPage() {
 
   const [streamingContent, setStreamingContent] = useState("");
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
+  const [thinkingText, setThinkingText] = useState("");
+  const [steps, setSteps] = useState<ProgressStep[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [optimisticMessages, setOptimisticMessages] = useState<ChatMessage[]>([]);
   const [streamingAssets, setStreamingAssets] = useState<ChatRenderableAsset[]>([]);
@@ -151,6 +155,8 @@ export default function DeliverableCanvasPage() {
   useEffect(() => {
     setSelectedAssetIds([]);
     setStreamingAssets([]);
+    setThinkingText("");
+    setSteps([]);
     setFixturePositions(loadFixturePositions(canvasKey));
     placedRef.current = new Set();
   }, [canvasKey]);
@@ -247,6 +253,90 @@ export default function DeliverableCanvasPage() {
     [user?.email]
   );
 
+  // Rejoin a turn that is already running.
+  //
+  // Without this the canvas was the one surface that showed an idle, enabled
+  // composer while work was in flight — so the next message came back as a
+  // conflict. The main panel and the copilot have done this since the run
+  // outlived its request; the canvas was simply missed.
+  const rejoinedRef = useRef(false);
+  useEffect(() => {
+    if (!chatId || !user?.email || rejoinedRef.current) return;
+    const controller = new AbortController();
+    const email = user.email;
+
+    getRunStatus(chatId, email)
+      .then((status) => {
+        if (!status.active || controller.signal.aborted) return;
+        rejoinedRef.current = true;
+        setIsStreaming(true);
+        return followRun(chatId, email, {
+          onToken: (_delta, accumulated) => {
+            setUpdateMessage(null);
+            setStreamingContent(accumulated);
+          },
+          onThinking: (_delta, accumulated) => setThinkingText(accumulated),
+          onProgress: (step) => {
+            setUpdateMessage(step.label);
+            setSteps((current) => {
+              const at = current.findIndex((s) => s.step_id === step.step_id);
+              if (at === -1) return [...current, step];
+              const next = [...current];
+              next[at] = step;
+              return next;
+            });
+          },
+          onAssets: (assets) => {
+            mergeStreamAssets(
+              assets.map((a) => ({ id: a.id, mime_type: a.mime_type ?? "" }))
+            ).catch(() => {});
+          },
+          onDataChanged: (entity) => {
+            invalidateForDataChange(queryClient, entity, {
+              chatId,
+              campaignId,
+              taskId,
+              canvasKey,
+              userEmail: email,
+            });
+          },
+          onComplete: async () => {
+            await queryClient.refetchQueries({
+              queryKey: ["chat-messages", chatId, branchId],
+            });
+            queryClient.invalidateQueries({ queryKey: deliverablesKey });
+            setStreamingContent("");
+            setStreamingAssets([]);
+            setUpdateMessage(null);
+            setThinkingText("");
+            setSteps([]);
+            setIsStreaming(false);
+          },
+          onError: (errorMsg: string) => {
+            setStreamingContent("");
+            setUpdateMessage(null);
+            setThinkingText("");
+            setSteps([]);
+            setIsStreaming(false);
+            toast({
+              title: "That turn stopped",
+              description: errorMsg,
+              variant: "destructive",
+            });
+          },
+        },
+        // Resume from where this client got to rather than replaying the whole
+        // run, and let leaving the page actually stop the stream — without the
+        // signal the cleanup below aborts nothing and the handlers keep firing
+        // into an unmounted page.
+        { signal: controller.signal, sinceEventId: status.last_event_id });
+      })
+      .catch(() => {});
+
+    return () => controller.abort();
+  }, [chatId, user?.email, branchId, campaignId, taskId, canvasKey,
+      deliverablesKey, queryClient, mergeStreamAssets, toast]);
+
   const handleSend = useCallback(
     async (message: string, files?: File[], meta?: ChatSendMeta) => {
       if (!user?.email || !chatId || isStreaming) return;
@@ -282,7 +372,17 @@ export default function DeliverableCanvasPage() {
               setUpdateMessage(null);
               setStreamingContent(accumulated);
             },
-            onProgress: (step) => setUpdateMessage(step.label),
+            onThinking: (_delta, accumulated) => setThinkingText(accumulated),
+            onProgress: (step) => {
+              setUpdateMessage(step.label);
+              setSteps((current) => {
+                const at = current.findIndex((s) => s.step_id === step.step_id);
+                if (at === -1) return [...current, step];
+                const next = [...current];
+                next[at] = step;
+                return next;
+              });
+            },
             onAssets: (assets) => {
               mergeStreamAssets(
                 assets.map((a) => ({ id: a.id, mime_type: a.mime_type ?? "" }))
@@ -341,11 +441,7 @@ export default function DeliverableCanvasPage() {
         setUpdateMessage(null);
         setOptimisticMessages([]);
         setIsStreaming(false);
-        toast({
-          title: "Error",
-          description: e instanceof Error ? e.message : "Failed to send message",
-          variant: "destructive",
-        });
+        reportSendFailure(e, { toast, chatId, userEmail: user?.email });
       }
     },
     [
@@ -381,6 +477,8 @@ export default function DeliverableCanvasPage() {
       streamingContent,
       isStreaming,
       updateMessage,
+      thinkingText,
+      steps,
       onSend: handleSend,
       chatInputRef,
       onApprove: handleApprove,
@@ -401,6 +499,8 @@ export default function DeliverableCanvasPage() {
     streamingContent,
     isStreaming,
     updateMessage,
+    thinkingText,
+    steps,
     handleSend,
     handleApprove,
     approvingIds,
