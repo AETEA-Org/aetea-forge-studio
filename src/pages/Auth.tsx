@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import logo from "@/assets/aetea-logo-white.png";
+import logo from "@/assets/aetea-auth-wordmark.png";
 import { z } from "zod";
 
 const emailSchema = z.string().email("Please enter a valid email address");
@@ -131,7 +131,7 @@ export default function Auth() {
       <div className="flex-1 flex items-center justify-center p-6 relative z-10">
         <div className="w-full max-w-sm">
           <div className="text-center mb-10">
-            <img src={logo} alt="AETEA" className="h-8 w-auto mx-auto mb-8" />
+            <img src={logo} alt="AETEA" className="mx-auto mb-2 h-auto w-40 max-w-full" />
             <h1 className="font-display text-2xl font-bold mb-2">
               {isLogin ? "Welcome back" : "Create account"}
             </h1>
