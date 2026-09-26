@@ -34,7 +34,7 @@ export function reportSendFailure(
           <ToastAction
             altText="Stop the current turn"
             onClick={() => {
-              cancelRun(chatId, userEmail)
+              cancelRun(chatId)
                 .then(() => onStopped?.())
                 .catch(() => {});
             }}

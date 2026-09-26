@@ -32,7 +32,6 @@ export function ImageEditorDialog({
     open,
     assetId,
     imageUrl,
-    userEmail,
   });
 
   const invalidateCaches = useCallback(
@@ -64,7 +63,7 @@ export function ImageEditorDialog({
     if (!blob) return;
     setSaving(true);
     try {
-      const result = await editAsset(assetId, userEmail, "save", blob, {
+      const result = await editAsset(assetId, "save", blob, {
         campaignId,
         mimeType,
       });
@@ -79,7 +78,6 @@ export function ImageEditorDialog({
   }, [
     editor,
     assetId,
-    userEmail,
     campaignId,
     invalidateCaches,
     onOpenChange,
@@ -101,7 +99,7 @@ export function ImageEditorDialog({
     if (!blob) return;
     setSaving(true);
     try {
-      const result = await editAsset(assetId, userEmail, "save_as", blob, {
+      const result = await editAsset(assetId, "save_as", blob, {
         fileName: finalName,
         campaignId,
         mimeType,
@@ -122,7 +120,6 @@ export function ImageEditorDialog({
     saveAsName,
     editor,
     assetId,
-    userEmail,
     campaignId,
     invalidateCaches,
     onOpenChange,

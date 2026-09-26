@@ -43,7 +43,6 @@ export function useCreateProject() {
       let loadingScreenActive = false;
 
       await createCampaignViaChat(
-        user.email,
         newChatId,
         message,
         files,

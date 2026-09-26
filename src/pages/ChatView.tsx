@@ -57,7 +57,7 @@ export default function ChatView() {
 
   const { data: chatData } = useQuery({
     queryKey: ["chat", chatId, user?.email],
-    queryFn: () => getChat(chatId!, user!.email!),
+    queryFn: () => getChat(chatId!),
     enabled: !!chatId && !!user?.email,
     retry: false,
   });
@@ -66,7 +66,7 @@ export default function ChatView() {
 
   const mergeStreamAssets = useCallback(async (hints: StreamAssetHint[]) => {
     if (!user?.email || hints.length === 0) return;
-    const resolved = await resolveStreamAssetHints(user.email, hints);
+    const resolved = await resolveStreamAssetHints(hints);
     setStreamingAssets((prev) => {
       const m = new Map(prev.map((a) => [a.id, a]));
       resolved.forEach((a) => m.set(a.id, a));
@@ -77,7 +77,7 @@ export default function ChatView() {
   /** What to do with a stream this view is following. Shared by the edit
    *  path and the re-attach path, which want identical behaviour. */
   const streamHandlers = useCallback(
-    (email: string): AgentTurnHandlers => ({
+    (): AgentTurnHandlers => ({
       onToken: (_delta, accumulated) => {
         setUpdateMessage(null);
         setStreamingContent(accumulated);
@@ -98,7 +98,7 @@ export default function ChatView() {
         ).catch(() => {});
       },
       onDataChanged: (entity) => {
-        invalidateForDataChange(queryClient, entity, { chatId, userEmail: email });
+        invalidateForDataChange(queryClient, entity, { chatId, userEmail: user?.email });
       },
       onComplete: async () => {
         setUpdateMessage(null);
@@ -123,7 +123,7 @@ export default function ChatView() {
         toast({ title: "Something went wrong", description: msg, variant: "destructive" });
       },
     }),
-    [chatId, queryClient, toast, mergeStreamAssets]
+    [chatId, queryClient, toast, mergeStreamAssets, user?.email]
   );
 
   const messages = [...serverMessages, ...optimisticMessages];
@@ -145,7 +145,6 @@ export default function ChatView() {
       setIsStreaming(true);
       try {
         await editTurn(chatId, messageId, {
-          userEmail: user.email,
           message: text,
           mode,
         });
@@ -159,7 +158,7 @@ export default function ChatView() {
         return;
       }
       await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
-      await followRun(chatId, user.email, streamHandlers(user.email));
+      await followRun(chatId, streamHandlers());
     },
     [user?.email, chatId, mode, queryClient, toast, streamHandlers]
   );
@@ -167,7 +166,7 @@ export default function ChatView() {
   // Stopping is the send button's other job while a run is going.
   const handleStop = useCallback(async () => {
     if (!user?.email || !chatId) return;
-    await cancelRun(chatId, user.email);
+    await cancelRun(chatId);
     setIsStreaming(false);
     setSteps([]);
     setThinkingText("");
@@ -206,7 +205,6 @@ export default function ChatView() {
       try {
         await runTurn(
           {
-            userEmail: user.email,
             chatId,
             message,
             mode,
@@ -334,14 +332,13 @@ export default function ChatView() {
     const controller = new AbortController();
     const email = user.email;
 
-    getRunStatus(chatId, email)
+    getRunStatus(chatId)
       .then((status) => {
         if (!status.active || controller.signal.aborted) return;
         consumedPendingRef.current = true;
         setIsStreaming(true);
         return followRun(
           chatId,
-          email,
           {
             onToken: (_delta, accumulated) => {
               setUpdateMessage(null);
@@ -455,7 +452,7 @@ export default function ChatView() {
                 onAccept={async () => {
                   if (!user?.email || !chatId) return;
                   try {
-                    await acceptCampaignMode(chatId, user.email);
+                    await acceptCampaignMode(chatId);
                   } catch {
                     // Without this the rejection was silent: the card stayed
                     // put, nothing switched, and the person had no idea the

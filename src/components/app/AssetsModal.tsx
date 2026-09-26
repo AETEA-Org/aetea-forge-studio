@@ -49,7 +49,7 @@ export function AssetsModal({ chatId, open, onOpenChange }: AssetsModalProps) {
       if (refreshingUrls.has(asset.id)) return existingUrl;
       try {
         setRefreshingUrls((prev) => new Set(prev).add(asset.id));
-        const result = await refreshAssetUrls(asset.id, user!.email!);
+        const result = await refreshAssetUrls(asset.id);
         return result[urlKey];
       } catch (err) {
         console.error("Failed to refresh asset URL:", err);
@@ -62,7 +62,7 @@ export function AssetsModal({ chatId, open, onOpenChange }: AssetsModalProps) {
         });
       }
     },
-    [data, isUrlExpired, refreshingUrls, user]
+    [data, isUrlExpired, refreshingUrls]
   );
 
   const handleView = useCallback(

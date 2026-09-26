@@ -105,7 +105,6 @@ export default function App() {
       // The run continues on the server, so navigating away from here does not
       // interrupt it — the chat view attaches to it on arrival.
       await startTurn({
-        userEmail: user.email,
         chatId: newChatId,
         message,
         mode: "brainstorm",

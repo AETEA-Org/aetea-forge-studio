@@ -8,7 +8,7 @@ export function useCharacters(enabled: boolean = true) {
 
   return useQuery({
     queryKey: ['characters', user?.email],
-    queryFn: () => getCharacters(user!.email!),
+    queryFn: () => getCharacters(),
     enabled: enabled && !!user?.email,
     refetchInterval: (query) =>
       query.state.data?.characters.some((c) => c.status === 'pending')
@@ -27,7 +27,7 @@ export function useCreateCharacter() {
       description: string;
       frontal_asset_id: string;
       angle_asset_ids?: string[];
-    }) => createCharacter(user!.email!, payload),
+    }) => createCharacter(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['characters', user?.email] });
     },

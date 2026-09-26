@@ -97,7 +97,7 @@ export function CreativeTab({
   const { data: keyVisualUrl } = useQuery({
     queryKey: ['asset-urls', keyVisualAssetId, user?.email],
     queryFn: () =>
-      refreshAssetUrls(keyVisualAssetId!, user!.email!).then((r) => r.download_url),
+      refreshAssetUrls(keyVisualAssetId!).then((r) => r.download_url),
     enabled: !!keyVisualAssetId && !!user?.email,
     staleTime: 50 * 60 * 1000, // 50 min (URLs often expire in ~1h)
   });

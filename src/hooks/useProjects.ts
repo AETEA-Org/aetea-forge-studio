@@ -8,7 +8,7 @@ export function useProjects() {
 
   return useQuery({
     queryKey: ['chats', userEmail],
-    queryFn: () => listAllChats(userEmail!),
+    queryFn: () => listAllChats(),
     enabled: !!userEmail,
     staleTime: 1000 * 60, // 1 minute
   });

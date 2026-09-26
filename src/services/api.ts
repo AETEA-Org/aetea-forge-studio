@@ -29,7 +29,8 @@ import type {
 } from "@/types/api";
 
 // Direct API base URL (bypassing Supabase Edge Function)
-import { API_BASE_URL, API_TOKEN } from '@/services/config';
+import { API_BASE_URL } from '@/services/config';
+import { backendHeaders, gateOnlyHeaders } from '@/services/authHeaders';
 
 // Helper to build URL with params
 function buildUrl(path: string, params?: Record<string, string>): string {
@@ -42,25 +43,15 @@ function buildUrl(path: string, params?: Record<string, string>): string {
   return url.toString();
 }
 
-// Helper to get headers with authorization
-function getHeaders(contentType?: string): HeadersInit {
-  const headers: HeadersInit = {};
-  
-  if (API_TOKEN) {
-    headers['Authorization'] = `Bearer ${API_TOKEN}`;
-  }
-  
-  if (contentType) {
-    headers['Content-Type'] = contentType;
-  }
-  
-  return headers;
-}
+// Headers for a backend call: the HF gate token plus the user's session token.
+// Async because a fresh session token is what identifies the caller — see
+// services/authHeaders.ts for why the two cannot share one header.
+const getHeaders = backendHeaders;
 
 // Health check
 export async function checkHealth(): Promise<HealthResponse> {
   const response = await fetch(buildUrl('/health'), {
-    headers: getHeaders(),
+    headers: gateOnlyHeaders(),
   });
   if (!response.ok) {
     throw new Error('Health check failed');
@@ -69,9 +60,9 @@ export async function checkHealth(): Promise<HealthResponse> {
 }
 
 // List all chats for a user
-export async function listAllChats(userEmail: string): Promise<ChatListResponse> {
-  const response = await fetch(buildUrl('/chats', { user_id: userEmail }), {
-    headers: getHeaders(),
+export async function listAllChats(): Promise<ChatListResponse> {
+  const response = await fetch(buildUrl('/chats'), {
+    headers: await getHeaders(),
   });
   if (!response.ok) {
     const error = await response.json();
@@ -82,13 +73,12 @@ export async function listAllChats(userEmail: string): Promise<ChatListResponse>
 
 // Create a new chat
 export async function createChat(
-  userEmail: string,
   mode: 'brainstorm' | 'campaign' = 'brainstorm'
 ): Promise<{ chat_id: string; title: string; last_modified: string }> {
   const response = await fetch(buildUrl('/chats'), {
     method: 'POST',
-    headers: getHeaders('application/json'),
-    body: JSON.stringify({ user_id: userEmail, mode }),
+    headers: await getHeaders('application/json'),
+    body: JSON.stringify({ mode }),
   });
   if (!response.ok) {
     const error = await response.json();
@@ -99,13 +89,12 @@ export async function createChat(
 
 // Get a single chat
 export async function getChat(
-  chatId: string,
-  userEmail: string
+  chatId: string
 ): Promise<{ chat_id: string; title: string; last_modified: string; mode: string; campaign_id: string | null }> {
   const response = await fetch(
-    buildUrl(`/chats/${chatId}`, { user_id: userEmail }),
+    buildUrl(`/chats/${chatId}`),
     {
-      headers: getHeaders(),
+      headers: await getHeaders(),
     }
   );
   
@@ -120,7 +109,6 @@ export async function getChat(
 /** PATCH /chats/{chat_id} — rename and/or change mode (see API_REFERENCE.md). */
 export async function patchChat(
   chatId: string,
-  userEmail: string,
   body: { title?: string; mode?: 'brainstorm' | 'campaign' }
 ): Promise<{
   chat_id: string;
@@ -130,11 +118,11 @@ export async function patchChat(
   campaign_id: string | null;
 }> {
   const response = await fetch(
-    buildUrl(`/chats/${chatId}`, { user_id: userEmail }),
+    buildUrl(`/chats/${chatId}`),
     {
       method: 'PATCH',
       headers: {
-        ...getHeaders(),
+        ...await getHeaders(),
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),
@@ -151,8 +139,7 @@ export async function patchChat(
 
 // Get campaign by chat_id
 export async function getCampaignByChatId(
-  chatId: string,
-  userEmail: string
+  chatId: string
 ): Promise<{
   campaign: {
     id: string;
@@ -169,9 +156,9 @@ export async function getCampaignByChatId(
   };
 }> {
   const response = await fetch(
-    buildUrl('/campaigns', { chat_id: chatId, user_id: userEmail }),
+    buildUrl('/campaigns', { chat_id: chatId }),
     {
-      headers: getHeaders(),
+      headers: await getHeaders(),
     }
   );
   
@@ -185,8 +172,7 @@ export async function getCampaignByChatId(
 
 // Get campaign by campaign_id
 export async function getCampaignById(
-  campaignId: string,
-  userEmail: string
+  campaignId: string
 ): Promise<{
   campaign: {
     id: string;
@@ -203,9 +189,9 @@ export async function getCampaignById(
   };
 }> {
   const response = await fetch(
-    buildUrl(`/campaigns/${campaignId}`, { user_id: userEmail }),
+    buildUrl(`/campaigns/${campaignId}`),
     {
-      headers: getHeaders(),
+      headers: await getHeaders(),
     }
   );
   
@@ -219,16 +205,14 @@ export async function getCampaignById(
 
 export async function selectCreativeTerritory(
   campaignId: string,
-  userEmail: string,
   territoryId: string
 ): Promise<StrategyModel> {
   const response = await fetch(
     buildUrl(`/campaigns/${campaignId}/strategy/selected-territory`, {
-      user_id: userEmail,
     }),
     {
       method: 'PATCH',
-      headers: getHeaders('application/json'),
+      headers: await getHeaders('application/json'),
       body: JSON.stringify({ territory_id: territoryId }),
     }
   );
@@ -250,7 +234,6 @@ export async function selectCreativeTerritory(
  * Named steps replace the old percentage, which had to guess.
  */
 export async function createCampaignViaChat(
-  userEmail: string,
   chatId: string,
   message: string,
   files?: File[],
@@ -261,7 +244,7 @@ export async function createCampaignViaChat(
 ): Promise<void> {
   const { runTurn } = await import('@/services/agentRun');
   await runTurn(
-    { userEmail, chatId, message, mode: 'campaign', files },
+    { chatId, message, mode: 'campaign', files },
     {
       onProgress: (step) => onProgress?.(step),
       onCampaign: (_id, state) => {
@@ -273,12 +256,12 @@ export async function createCampaignViaChat(
   );
 }
 
-export async function deleteChatById(chatId: string, userEmail: string): Promise<DeleteChatResponse> {
+export async function deleteChatById(chatId: string): Promise<DeleteChatResponse> {
   const response = await fetch(
-    buildUrl(`/chats/${chatId}`, { user_id: userEmail }),
+    buildUrl(`/chats/${chatId}`),
     {
       method: 'DELETE',
-      headers: getHeaders(),
+      headers: await getHeaders(),
     }
   );
   
@@ -293,20 +276,16 @@ export async function deleteChatById(chatId: string, userEmail: string): Promise
 // Get assets by chat
 export async function getAssets(
   chatId: string,
-  userEmail: string,
   folderPath?: string
 ): Promise<AssetListResponse> {
-  const params: Record<string, string> = {
-    user_id: userEmail,
-    chat_id: chatId,
-  };
+  const params: Record<string, string> = { chat_id: chatId };
   
   if (folderPath) {
     params.folder_path = folderPath;
   }
   
   const response = await fetch(buildUrl('/assets', params), {
-    headers: getHeaders(),
+    headers: await getHeaders(),
   });
   
   if (!response.ok) {
@@ -319,13 +298,12 @@ export async function getAssets(
 
 // Refresh asset URLs (GET /assets/{id}/ returns view_url and download_url)
 export async function refreshAssetUrls(
-  assetId: string,
-  userEmail: string
+  assetId: string
 ): Promise<{ view_url: string; download_url: string }> {
   const response = await fetch(
-    buildUrl(`/assets/${assetId}`, { user_id: userEmail }),
+    buildUrl(`/assets/${assetId}`),
     {
-      headers: getHeaders(),
+      headers: await getHeaders(),
     }
   );
 
@@ -339,12 +317,11 @@ export async function refreshAssetUrls(
 
 /** Fetch raw asset bytes (same-origin) for the Fabric image editor. */
 export async function fetchAssetContentBlob(
-  assetId: string,
-  userEmail: string
+  assetId: string
 ): Promise<Blob> {
   const response = await fetch(
-    buildUrl(`/assets/${assetId}/content`, { user_id: userEmail }),
-    { headers: getHeaders() }
+    buildUrl(`/assets/${assetId}/content`),
+    { headers: await getHeaders() }
   );
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
@@ -358,13 +335,12 @@ export async function fetchAssetContentBlob(
 /** Rename an asset (PATCH /assets/{id}) — metadata only; storage path unchanged. */
 export async function renameAsset(
   assetId: string,
-  userEmail: string,
   fileName: string
 ): Promise<Asset> {
   const response = await fetch(buildUrl(`/assets/${assetId}`), {
     method: "PATCH",
-    headers: getHeaders(),
-    body: JSON.stringify({ user_id: userEmail, file_name: fileName }),
+    headers: await getHeaders(),
+    body: JSON.stringify({ file_name: fileName }),
   });
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
@@ -377,14 +353,13 @@ export async function renameAsset(
 
 /** Delete an asset (DELETE /assets/{id}). */
 export async function deleteAsset(
-  assetId: string,
-  userEmail: string
+  assetId: string
 ): Promise<void> {
   const response = await fetch(
-    buildUrl(`/assets/${assetId}`, { user_id: userEmail }),
+    buildUrl(`/assets/${assetId}`),
     {
       method: "DELETE",
-      headers: getHeaders(),
+      headers: await getHeaders(),
     }
   );
   if (!response.ok) {
@@ -398,7 +373,6 @@ export async function deleteAsset(
 /** Save / Save As an edited image over an existing asset (POST /assets/{id}/edit). */
 export async function editAsset(
   assetId: string,
-  userEmail: string,
   mode: "save" | "save_as",
   file: Blob,
   options?: {
@@ -411,7 +385,6 @@ export async function editAsset(
   const defaultName =
     mimeType === "image/jpeg" ? "edited.jpg" : "edited.png";
   const formData = new FormData();
-  formData.append("user_id", userEmail);
   formData.append("mode", mode);
   formData.append("mime_type", mimeType);
   formData.append("file", file, options?.fileName || defaultName);
@@ -424,7 +397,7 @@ export async function editAsset(
 
   const response = await fetch(buildUrl(`/assets/${assetId}/edit`), {
     method: "POST",
-    headers: getHeaders(),
+    headers: await getHeaders(),
     body: formData,
   });
 
@@ -440,13 +413,12 @@ export async function editAsset(
 
 // Get creative state
 export async function getCreativeState(
-  campaignId: string,
-  userEmail: string
+  campaignId: string
 ): Promise<CreativeState> {
   const response = await fetch(
-    buildUrl(`/campaigns/${campaignId}/creative`, { user_id: userEmail }),
+    buildUrl(`/campaigns/${campaignId}/creative`),
     {
-      headers: getHeaders(),
+      headers: await getHeaders(),
     }
   );
   
@@ -461,7 +433,6 @@ export async function getCreativeState(
 // Update creative state
 export async function updateCreativeState(
   campaignId: string,
-  userEmail: string,
   updates: {
     selected_style_id?: string | null;
     creative_truth?: CreativeState['creative_truth'] | null;
@@ -470,10 +441,10 @@ export async function updateCreativeState(
   }
 ): Promise<CreativeState> {
   const response = await fetch(
-    buildUrl(`/campaigns/${campaignId}/creative`, { user_id: userEmail }),
+    buildUrl(`/campaigns/${campaignId}/creative`),
     {
       method: 'PATCH',
-      headers: getHeaders('application/json'),
+      headers: await getHeaders('application/json'),
       body: JSON.stringify(updates),
     }
   );
@@ -488,12 +459,11 @@ export async function updateCreativeState(
 
 // Get campaign tasks
 export async function getCampaignTasks(
-  campaignId: string,
-  userEmail: string
+  campaignId: string
 ): Promise<CampaignTasksResponse> {
   const response = await fetch(
-    buildUrl(`/campaigns/${campaignId}/tasks`, { user_id: userEmail }),
-    { headers: getHeaders() }
+    buildUrl(`/campaigns/${campaignId}/tasks`),
+    { headers: await getHeaders() }
   );
   if (!response.ok) {
     const err = await response.json();
@@ -504,12 +474,11 @@ export async function getCampaignTasks(
 
 // Get single campaign task
 export async function getCampaignTask(
-  taskId: string,
-  userEmail: string
+  taskId: string
 ): Promise<CampaignTask> {
   const response = await fetch(
-    buildUrl(`/campaigns/tasks/${taskId}`, { user_id: userEmail }),
-    { headers: getHeaders() }
+    buildUrl(`/campaigns/tasks/${taskId}`),
+    { headers: await getHeaders() }
   );
   if (!response.ok) {
     const err = await response.json();
@@ -521,14 +490,13 @@ export async function getCampaignTask(
 // Update campaign task (e.g. status to done)
 export async function patchCampaignTask(
   taskId: string,
-  userEmail: string,
   body: { status?: CampaignTask['status']; body_copy?: string | null }
 ): Promise<CampaignTask> {
   const response = await fetch(
-    buildUrl(`/campaigns/tasks/${taskId}`, { user_id: userEmail }),
+    buildUrl(`/campaigns/tasks/${taskId}`),
     {
       method: 'PATCH',
-      headers: getHeaders('application/json'),
+      headers: await getHeaders('application/json'),
       body: JSON.stringify(body),
     }
   );
@@ -541,12 +509,11 @@ export async function patchCampaignTask(
 
 // Get assets for a task (review page)
 export async function getCampaignTaskAssets(
-  taskId: string,
-  userEmail: string
+  taskId: string
 ): Promise<AssetListResponse> {
   const response = await fetch(
-    buildUrl(`/campaigns/tasks/${taskId}/assets`, { user_id: userEmail }),
-    { headers: getHeaders() }
+    buildUrl(`/campaigns/tasks/${taskId}/assets`),
+    { headers: await getHeaders() }
   );
   if (!response.ok) {
     const err = await response.json();
@@ -563,7 +530,7 @@ export async function getStyleCards(
   const response = await fetch(
     buildUrl('/campaigns/style-cards', { limit: String(limit), offset: String(offset) }),
     {
-      headers: getHeaders(),
+      headers: await getHeaders(),
     }
   );
   
@@ -576,13 +543,11 @@ export async function getStyleCards(
 }
 
 // Characters (GET /characters) — reusable subject identities for video
-export async function getCharacters(
-  userEmail: string
-): Promise<CharactersResponse> {
+export async function getCharacters(): Promise<CharactersResponse> {
   const response = await fetch(
-    buildUrl('/characters', { user_id: userEmail }),
+    buildUrl('/characters'),
     {
-      headers: getHeaders(),
+      headers: await getHeaders(),
     }
   );
 
@@ -596,7 +561,6 @@ export async function getCharacters(
 
 // Create a character (POST /characters)
 export async function createCharacter(
-  userEmail: string,
   payload: {
     name: string;
     description: string;
@@ -606,8 +570,8 @@ export async function createCharacter(
 ): Promise<Character> {
   const response = await fetch(buildUrl('/characters'), {
     method: 'POST',
-    headers: { ...getHeaders(), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_id: userEmail, ...payload }),
+    headers: { ...await getHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...payload }),
   });
 
   if (!response.ok) {
@@ -641,7 +605,6 @@ function parseSSEAssetPayload(content: string): StreamAssetHint[] {
 
 /** Resolve SSE asset hints to signed URLs via GET /assets/{id}. Dedupes by id. */
 export async function resolveStreamAssetHints(
-  userEmail: string,
   hints: StreamAssetHint[]
 ): Promise<ChatRenderableAsset[]> {
   const seen = new Set<string>();
@@ -653,7 +616,7 @@ export async function resolveStreamAssetHints(
   const results = await Promise.all(
     unique.map(async (h) => {
       try {
-        const urls = await refreshAssetUrls(h.id, userEmail);
+        const urls = await refreshAssetUrls(h.id);
         return {
           id: h.id,
           mime_type: h.mime_type,
@@ -675,13 +638,12 @@ export async function resolveStreamAssetHints(
 
 // Chat functions
 export async function listChats(
-  userEmail: string,
   projectId: string
 ): Promise<ChatListResponse> {
   const response = await fetch(
-    buildUrl('/chats', { user_id: userEmail, project_id: projectId }),
+    buildUrl('/chats', { project_id: projectId }),
     {
-      headers: getHeaders(),
+      headers: await getHeaders(),
     }
   );
   
@@ -696,13 +658,12 @@ export async function listChats(
 // Get messages for a chat
 export async function getChatMessages(
   chatId: string,
-  userEmail: string,
   branchId: string = 'main'
 ): Promise<ChatMessagesResponse> {
   const response = await fetch(
-    buildUrl(`/chats/${chatId}/messages`, { user_id: userEmail, branch_id: branchId }),
+    buildUrl(`/chats/${chatId}/messages`, { branch_id: branchId }),
     {
-      headers: getHeaders(),
+      headers: await getHeaders(),
     }
   );
   
@@ -715,12 +676,11 @@ export async function getChatMessages(
 }
 
 export async function getCampaignTaskDeliverables(
-  taskId: string,
-  userEmail: string
+  taskId: string
 ): Promise<DeliverableObjectsResponse> {
   const response = await fetch(
-    buildUrl(`/campaigns/tasks/${taskId}/deliverable-objects`, { user_id: userEmail }),
-    { headers: getHeaders() }
+    buildUrl(`/campaigns/tasks/${taskId}/deliverable-objects`),
+    { headers: await getHeaders() }
   );
   if (!response.ok) {
     const err = await response.json();
@@ -737,12 +697,11 @@ export async function getCampaignTaskDeliverables(
  * saved and then shown on no canvas at all.
  */
 export async function getChatDeliverables(
-  chatId: string,
-  userEmail: string
+  chatId: string
 ): Promise<DeliverableObjectsResponse> {
   const response = await fetch(
-    buildUrl(`/campaigns/chats/${chatId}/deliverable-objects`, { user_id: userEmail }),
-    { headers: getHeaders() }
+    buildUrl(`/campaigns/chats/${chatId}/deliverable-objects`),
+    { headers: await getHeaders() }
   );
   if (!response.ok) {
     const err = await response.json();
@@ -769,7 +728,6 @@ function canvasPath(scope: CanvasScope): string {
 export async function patchDeliverableObjectPosition(
   scope: CanvasScope,
   objectId: string,
-  userEmail: string,
   position: {
     canvas_x?: number;
     canvas_y?: number;
@@ -779,10 +737,10 @@ export async function patchDeliverableObjectPosition(
   }
 ): Promise<DeliverableObject> {
   const response = await fetch(
-    buildUrl(`${canvasPath(scope)}/${objectId}/position`, { user_id: userEmail }),
+    buildUrl(`${canvasPath(scope)}/${objectId}/position`),
     {
       method: 'PATCH',
-      headers: getHeaders('application/json'),
+      headers: await getHeaders('application/json'),
       body: JSON.stringify(position),
     }
   );
@@ -796,14 +754,13 @@ export async function patchDeliverableObjectPosition(
 /** PATCH to approve a deliverable object (user-only). */
 export async function approveDeliverableObject(
   scope: CanvasScope,
-  objectId: string,
-  userEmail: string
+  objectId: string
 ): Promise<DeliverableObject> {
   const response = await fetch(
-    buildUrl(`${canvasPath(scope)}/${objectId}/approve`, { user_id: userEmail }),
+    buildUrl(`${canvasPath(scope)}/${objectId}/approve`),
     {
       method: 'PATCH',
-      headers: getHeaders(),
+      headers: await getHeaders(),
     }
   );
   if (!response.ok) {
@@ -815,12 +772,11 @@ export async function approveDeliverableObject(
 
 /** GET the full flat folder list for a chat (client builds the tree). */
 export async function getAssetFolders(
-  chatId: string,
-  userEmail: string
+  chatId: string
 ): Promise<AssetFoldersResponse> {
   const response = await fetch(
-    buildUrl('/assets/folders', { user_id: userEmail, chat_id: chatId }),
-    { headers: getHeaders() }
+    buildUrl('/assets/folders', { chat_id: chatId }),
+    { headers: await getHeaders() }
   );
   if (!response.ok) {
     const err = await response.json();
@@ -832,14 +788,13 @@ export async function getAssetFolders(
 // Delete a chat
 export async function deleteChat(
   chatId: string,
-  userEmail: string,
   projectId: string
 ): Promise<DeleteChatResponse> {
   const response = await fetch(
-    buildUrl(`/chats/${chatId}`, { user_id: userEmail, project_id: projectId }),
+    buildUrl(`/chats/${chatId}`, { project_id: projectId }),
     {
       method: 'DELETE',
-      headers: getHeaders(),
+      headers: await getHeaders(),
     }
   );
   

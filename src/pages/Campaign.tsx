@@ -51,14 +51,14 @@ export default function Campaign({ outletContext: outletContextProp }: CampaignP
   // Fetch chat to get campaign_id
   const { data: chatData, isLoading: chatLoading } = useQuery({
     queryKey: ['chat', chatId, user?.email],
-    queryFn: () => getChat(chatId!, user!.email!),
+    queryFn: () => getChat(chatId!),
     enabled: !!chatId && !!user?.email,
   });
 
   // Fetch campaign if chat has campaign_id
   const { data: campaignData, isLoading: campaignLoading } = useQuery({
     queryKey: ['campaign', chatData?.campaign_id, user?.email],
-    queryFn: () => getCampaignById(chatData!.campaign_id!, user!.email!),
+    queryFn: () => getCampaignById(chatData!.campaign_id!),
     enabled: !!chatId && !!user?.email && !!chatData?.campaign_id,
   });
 

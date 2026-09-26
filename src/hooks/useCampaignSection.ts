@@ -20,7 +20,7 @@ export function useCampaignSection<T>(
   return useQuery({
     queryKey: ['campaign', campaignId, section, userEmail],
     queryFn: async () => {
-      const data = await getCampaignById(campaignId!, userEmail!);
+      const data = await getCampaignById(campaignId!);
       let content = data.sections[section] as T;
       if (section === "strategy") {
         content = normalizeStrategyFromApi(data.sections.strategy) as T;
@@ -62,7 +62,7 @@ export function useSelectCreativeTerritory() {
       if (!user?.email) {
         throw new Error("User not authenticated");
       }
-      return selectCreativeTerritory(campaignId, user.email, territoryId);
+      return selectCreativeTerritory(campaignId, territoryId);
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({

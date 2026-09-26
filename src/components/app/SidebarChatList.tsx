@@ -50,7 +50,7 @@ export function SidebarChatList({ collapsed }: SidebarChatListProps) {
 
     setRenamingId(chatToRename.id);
     try {
-      await patchChat(chatToRename.id, user.email, { title: newTitle });
+      await patchChat(chatToRename.id, { title: newTitle });
       queryClient.invalidateQueries({ queryKey: ["chats"] });
       queryClient.invalidateQueries({ queryKey: ["chat", chatToRename.id] });
       toast({
@@ -75,7 +75,7 @@ export function SidebarChatList({ collapsed }: SidebarChatListProps) {
 
     setDeletingId(chatToDelete.id);
     try {
-      await deleteChatById(chatToDelete.id, user.email);
+      await deleteChatById(chatToDelete.id);
       
       // Invalidate chats query to refetch list
       queryClient.invalidateQueries({ queryKey: ['chats'] });

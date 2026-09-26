@@ -23,7 +23,7 @@ export function AppLayout() {
   const { user } = useAuth();
   const { data: chatData } = useQuery({
     queryKey: ["chat", chatId, user?.email],
-    queryFn: () => getChat(chatId!, user!.email!),
+    queryFn: () => getChat(chatId!),
     enabled: !!chatId && !!user?.email,
   });
   const campaignId = chatData?.campaign_id;

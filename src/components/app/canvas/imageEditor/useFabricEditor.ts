@@ -35,7 +35,6 @@ export interface UseFabricEditorOptions {
   assetId: string;
   imageUrl: string;
   fileName?: string | null;
-  userEmail: string;
 }
 
 export interface UseFabricEditorResult {
@@ -144,7 +143,6 @@ export function useFabricEditor({
   open,
   assetId,
   imageUrl,
-  userEmail,
 }: UseFabricEditorOptions): UseFabricEditorResult {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const textareaContainerRef = useRef<HTMLDivElement | null>(null);
@@ -709,7 +707,7 @@ export function useFabricEditor({
       try {
         let blob: Blob;
         try {
-          blob = await fetchAssetContentBlob(assetId, userEmail);
+          blob = await fetchAssetContentBlob(assetId);
         } catch {
           const res = await fetch(imageUrl);
           if (!res.ok) throw new Error(`Failed to load image (${res.status})`);
@@ -766,7 +764,7 @@ export function useFabricEditor({
       setSelectedObject(null);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, assetId, userEmail, imageUrl]);
+  }, [open, assetId, imageUrl]);
 
   // Re-apply tool when tool changes, or when brush props change while drawing
   useEffect(() => {

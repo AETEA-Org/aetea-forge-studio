@@ -8,7 +8,7 @@ export function useCreativeState(campaignId: string | undefined) {
 
   return useQuery({
     queryKey: ['creative', campaignId, userEmail],
-    queryFn: () => getCreativeState(campaignId!, userEmail!),
+    queryFn: () => getCreativeState(campaignId!),
     enabled: !!campaignId && !!userEmail,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
@@ -42,7 +42,7 @@ export function useUpdateCreativeState() {
       if (!user?.email) {
         throw new Error('User not authenticated');
       }
-      return updateCreativeState(campaignId, user.email, updates);
+      return updateCreativeState(campaignId, updates);
     },
     onSuccess: (data, variables) => {
       // Invalidate creative state query

@@ -6,7 +6,8 @@
  * cancel it — reconnecting resumes from the last event seen instead of losing
  * the answer.
  */
-import { API_BASE_URL, API_TOKEN } from "@/services/config";
+import { API_BASE_URL } from "@/services/config";
+import { backendHeaders } from "@/services/authHeaders";
 
 export type ProgressState = "started" | "done" | "failed";
 export type CampaignState = "creating" | "section_written" | "created" | "updated";
@@ -38,7 +39,6 @@ export interface AgentTurnHandlers {
 }
 
 export interface StartTurnRequest {
-  userEmail: string;
   chatId: string;
   message: string;
   mode: string;
@@ -68,10 +68,16 @@ function url(path: string, params?: Record<string, string>): string {
   return built.toString();
 }
 
-function authHeaders(extra?: HeadersInit): HeadersInit {
-  const headers: Record<string, string> = { ...(extra as Record<string, string>) };
-  if (API_TOKEN) headers["Authorization"] = `Bearer ${API_TOKEN}`;
-  return headers;
+/**
+ * Headers for a backend call, with a fresh session token.
+ *
+ * Called per request rather than once per run: `followRun` reconnects, and a
+ * reconnect minutes into a long answer needs the token as it is by then. That
+ * is also why an expiring token cannot kill a run in flight — the backend
+ * checks each HTTP request, and the next one simply carries a newer token.
+ */
+async function authHeaders(extra?: HeadersInit): Promise<Record<string, string>> {
+  return { ...(await backendHeaders()), ...(extra as Record<string, string>) };
 }
 
 /** Begin a turn. Returns as soon as the run is accepted, not when it finishes. */
@@ -92,7 +98,6 @@ export class ChatBusyError extends Error {
 
 export async function startTurn(req: StartTurnRequest): Promise<{ run_id: string }> {
   const form = new FormData();
-  form.append("user_id", req.userEmail);
   form.append("chat_id", req.chatId);
   form.append("message", req.message);
   form.append("mode", req.mode);
@@ -109,7 +114,7 @@ export async function startTurn(req: StartTurnRequest): Promise<{ run_id: string
 
   const response = await fetch(url("/ai/chat"), {
     method: "POST",
-    headers: authHeaders(),
+    headers: await authHeaders(),
     body: form,
   });
   if (!response.ok) {
@@ -122,25 +127,21 @@ export async function startTurn(req: StartTurnRequest): Promise<{ run_id: string
 }
 
 /** Whether a run is in progress, and how far its events have got. */
-export async function getRunStatus(
-  chatId: string,
-  userEmail: string
-): Promise<RunStatus> {
+export async function getRunStatus(chatId: string): Promise<RunStatus> {
   const response = await fetch(
-    url(`/ai/chats/${chatId}/run`, { user_id: userEmail }),
-    { headers: authHeaders() }
+    url(`/ai/chats/${chatId}/run`),
+    { headers: await authHeaders() }
   );
   if (!response.ok) return { active: false };
   return response.json();
 }
 
 /** Stop the run in progress. Whatever it already produced is kept. */
-export async function cancelRun(chatId: string, userEmail: string): Promise<void> {
+export async function cancelRun(chatId: string): Promise<void> {
   const form = new FormData();
-  form.append("user_id", userEmail);
   await fetch(url(`/ai/chats/${chatId}/cancel`), {
     method: "POST",
-    headers: authHeaders(),
+    headers: await authHeaders(),
     body: form,
   });
 }
@@ -155,17 +156,16 @@ export async function cancelRun(chatId: string, userEmail: string): Promise<void
 export async function editTurn(
   chatId: string,
   messageId: string,
-  req: { userEmail: string; message: string; mode: string; branchId?: string }
+  req: { message: string; mode: string; branchId?: string }
 ): Promise<{ run_id: string }> {
   const form = new FormData();
-  form.append("user_id", req.userEmail);
   form.append("message", req.message);
   form.append("mode", req.mode);
   form.append("branch_id", req.branchId ?? "main");
 
   const response = await fetch(
     url(`/ai/chats/${chatId}/messages/${messageId}/edit`),
-    { method: "POST", headers: authHeaders(), body: form }
+    { method: "POST", headers: await authHeaders(), body: form }
   );
   if (!response.ok) {
     const detail = await response.json().catch(() => ({}));
@@ -177,16 +177,12 @@ export async function editTurn(
 }
 
 /** Accept the agent's offer to turn this conversation into a campaign. */
-export async function acceptCampaignMode(
-  chatId: string,
-  userEmail: string
-): Promise<void> {
+export async function acceptCampaignMode(chatId: string): Promise<void> {
   const form = new FormData();
-  form.append("user_id", userEmail);
   form.append("mode", "campaign");
   const response = await fetch(url(`/ai/chats/${chatId}/mode`), {
     method: "POST",
-    headers: authHeaders(),
+    headers: await authHeaders(),
     body: form,
   });
   if (!response.ok) throw new Error("Could not switch to campaign mode");
@@ -216,7 +212,6 @@ function parseFrame(raw: string): ParsedFrame {
  */
 export async function followRun(
   chatId: string,
-  userEmail: string,
   handlers: AgentTurnHandlers,
   options: { signal?: AbortSignal; sinceEventId?: number } = {}
 ): Promise<void> {
@@ -228,9 +223,9 @@ export async function followRun(
   while (!options.signal?.aborted) {
     try {
       const response = await fetch(
-        url(`/ai/chats/${chatId}/stream`, { user_id: userEmail }),
+        url(`/ai/chats/${chatId}/stream`),
         {
-          headers: authHeaders(
+          headers: await authHeaders(
             lastEventId ? { "Last-Event-ID": String(lastEventId) } : undefined
           ),
           signal: options.signal,
@@ -351,5 +346,5 @@ export async function runTurn(
   signal?: AbortSignal
 ): Promise<void> {
   await startTurn(req);
-  await followRun(req.chatId, req.userEmail, handlers, { signal });
+  await followRun(req.chatId, handlers, { signal });
 }

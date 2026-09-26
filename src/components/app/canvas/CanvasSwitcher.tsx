@@ -32,7 +32,7 @@ export function CanvasSwitcher({
   const navigate = useNavigate();
   const { data } = useQuery({
     queryKey: ["campaign-tasks", campaignId, user?.email],
-    queryFn: () => getCampaignTasks(campaignId!, user!.email!),
+    queryFn: () => getCampaignTasks(campaignId!),
     enabled: !!campaignId && !!user?.email,
   });
   const tasks = data?.tasks ?? [];

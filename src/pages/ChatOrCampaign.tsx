@@ -23,7 +23,7 @@ export default function ChatOrCampaign() {
 
   const { data: chatData, isLoading, isError } = useQuery({
     queryKey: ["chat", chatId, user?.email],
-    queryFn: () => getChat(chatId!, user!.email!),
+    queryFn: () => getChat(chatId!),
     enabled: !!chatId && !!user?.email,
     retry: false,
   });

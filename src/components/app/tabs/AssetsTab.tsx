@@ -298,7 +298,7 @@ export function AssetsTab({ chatId, isModifying }: AssetsTabProps) {
     error: foldersError,
   } = useQuery({
     queryKey: ["asset-folders", chatId, user?.email],
-    queryFn: () => getAssetFolders(chatId, user!.email!),
+    queryFn: () => getAssetFolders(chatId),
     enabled: !!chatId && !!user?.email,
   });
 
@@ -308,7 +308,7 @@ export function AssetsTab({ chatId, isModifying }: AssetsTabProps) {
     error: assetsError,
   } = useQuery({
     queryKey: ["assets", chatId, undefined, user?.email],
-    queryFn: () => getAssets(chatId, user!.email!),
+    queryFn: () => getAssets(chatId),
     enabled: !!chatId && !!user?.email,
   });
 
@@ -332,7 +332,7 @@ export function AssetsTab({ chatId, isModifying }: AssetsTabProps) {
       if (refreshingUrls.has(asset.id)) return existingUrl;
       try {
         setRefreshingUrls((prev) => new Set(prev).add(asset.id));
-        const result = await refreshAssetUrls(asset.id, user!.email!);
+        const result = await refreshAssetUrls(asset.id);
         return result[urlKey];
       } catch (err) {
         console.error("Failed to refresh asset URL:", err);
@@ -345,7 +345,7 @@ export function AssetsTab({ chatId, isModifying }: AssetsTabProps) {
         });
       }
     },
-    [fetchedAt, isUrlExpired, refreshingUrls, user]
+    [fetchedAt, isUrlExpired, refreshingUrls]
   );
 
   const invalidateAssetQueries = useCallback(async () => {
@@ -395,7 +395,7 @@ export function AssetsTab({ chatId, isModifying }: AssetsTabProps) {
   const handleRename = useCallback(
     async (asset: Asset, nextName: string) => {
       try {
-        await renameAsset(asset.id, user!.email!, nextName);
+        await renameAsset(asset.id, nextName);
         await invalidateAssetQueries();
         toast.success("File renamed");
       } catch (err) {
@@ -403,14 +403,14 @@ export function AssetsTab({ chatId, isModifying }: AssetsTabProps) {
         throw err;
       }
     },
-    [invalidateAssetQueries, user]
+    [invalidateAssetQueries]
   );
 
   const handleConfirmDelete = useCallback(async () => {
     if (!pendingDelete || !user?.email) return;
     setDeleting(true);
     try {
-      await deleteAsset(pendingDelete.id, user.email);
+      await deleteAsset(pendingDelete.id);
       setPendingDelete(null);
       await invalidateAssetQueries();
       toast.success("File deleted");
@@ -419,7 +419,7 @@ export function AssetsTab({ chatId, isModifying }: AssetsTabProps) {
     } finally {
       setDeleting(false);
     }
-  }, [invalidateAssetQueries, pendingDelete, user]);
+  }, [invalidateAssetQueries, pendingDelete, user?.email]);
 
   if (foldersLoading || assetsLoading) {
     return (

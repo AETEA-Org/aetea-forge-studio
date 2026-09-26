@@ -17,7 +17,7 @@ export function useChats(projectId: string | undefined) {
 
   return useQuery({
     queryKey: ['chats', projectId, userEmail],
-    queryFn: () => listChats(userEmail!, projectId!),
+    queryFn: () => listChats(projectId!),
     enabled: !!projectId && !!userEmail,
     staleTime: 1000 * 60, // 1 minute
   });
@@ -29,7 +29,7 @@ export function useChatMessages(chatId: string | undefined, branchId: string = '
 
   return useQuery({
     queryKey: ['chat-messages', chatId, branchId, userEmail],
-    queryFn: () => getChatMessages(chatId!, userEmail!, branchId),
+    queryFn: () => getChatMessages(chatId!, branchId),
     enabled: !!chatId && !!userEmail,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
@@ -50,7 +50,7 @@ export function useDeleteChat() {
       if (!user?.email) {
         throw new Error('User not authenticated');
       }
-      return deleteChat(chatId, user.email, projectId);
+      return deleteChat(chatId, projectId);
     },
     onSuccess: (_, variables) => {
       // Invalidate chats list

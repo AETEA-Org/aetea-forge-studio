@@ -20,7 +20,7 @@ export function useCampaignSection<T>(
   return useQuery({
     queryKey: ['campaign', chatId, section, userEmail],
     queryFn: async () => {
-      const data = await getCampaignByChatId(chatId!, userEmail!);
+      const data = await getCampaignByChatId(chatId!);
       let content = data.sections[section] as T;
       if (section === "strategy") {
         content = normalizeStrategyFromApi(data.sections.strategy) as T;

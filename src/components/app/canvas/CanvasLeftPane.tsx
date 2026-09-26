@@ -138,12 +138,12 @@ function AssetTree({ chatId }: { chatId: string }) {
   const { user } = useAuth();
   const { data: foldersData } = useQuery({
     queryKey: ["asset-folders", chatId, user?.email],
-    queryFn: () => getAssetFolders(chatId, user!.email!),
+    queryFn: () => getAssetFolders(chatId),
     enabled: !!chatId && !!user?.email,
   });
   const { data: assetsData } = useQuery({
     queryKey: ["assets", chatId, undefined, user?.email],
-    queryFn: () => getAssets(chatId, user!.email!),
+    queryFn: () => getAssets(chatId),
     enabled: !!chatId && !!user?.email,
   });
 

@@ -96,7 +96,7 @@ export default function DeliverableCanvasPage() {
 
   const { data: chatData } = useQuery({
     queryKey: ["chat", chatId, user?.email],
-    queryFn: () => getChat(chatId!, user!.email!),
+    queryFn: () => getChat(chatId!),
     enabled: !!chatId && !!user?.email,
   });
   const campaignId = chatData?.campaign_id ?? undefined;
@@ -106,7 +106,7 @@ export default function DeliverableCanvasPage() {
   const { data: keyVisualUrl } = useQuery({
     queryKey: ["asset-urls", keyVisualAssetId, user?.email],
     queryFn: () =>
-      refreshAssetUrls(keyVisualAssetId!, user!.email!).then((r) => r.download_url),
+      refreshAssetUrls(keyVisualAssetId!).then((r) => r.download_url),
     enabled: !!keyVisualAssetId && !!user?.email,
     staleTime: 50 * 60 * 1000,
   });
@@ -117,7 +117,7 @@ export default function DeliverableCanvasPage() {
 
   const { data: task, isLoading, error } = useQuery({
     queryKey: ["campaign-task", taskId, user?.email],
-    queryFn: () => getCampaignTask(taskId!, user!.email!),
+    queryFn: () => getCampaignTask(taskId!),
     enabled: !!taskId && !!user?.email,
   });
   const canvasTitle = isCampaignCanvas ? "Campaign" : task?.title ?? "";
@@ -132,8 +132,8 @@ export default function DeliverableCanvasPage() {
     queryKey: deliverablesKey,
     queryFn: () =>
       taskId
-        ? getCampaignTaskDeliverables(taskId, user!.email!)
-        : getChatDeliverables(chatId!, user!.email!),
+        ? getCampaignTaskDeliverables(taskId)
+        : getChatDeliverables(chatId!),
     enabled: !!(taskId || chatId) && !!user?.email,
   });
   const objects = useMemo<DeliverableObject[]>(
@@ -169,7 +169,7 @@ export default function DeliverableCanvasPage() {
       if (!needsPlacement || placedRef.current.has(obj.id)) return;
       placedRef.current.add(obj.id);
       const pos = autoObjectPosition(index);
-      patchDeliverableObjectPosition(canvasScope, obj.id, user.email, {
+      patchDeliverableObjectPosition(canvasScope, obj.id, {
         canvas_x: pos.x,
         canvas_y: pos.y,
       }).catch(() => {
@@ -197,7 +197,7 @@ export default function DeliverableCanvasPage() {
   const handleObjectMoved = useCallback(
     (objectId: string, pos: XY) => {
       if (!canvasScope || !user?.email) return;
-      patchDeliverableObjectPosition(canvasScope, objectId, user.email, {
+      patchDeliverableObjectPosition(canvasScope, objectId, {
         canvas_x: pos.x,
         canvas_y: pos.y,
       }).catch(() => {});
@@ -208,7 +208,7 @@ export default function DeliverableCanvasPage() {
   const handleObjectResized = useCallback(
     (objectId: string, size: { width: number; height: number }) => {
       if (!canvasScope || !user?.email) return;
-      patchDeliverableObjectPosition(canvasScope, objectId, user.email, {
+      patchDeliverableObjectPosition(canvasScope, objectId, {
         canvas_width: size.width,
         canvas_height: size.height,
       }).catch(() => {});
@@ -221,7 +221,7 @@ export default function DeliverableCanvasPage() {
       if (!canvasScope || !user?.email) return;
       setApprovingIds((prev) => new Set(prev).add(objectId));
       try {
-        await approveDeliverableObject(canvasScope, objectId, user.email);
+        await approveDeliverableObject(canvasScope, objectId);
         await queryClient.invalidateQueries({ queryKey: deliverablesKey });
       } catch (e) {
         toast({
@@ -243,7 +243,7 @@ export default function DeliverableCanvasPage() {
   const mergeStreamAssets = useCallback(
     async (hints: StreamAssetHint[]) => {
       if (!user?.email || hints.length === 0) return;
-      const resolved = await resolveStreamAssetHints(user.email, hints);
+      const resolved = await resolveStreamAssetHints(hints);
       setStreamingAssets((prev) => {
         const m = new Map(prev.map((a) => [a.id, a]));
         resolved.forEach((a) => m.set(a.id, a));
@@ -265,12 +265,12 @@ export default function DeliverableCanvasPage() {
     const controller = new AbortController();
     const email = user.email;
 
-    getRunStatus(chatId, email)
+    getRunStatus(chatId)
       .then((status) => {
         if (!status.active || controller.signal.aborted) return;
         rejoinedRef.current = true;
         setIsStreaming(true);
-        return followRun(chatId, email, {
+        return followRun(chatId, {
           onToken: (_delta, accumulated) => {
             setUpdateMessage(null);
             setStreamingContent(accumulated);
@@ -297,7 +297,7 @@ export default function DeliverableCanvasPage() {
               campaignId,
               taskId,
               canvasKey,
-              userEmail: email,
+              userEmail: user?.email,
             });
           },
           onComplete: async () => {
@@ -356,7 +356,6 @@ export default function DeliverableCanvasPage() {
       try {
         await runTurn(
           {
-            userEmail: user.email,
             chatId,
             message,
             mode: "campaign",
@@ -394,7 +393,7 @@ export default function DeliverableCanvasPage() {
                 campaignId,
                 taskId,
                 canvasKey,
-                userEmail: user.email,
+                userEmail: user?.email,
               });
             },
             onComplete: async () => {
@@ -465,12 +464,12 @@ export default function DeliverableCanvasPage() {
     if (!chatId || !user?.email) return null;
     if (!isCampaignCanvas && !task) return null;
     return {
+      userEmail: user.email,
       task: task ?? null,
       objects,
       chatId,
       canvasKey,
       campaignId,
-      userEmail: user.email,
       messages,
       threadAssets: messagesData?.assets ?? [],
       streamingAssets,

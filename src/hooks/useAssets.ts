@@ -8,7 +8,7 @@ export function useAssets(chatId: string | undefined, folderPath?: string) {
   return useQuery({
     queryKey: ['assets', chatId, user?.email, folderPath],
     queryFn: () => {
-      const result = getAssets(chatId!, user!.email!, folderPath);
+      const result = getAssets(chatId!, folderPath);
       // Store fetch timestamp in query metadata for expiration checking
       return result.then((data) => ({
         ...data,

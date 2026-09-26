@@ -103,7 +103,7 @@ export function AICopilotPanel({
 
   const mergeStreamAssets = useCallback(async (hints: StreamAssetHint[]) => {
     if (!user?.email || hints.length === 0) return;
-    const resolved = await resolveStreamAssetHints(user.email, hints);
+    const resolved = await resolveStreamAssetHints(hints);
     setStreamingAssets((prev) => {
       const m = new Map(prev.map((a) => [a.id, a]));
       resolved.forEach((a) => m.set(a.id, a));
@@ -164,7 +164,6 @@ export function AICopilotPanel({
       isModifyingActiveRef.current = false;
 
       console.log('🚀 Sending chat message:', {
-        userEmail: user.email,
         chatId,
         context: ctxToUse,
         contextLabel,
@@ -175,7 +174,6 @@ export function AICopilotPanel({
       try {
         await runTurn(
           {
-            userEmail: user.email,
             chatId,
             message,
             mode: "campaign",
@@ -368,14 +366,13 @@ export function AICopilotPanel({
     const controller = new AbortController();
     const email = user.email;
 
-    getRunStatus(chatId, email)
+    getRunStatus(chatId)
       .then((status) => {
         if (!status.active || controller.signal.aborted) return;
         reattachedRef.current = true;
         setIsStreaming(true);
         return followRun(
           chatId,
-          email,
           {
             onToken: (_delta, accumulated) => {
               setUpdateMessage(null);
@@ -401,7 +398,7 @@ export function AICopilotPanel({
               invalidateForDataChange(queryClient, entity, {
                 chatId,
                 campaignId,
-                userEmail: email,
+                userEmail: user?.email,
               });
             },
             onComplete: async () => {
@@ -449,7 +446,6 @@ export function AICopilotPanel({
       setIsStreaming(true);
       try {
         await editTurn(chatId, messageId, {
-          userEmail: user.email,
           message: text,
           mode: "campaign",
         });
@@ -464,7 +460,7 @@ export function AICopilotPanel({
       }
       await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
       const email = user.email;
-      await followRun(chatId, email, {
+      await followRun(chatId, {
         onToken: (_d, accumulated) => setStreamingContent(accumulated),
         onThinking: (_d, accumulated) => setThinkingText(accumulated),
         onProgress: (step) =>
@@ -482,7 +478,7 @@ export function AICopilotPanel({
         },
         onDataChanged: (entity) =>
           invalidateForDataChange(queryClient, entity, {
-            chatId, campaignId, userEmail: email,
+            chatId, campaignId, userEmail: user?.email,
           }),
         onComplete: async () => {
           await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
@@ -502,7 +498,7 @@ export function AICopilotPanel({
   // handler lives with the send path rather than beside a separate control.
   const handleStop = useCallback(async () => {
     if (!user?.email || !chatId) return;
-    await cancelRun(chatId, user.email);
+    await cancelRun(chatId);
     setIsStreaming(false);
     setSteps([]);
     setThinkingText("");
