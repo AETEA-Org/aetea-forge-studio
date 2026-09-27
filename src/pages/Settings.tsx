@@ -1,15 +1,44 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { User, Palette, CreditCard, Plug, Bell, LogOut, Loader2 } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { User, Palette, CreditCard, Receipt, Plug, Bell, LogOut, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { BillingPane } from "@/components/app/billing/BillingPane";
+import { UsagePane } from "@/components/app/billing/UsagePane";
 
-type SettingsTab = "profile" | "theme" | "billing" | "integrations" | "notifications";
+type SettingsTab = "profile" | "theme" | "billing" | "usage" | "integrations" | "notifications";
+
+const TABS: SettingsTab[] = [
+  "profile",
+  "theme",
+  "billing",
+  "usage",
+  "integrations",
+  "notifications",
+];
 
 export default function Settings() {
-  const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
+  // `?tab=billing` is a real address, so the credits pill and an out-of-credits
+  // prompt can send someone straight here rather than to a page they then have
+  // to navigate.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requested = searchParams.get("tab") as SettingsTab | null;
+  const [activeTab, setActiveTab] = useState<SettingsTab>(
+    requested && TABS.includes(requested) ? requested : "profile",
+  );
+
+  const selectTab = (tab: SettingsTab) => {
+    setActiveTab(tab);
+    const next = new URLSearchParams(searchParams);
+    if (tab === "profile") {
+      next.delete("tab");
+    } else {
+      next.set("tab", tab);
+    }
+    setSearchParams(next, { replace: true });
+  };
   const [isSigningOut, setIsSigningOut] = useState(false);
   const { user, signOut } = useAuth();
   const { toast } = useToast();
@@ -38,7 +67,8 @@ export default function Settings() {
   const tabs = [
     { id: "profile" as const, label: "Profile", icon: User },
     { id: "theme" as const, label: "Display", icon: Palette },
-    { id: "billing" as const, label: "Billing", icon: CreditCard, comingSoon: true },
+    { id: "billing" as const, label: "Billing", icon: CreditCard },
+    { id: "usage" as const, label: "Usage", icon: Receipt },
     { id: "integrations" as const, label: "Integrations", icon: Plug, comingSoon: true },
     { id: "notifications" as const, label: "Notifications", icon: Bell, comingSoon: true },
   ];
@@ -55,7 +85,7 @@ export default function Settings() {
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => selectTab(tab.id)}
                   className={cn(
                     "w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors",
                     activeTab === tab.id
@@ -120,7 +150,11 @@ export default function Settings() {
                 </div>
               )}
 
-              {(activeTab === "billing" || activeTab === "integrations" || activeTab === "notifications") && (
+              {activeTab === "billing" && <BillingPane />}
+
+              {activeTab === "usage" && <UsagePane />}
+
+              {(activeTab === "integrations" || activeTab === "notifications") && (
                 <div className="text-center py-8">
                   <p className="text-muted-foreground">
                     This feature is coming soon.

@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ChatMessages } from "./ChatMessages";
-import { ChatInput, type ChatInputHandle } from "./ChatInput";
+import { ChatInput, type ChatInputHandle, type ChatSendMeta } from "./ChatInput";
 import { ChatPanelDropZone } from "./ChatPanelDropZone";
 import { useChatMessages } from "@/hooks/useChats";
 import { useChatContext } from "@/hooks/useChatContext";
@@ -19,7 +19,9 @@ import {
   type ProgressStep,
 } from "@/services/agentRun";
 import { invalidateForDataChange } from "@/services/dataChanged";
+import { useNavigate } from "react-router-dom";
 import { reportSendFailure } from "@/services/sendFailure";
+import { OutOfCredits } from "@/components/app/billing/OutOfCredits";
 import { AgentThinking } from "@/components/app/AgentThinking";
 import { AgentSteps } from "@/components/app/AgentSteps";
 import { useAuth } from "@/hooks/useAuth";
@@ -118,10 +120,24 @@ export function AICopilotPanel({
   const serverMessages: ChatMessage[] = messagesData?.messages || [];
   const messages = [...serverMessages, ...optimisticMessages];
 
+  const navigate = useNavigate();
   const [isStreaming, setIsStreaming] = useState(false);
+  // The copilot starts billable turns like any other surface, so it gets the
+  // same control. Without this the picker simply did not render here and every
+  // copilot turn ran on the default with no way to choose.
+  const [tier, setTier] = useState<string>("auto");
+  const [outOfCredits, setOutOfCredits] = useState(false);
 
-  // Handle message sending. Optional override for auto-send (context + callbacks).
-  type SendOverride = {
+  // Handle message sending. The third argument arrives from two places and they
+  // carry different things: `ChatInput` sends a `ChatSendMeta` (the chosen tier
+  // and any generation options), while auto-send passes context and callbacks.
+  //
+  // Merged on 2026-09-28. Before that this signature named only the auto-send
+  // shape, so a `ChatSendMeta` arriving here was read as a field that does not
+  // exist. Nothing was being dropped in practice — this panel passed no `tier`,
+  // so the picker never rendered and there was no value to lose — but the
+  // mismatch meant the tier could not be plumbed through until it was fixed.
+  type SendOverride = ChatSendMeta & {
     contextOverride?: string;
     onEvent?: (eventName: string) => void;
     onComplete?: () => void;
@@ -182,6 +198,9 @@ export function AICopilotPanel({
             // campaign rather than the piece of work being looked at, and
             // never reaches that task's canvas.
             activeTaskId: selectedTaskId ?? undefined,
+            tier: override?.tier,
+            generationMode: override?.generationMode,
+            generationOptions: override?.generationOptions,
           },
           {
             onToken: (_delta, accumulated) => {
@@ -313,6 +332,7 @@ export function AICopilotPanel({
         setIsModifying(false, null);
         
         reportSendFailure(error, {
+          onOutOfCredits: () => setOutOfCredits(true),
           toast,
           chatId,
           userEmail: user?.email,
@@ -678,12 +698,25 @@ export function AICopilotPanel({
             </div>
           )}
 
+          {outOfCredits && (
+            <OutOfCredits
+              compact
+              className="mb-3"
+              onTopUp={() => navigate("/app/settings?tab=billing")}
+            />
+          )}
+
           <ChatInput
             ref={chatInputRef}
-            onSend={handleSendMessage}
+            onSend={(message, files, meta) => {
+              setOutOfCredits(false);
+              void handleSendMessage(message, files, meta);
+            }}
             isStreaming={isStreaming}
             onStop={handleStop}
             disabled={false}
+            tier={tier}
+            onTierChange={setTier}
             prefillMessage={autoMessage?.text ?? null}
             onPrefillComplete={handlePrefillComplete}
             prefillMode={autoMessage?.prefillMode}

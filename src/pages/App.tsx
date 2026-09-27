@@ -8,6 +8,10 @@ import { BriefAnalysisLoading } from "@/components/app/BriefAnalysisLoading";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { startTurn } from "@/services/agentRun";
+import { TierPicker } from "@/components/app/ChatInput";
+import { OutOfCredits } from "@/components/app/billing/OutOfCredits";
+import { CampaignCostNote } from "@/components/app/billing/CampaignCostNote";
+import { reportSendFailure } from "@/services/sendFailure";
 import { cn } from "@/lib/utils";
 
 export default function App() {
@@ -69,6 +73,14 @@ export default function App() {
     }
   };
 
+  // This page starts billable work — a brainstorm turn, and the campaign build,
+  // which is the single most expensive thing in the product. It had no picker
+  // and no credits handling at all, so a customer's very first turn could come
+  // back as a red "failed" toast when what actually happened was an empty
+  // balance.
+  const [tier, setTier] = useState<string>("auto");
+  const [outOfCredits, setOutOfCredits] = useState(false);
+
   const handleSubmit = async () => {
     if (!briefText.trim() && files.length === 0) {
       toast({
@@ -78,7 +90,7 @@ export default function App() {
       });
       return;
     }
-    await createProject(briefText, files);
+    await createProject(briefText, files, tier);
   };
 
   const handleStartBrainstorming = async () => {
@@ -109,13 +121,14 @@ export default function App() {
         message,
         mode: "brainstorm",
         files: files.length > 0 ? files : undefined,
+        tier,
       });
       navigate(`/app/chat/${newChatId}`);
-    } catch {
-      toast({
-        title: "Brainstorming failed",
-        description: "Please try again later.",
-        variant: "destructive",
+    } catch (error) {
+      reportSendFailure(error, {
+        toast,
+        userEmail: user?.email,
+        onOutOfCredits: () => setOutOfCredits(true),
       });
     } finally {
       setIsStartingBrainstorm(false);
@@ -232,6 +245,25 @@ export default function App() {
               <span>{error}</span>
             </div>
           )}
+
+          {outOfCredits && (
+            <OutOfCredits
+              compact
+              onTopUp={() => navigate("/app/settings?tab=billing")}
+            />
+          )}
+
+          {/* How much intelligence, and what a build usually costs. This page
+              can start a campaign build, so both belong here rather than only
+              inside a conversation. */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <TierPicker
+              tier={tier}
+              onChange={setTier}
+              disabled={isSubmitting || showLoadingScreen || isStartingBrainstorm}
+            />
+            <CampaignCostNote tier={tier} />
+          </div>
 
           {/* Submit Buttons */}
           <div className="flex gap-3">

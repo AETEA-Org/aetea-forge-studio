@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Plus, Settings, FolderOpen, ChevronLeft, ChevronRight } from "lucide-react";
+import { CreditsPill } from "@/components/app/billing/CreditsPill";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { SidebarChatList } from "./SidebarChatList";
@@ -57,8 +58,15 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         <SidebarChatList collapsed={collapsed} />
       </div>
 
-      {/* Settings */}
-      <div className="p-3 border-t border-sidebar-border">
+      {/* Credits, then Settings. The balance sits directly above the way to
+          top it up, so noticing it and acting on it are one movement. */}
+      <div className="border-t border-sidebar-border p-3 pb-0">
+        <div className={cn("mb-2 flex", collapsed ? "justify-center" : "justify-start")}>
+          <CreditsPill />
+        </div>
+      </div>
+
+      <div className="p-3 pt-0">
         <Button
           variant="ghost"
           onClick={() => navigate("/app/settings")}

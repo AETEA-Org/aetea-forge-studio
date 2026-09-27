@@ -260,11 +260,14 @@ export async function createCampaignViaChat(
   onProgress?: (step: { step_id: string; label: string; state: string }) => void,
   onStarted?: () => void,
   onComplete?: () => void,
-  onError?: (message: string) => void
+  onError?: (message: string) => void,
+  /** How much intelligence to apply. A campaign build is the most expensive
+   *  thing in the product, so the choice has to reach it. */
+  tier?: string
 ): Promise<void> {
   const { runTurn } = await import('@/services/agentRun');
   await runTurn(
-    { chatId, message, mode: 'campaign', files },
+    { chatId, message, mode: 'campaign', files, tier },
     {
       onProgress: (step) => onProgress?.(step),
       onCampaign: (_id, state) => {

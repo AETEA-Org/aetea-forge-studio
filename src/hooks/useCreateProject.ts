@@ -16,7 +16,7 @@ export function useCreateProject() {
   const [error, setError] = useState<string | null>(null);
   const [chatId, setChatId] = useState<string | null>(null);
 
-  const createProject = useCallback(async (briefText?: string, files?: File[]) => {
+  const createProject = useCallback(async (briefText?: string, files?: File[], tier?: string) => {
     if (!user?.email) {
       setError("You must be logged in to create a campaign");
       return;
@@ -98,7 +98,10 @@ export function useCreateProject() {
           // Losing the stream is not losing the work: the run continues on the
           // server, so the conversation stays and the user can reopen it.
           queryClient.invalidateQueries({ queryKey: ['chats'] });
-        }
+        },
+        // The chosen tier, so a build runs on what the customer picked rather
+        // than silently on the default.
+        tier
       );
     } catch (err) {
       const message = err instanceof Error ? err.message : "Campaign creation failed. Please try again later.";

@@ -2,9 +2,14 @@ import type { PricingTableRow } from "./pricingData";
 
 type PricingCreditsTableProps = {
   rows: PricingTableRow[];
+  /** Everything whose cost is not fixed, said once rather than row by row. */
+  variableNote?: string;
 };
 
-export function PricingCreditsTable({ rows }: PricingCreditsTableProps) {
+export function PricingCreditsTable({
+  rows,
+  variableNote,
+}: PricingCreditsTableProps) {
   return (
     <section className="relative py-16 md:py-24">
       <div className="container px-6 lg:px-12">
@@ -14,8 +19,13 @@ export function PricingCreditsTable({ rows }: PricingCreditsTableProps) {
               Actions vs Credits
             </p>
             <h2 className="font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl">
-              How credits are utilized by AETEA actions.
+              What things cost.
             </h2>
+            {variableNote && (
+              <p className="mt-5 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+                {variableNote}
+              </p>
+            )}
           </div>
 
           <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#1a1a1a]">

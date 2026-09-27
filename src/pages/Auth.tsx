@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Loader2, Chrome } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,13 +23,26 @@ export default function Auth() {
   const { user, loading, signIn, signUp, signInWithGoogle } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
-  // Redirect if already logged in
+  // Redirect if already logged in.
+  //
+  // `?next=` sends them back where they came from — someone who pressed a plan
+  // on the pricing page signs in and lands back on that page, where their
+  // choice is still waiting. Only same-site paths are honoured: taking a full
+  // URL here would turn sign-in into an open redirect.
   useEffect(() => {
     if (user && !loading) {
-      navigate("/app");
+      const next = searchParams.get("next");
+      const safe =
+        next &&
+        next.startsWith("/") &&
+        !next.startsWith("//") &&
+        // Some browsers normalise `/\host` to protocol-relative.
+        !next.startsWith("/\\");
+      navigate(safe ? next : "/app");
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, navigate, searchParams]);
 
   const validateForm = () => {
     const newErrors: { email?: string; password?: string } = {};
@@ -147,7 +160,7 @@ export default function Auth() {
               variant="outline"
               className="w-full bg-background/50 border-border/50 hover:bg-background/80"
               onClick={async () => {
-                const { error } = await signInWithGoogle();
+                const { error } = await signInWithGoogle(searchParams.get("next") ?? undefined);
                 if (error) {
                   toast({
                     title: "Google sign-in failed",

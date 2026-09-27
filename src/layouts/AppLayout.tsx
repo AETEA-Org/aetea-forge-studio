@@ -7,9 +7,13 @@ import { ModificationProvider } from "@/components/app/ModificationContext";
 import { AutoMessageProvider } from "@/contexts/AutoMessageContext";
 import { getChat } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
+import { useCheckoutReturn } from "@/hooks/useCheckoutReturn";
 import type { CampaignTab } from "@/components/app/CampaignTabs";
 
 export function AppLayout() {
+  // Stripe returns to /app, so this is the only place that sees it.
+  useCheckoutReturn();
+
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [copilotCollapsed, setCopilotCollapsed] = useState(false);
   const [isModifying, setIsModifyingState] = useState(false);

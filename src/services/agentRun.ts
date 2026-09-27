@@ -99,6 +99,21 @@ export class ChatBusyError extends Error {
   }
 }
 
+/**
+ * The account has no credits left.
+ *
+ * `402`, and the backend chose that status deliberately: the request is valid
+ * and the caller is who they say they are, they simply cannot pay for it. It
+ * gets its own error type so the UI can offer a way forward rather than treat
+ * it as a fault.
+ */
+export class OutOfCreditsError extends Error {
+  constructor(message?: string) {
+    super(message || "You're out of credits.");
+    this.name = "OutOfCreditsError";
+  }
+}
+
 export async function startTurn(req: StartTurnRequest): Promise<{ run_id: string }> {
   const form = new FormData();
   form.append("chat_id", req.chatId);
@@ -125,6 +140,7 @@ export async function startTurn(req: StartTurnRequest): Promise<{ run_id: string
     const detail = await response.json().catch(() => ({}));
     const message = detail.detail || "Could not start the message";
     if (response.status === 409) throw new ChatBusyError(message);
+    if (response.status === 402) throw new OutOfCreditsError(message);
     throw new Error(message);
   }
   return response.json();
@@ -175,6 +191,7 @@ export async function editTurn(
     const detail = await response.json().catch(() => ({}));
     const message = detail.detail || "Could not edit that message";
     if (response.status === 409) throw new ChatBusyError(message);
+    if (response.status === 402) throw new OutOfCreditsError(message);
     throw new Error(message);
   }
   return response.json();

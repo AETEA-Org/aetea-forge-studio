@@ -8,7 +8,7 @@ interface AuthContextType {
   loading: boolean;
   signUp: (email: string, password: string, username?: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signInWithGoogle: () => Promise<{ error: Error | null }>;
+  signInWithGoogle: (next?: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -55,11 +55,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   };
 
-  const signInWithGoogle = async () => {
+  /**
+   * Sign in with Google, returning to where the user started.
+   *
+   * `next` matters because a purchase begins before sign-in: someone presses a
+   * plan on the pricing page, we stash the choice, and they sign in. This used
+   * to send every Google user to `/app` regardless, so the stashed choice was
+   * never picked up — they arrived in the app with no checkout started, and the
+   * intent sat in session storage until they happened to open the pricing page
+   * again, when a checkout would start on its own.
+   *
+   * Only same-site paths are honoured. A full URL here would turn sign-in into
+   * an open redirect, and the backslash form is rejected too because some
+   * browsers normalise `/\host` to protocol-relative.
+   */
+  const signInWithGoogle = async (next?: string) => {
+    const safe =
+      next && next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/\\')
+        ? next
+        : '/app';
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/app`,
+        redirectTo: `${window.location.origin}${safe}`,
       },
     });
     return { error };

@@ -28,6 +28,7 @@ import { AgentSteps } from "@/components/app/AgentSteps";
 import { CampaignModeOffer } from "@/components/app/CampaignModeOffer";
 import { invalidateForDataChange } from "@/services/dataChanged";
 import { reportSendFailure } from "@/services/sendFailure";
+import { OutOfCredits } from "@/components/app/billing/OutOfCredits";
 import {
   acceptCampaignMode,
   cancelRun,
@@ -59,6 +60,10 @@ export default function ChatView() {
   const [steps, setSteps] = useState<ProgressStep[]>([]);
   const [modeProposal, setModeProposal] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
+  // Shown where the answer would have been, and cleared as soon as they try
+  // again — a stale "out of credits" card after a successful top-up would be
+  // worse than not showing one at all.
+  const [outOfCredits, setOutOfCredits] = useState(false);
   const [showCampaignLoading, setShowCampaignLoading] = useState(false);
   const [assetsOpen, setAssetsOpen] = useState(false);
   const [streamingAssets, setStreamingAssets] = useState<ChatRenderableAsset[]>([]);
@@ -318,6 +323,7 @@ export default function ChatView() {
           chatId,
           userEmail: user?.email,
           onStopped: () => setIsStreaming(false),
+          onOutOfCredits: () => setOutOfCredits(true),
         });
       }
     },
@@ -489,9 +495,21 @@ export default function ChatView() {
           </div>
         )}
 
+        {outOfCredits && (
+          <OutOfCredits
+            compact
+            className="mb-3"
+            onTopUp={() => navigate("/app/settings?tab=billing")}
+          />
+        )}
+
         <ChatInput
           ref={chatInputRef}
-          onSend={handleSendMessage}
+          onSend={(message, files, meta) => {
+            // Trying again is the signal they have dealt with it.
+            setOutOfCredits(false);
+            void handleSendMessage(message, files, meta);
+          }}
           isStreaming={isStreaming}
           onStop={handleStop}
           disabled={showCampaignLoading}

@@ -50,6 +50,11 @@ import { CharacterCreateDialog } from "./CharacterCreateDialog";
 import type { Character } from "@/types/api";
 
 export type ChatMode = "brainstorm" | "campaign";
+import { ConfirmVideoDialog } from "@/components/app/billing/ConfirmVideoDialog";
+import { videoCreditsFor } from "@/components/app/billing/videoCost";
+import { useBalance } from "@/hooks/useBilling";
+import { formatCredits } from "@/components/app/billing/format";
+
 export type GenerationMode = "general" | "image" | "video";
 
 export type GenerationOptions = {
@@ -396,7 +401,7 @@ function IconTipButton({
  *  convenience — it is the boundary a model id must never cross, and a
  *  hardcoded list is exactly how one would eventually leak into the product.
  */
-function TierPicker({
+export function TierPicker({
   tier,
   onChange,
   disabled,
@@ -532,6 +537,8 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   const [prefillDisplayText, setPrefillDisplayText] = useState("");
   const [generationMode, setGenerationMode] = useState<GenerationMode>("general");
   const [generationOptions, setGenerationOptions] = useState<GenerationOptions>({});
+  const [confirmVideoOpen, setConfirmVideoOpen] = useState(false);
+  const { data: creditBalance } = useBalance(enableGenerationModes);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -604,11 +611,10 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isPrefillActive) return;
-    if ((!message.trim() && files.length === 0) || isStreaming || disabled) return;
-
+  // A video render is the one thing here that cannot be undone, so sending is
+  // split in two: `handleSubmit` decides whether to ask, and `dispatch` is the
+  // send itself, reached either straight away or through the confirmation.
+  const dispatch = () => {
     // The tier rides on every message, not just when the generation pickers are
     // on: it applies to any turn, on any surface.
     const meta: ChatSendMeta | undefined =
@@ -634,6 +640,18 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isPrefillActive) return;
+    if ((!message.trim() && files.length === 0) || isStreaming || disabled) return;
+
+    if (enableGenerationModes && generationMode === "video") {
+      setConfirmVideoOpen(true);
+      return;
+    }
+    dispatch();
   };
 
   const handleFileSelect = (selectedFiles: FileList | null) => {
@@ -835,6 +853,40 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           <TooltipContent side="top">{canStop ? "Stop" : "Send"}</TooltipContent>
         </Tooltip>
       </form>
+
+      {/* What this is about to cost. Only for video, where the figure is a firm
+          price rather than an estimate, and where the charge cannot be undone. */}
+      {enableGenerationModes && generationMode === "video" && (
+        <p className="pt-1 text-[11px] text-muted-foreground">
+          About{" "}
+          {formatCredits(
+            videoCreditsFor({
+              resolution: generationOptions.resolution,
+              seconds: generationOptions.duration_seconds,
+              // Audio is ON unless it has been explicitly switched off — the
+              // toggle reads `audio === false`, and the backend defaults to
+              // true. Leaving this out quotes the silent rate for a clip that
+              // will be charged with sound: 19/s against 25/s, a 32%
+              // understatement on the default path.
+              withAudio: generationOptions.audio !== false,
+            }),
+          )}{" "}
+          credits
+        </p>
+      )}
+
+      <ConfirmVideoDialog
+        open={confirmVideoOpen}
+        onOpenChange={setConfirmVideoOpen}
+        onConfirm={() => {
+          setConfirmVideoOpen(false);
+          dispatch();
+        }}
+        resolution={generationOptions.resolution}
+        seconds={generationOptions.duration_seconds}
+        withAudio={generationOptions.audio !== false}
+        balance={creditBalance?.credits}
+      />
 
       {enableGenerationModes && (
         <div className="flex flex-wrap items-center gap-0.5 pt-0.5">

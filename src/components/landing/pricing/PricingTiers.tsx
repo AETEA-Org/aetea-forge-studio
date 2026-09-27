@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -9,14 +10,22 @@ import {
 
 type PricingTierProps = {
   plans: PricingPlan[];
+  /** Start buying this plan. The page owns sign-in and Stripe; a card does not. */
+  onChoose: (plan: PricingPlan, billingPeriod: BillingPeriod) => void;
+  /** Which plan is mid-flight, so only its own button shows a spinner. */
+  pendingPlanId?: string | null;
 };
 
 function PricingPlanCard({
   plan,
   billingPeriod,
+  onChoose,
+  pending,
 }: {
   plan: PricingPlan;
   billingPeriod: BillingPeriod;
+  onChoose: (plan: PricingPlan, billingPeriod: BillingPeriod) => void;
+  pending: boolean;
 }) {
   const activePrice = getPlanPrice(plan, billingPeriod);
   const unitLines = activePrice.priceUnitStacked
@@ -114,14 +123,21 @@ function PricingPlanCard({
         <div className="mt-auto flex justify-center">
           <Button
             type="button"
-            disabled
+            onClick={() => onChoose(plan, billingPeriod)}
+            disabled={pending}
+            aria-label={`Choose ${plan.name}`}
             className={cn(
               "h-[35px] w-[162px] min-w-0 rounded-full px-0 text-[13px] font-bold uppercase tracking-wide text-white shadow-[0_4px_4px_rgba(0,0,0,0.25)]",
-              "disabled:pointer-events-none disabled:opacity-100",
+              "transition-transform hover:brightness-110 active:scale-[0.98]",
+              "disabled:pointer-events-none disabled:opacity-70",
             )}
             style={{ backgroundColor: plan.accent }}
           >
-            Coming soon
+            {pending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              `Choose ${plan.name}`
+            )}
           </Button>
         </div>
       </div>
@@ -170,7 +186,7 @@ function BillingPeriodSwitcher({
   );
 }
 
-export function PricingTiers({ plans }: PricingTierProps) {
+export function PricingTiers({ plans, onChoose, pendingPlanId }: PricingTierProps) {
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("annual");
 
   return (
@@ -186,6 +202,8 @@ export function PricingTiers({ plans }: PricingTierProps) {
               key={plan.id}
               plan={plan}
               billingPeriod={billingPeriod}
+              onChoose={onChoose}
+              pending={pendingPlanId === plan.id}
             />
           ))}
         </div>

@@ -18,7 +18,7 @@ export function PricingAddons({ addons, footnote }: PricingAddonsProps) {
             <div className="h-px flex-1 bg-white/30" />
           </div>
           <h2 className="font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl">
-            Extra credits and users
+            Extra credits
           </h2>
         </div>
 
