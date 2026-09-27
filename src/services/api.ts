@@ -59,6 +59,26 @@ export async function checkHealth(): Promise<HealthResponse> {
   return response.json();
 }
 
+/** How much intelligence to apply. Names and copy come from the backend so a
+ *  model id can never reach the product through a hardcoded list here. */
+export interface TierOption {
+  code: string;
+  display_name: string;
+  description: string;
+}
+
+/** GET /ai/tiers — the options the picker shows, cheapest first after Auto. */
+export async function listTiers(): Promise<TierOption[]> {
+  const response = await fetch(buildUrl('/ai/tiers'), {
+    headers: await getHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error('Failed to fetch tiers');
+  }
+  const data = await response.json();
+  return (data.tiers ?? []) as TierOption[];
+}
+
 // List all chats for a user
 export async function listAllChats(): Promise<ChatListResponse> {
   const response = await fetch(buildUrl('/chats'), {
@@ -90,7 +110,7 @@ export async function createChat(
 // Get a single chat
 export async function getChat(
   chatId: string
-): Promise<{ chat_id: string; title: string; last_modified: string; mode: string; campaign_id: string | null }> {
+): Promise<{ chat_id: string; title: string; last_modified: string; mode: string; tier: string; campaign_id: string | null }> {
   const response = await fetch(
     buildUrl(`/chats/${chatId}`),
     {
@@ -109,7 +129,7 @@ export async function getChat(
 /** PATCH /chats/{chat_id} — rename and/or change mode (see API_REFERENCE.md). */
 export async function patchChat(
   chatId: string,
-  body: { title?: string; mode?: 'brainstorm' | 'campaign' }
+  body: { title?: string; mode?: 'brainstorm' | 'campaign'; tier?: string }
 ): Promise<{
   chat_id: string;
   title: string;

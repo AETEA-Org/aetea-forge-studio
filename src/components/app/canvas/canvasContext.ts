@@ -38,6 +38,10 @@ export interface CanvasContextValue {
   steps: ProgressStep[];
   onSend: (message: string, files?: File[], meta?: ChatSendMeta) => void;
   chatInputRef: React.RefObject<ChatInputHandle>;
+  /** How much intelligence to apply, and how to change it. Same picker as the
+   *  chat view, because a canvas turn costs exactly what a chat turn costs. */
+  tier: string;
+  onTierChange: (tier: string) => void;
   /** Count of selected cards attached as references to the next message. */
   referenceCount: number;
   // Approval (user-only)

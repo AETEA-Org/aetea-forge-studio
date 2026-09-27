@@ -50,6 +50,9 @@ export interface StartTurnRequest {
   /** Task-canvas pickers: which kind of output, and the settings chosen for it. */
   generationMode?: string;
   generationOptions?: Record<string, unknown>;
+  /** How much intelligence to apply: a tier code, or "auto" to let AETEA pick.
+   *  Omitted falls back to whatever the chat is set to. */
+  tier?: string;
 }
 
 export interface RunStatus {
@@ -106,6 +109,7 @@ export async function startTurn(req: StartTurnRequest): Promise<{ run_id: string
   (req.referenceAssetIds ?? []).forEach((id) =>
     form.append("reference_asset_ids", id)
   );
+  if (req.tier) form.append("tier", req.tier);
   if (req.generationMode) form.append("generation_mode", req.generationMode);
   if (req.generationOptions && Object.keys(req.generationOptions).length > 0) {
     form.append("generation_options", JSON.stringify(req.generationOptions));

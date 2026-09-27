@@ -138,6 +138,8 @@ export const ChatWindowNode = memo(function ChatWindowNode() {
     onSend,
     chatInputRef,
     referenceCount,
+    tier,
+    onTierChange,
   } = useCanvas();
 
   return (
@@ -197,6 +199,8 @@ export const ChatWindowNode = memo(function ChatWindowNode() {
               variant="floating"
               enableGenerationModes
               frameAssets={threadAssets}
+              tier={tier}
+              onTierChange={onTierChange}
             />
           </div>
         </ChatPanelDropZone>

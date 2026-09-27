@@ -3,7 +3,12 @@ import { useParams, useNavigate } from "react-router-dom";
 import { FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChatMessages } from "@/components/app/ChatMessages";
-import { ChatInput, type ChatMode, type ChatInputHandle } from "@/components/app/ChatInput";
+import {
+  ChatInput,
+  type ChatMode,
+  type ChatInputHandle,
+  type ChatSendMeta,
+} from "@/components/app/ChatInput";
 import { ChatPanelDropZone } from "@/components/app/ChatPanelDropZone";
 import { BriefAnalysisLoading } from "@/components/app/BriefAnalysisLoading";
 import { useQuery } from "@tanstack/react-query";
@@ -44,6 +49,9 @@ export default function ChatView() {
   const chatInputRef = useRef<ChatInputHandle>(null);
 
   const [mode, setMode] = useState<ChatMode>("brainstorm");
+  // How much intelligence to apply. "auto" lets AETEA choose per message, which
+  // is where a new chat starts; the backend remembers whatever was last used.
+  const [tier, setTier] = useState<string>("auto");
   const [streamingContent, setStreamingContent] = useState("");
   const [optimisticMessages, setOptimisticMessages] = useState<ChatMessage[]>([]);
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
@@ -129,11 +137,14 @@ export default function ChatView() {
   const messages = [...serverMessages, ...optimisticMessages];
   const chatTitle = chatData?.title ?? "Chat";
 
+  // Open the composer where the chat was left: the mode it was in, and the
+  // tier it was last sent on.
   useEffect(() => {
+    if (chatData?.tier) setTier(chatData.tier);
     if (chatData?.mode === "campaign" || chatData?.mode === "brainstorm") {
       setMode(chatData.mode);
     }
-  }, [chatData?.mode]);
+  }, [chatData?.mode, chatData?.tier]);
 
   // Rewriting a message replaces everything after it, then re-answers.
   const handleEditMessage = useCallback(
@@ -177,7 +188,7 @@ export default function ChatView() {
 
 
   const handleSendMessage = useCallback(
-    async (message: string, files?: File[]) => {
+    async (message: string, files?: File[], meta?: ChatSendMeta) => {
       if (!user?.email || !chatId) {
         toast({
           title: "Authentication required",
@@ -209,6 +220,7 @@ export default function ChatView() {
             message,
             mode,
             files,
+            tier: meta?.tier ?? tier,
           },
           {
             onToken: (_delta, accumulated) => {
@@ -309,7 +321,7 @@ export default function ChatView() {
         });
       }
     },
-    [chatId, mode, user, queryClient, toast, mergeStreamAssets, chatData?.campaign_id]
+    [chatId, mode, tier, user, queryClient, toast, mergeStreamAssets, chatData?.campaign_id]
   );
 
   useEffect(() => {
@@ -485,6 +497,8 @@ export default function ChatView() {
           disabled={showCampaignLoading}
           mode={mode}
           onModeToggle={() => setMode((m) => (m === "brainstorm" ? "campaign" : "brainstorm"))}
+          tier={tier}
+          onTierChange={setTier}
           textareaMaxHeight={200}
         />
       </ChatPanelDropZone>

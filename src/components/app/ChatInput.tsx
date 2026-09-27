@@ -20,6 +20,7 @@ import {
   SkipForward,
   Users,
   Plus,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,7 @@ import { cn } from "@/lib/utils";
 import { partitionChatFiles, validateChatFile } from "@/lib/chatFileValidation";
 import { useStyleCards } from "@/hooks/useStyleCards";
 import { useCharacters, useCreateCharacter } from "@/hooks/useCharacters";
+import { listTiers, type TierOption } from "@/services/api";
 import { CharacterCreateDialog } from "./CharacterCreateDialog";
 import type { Character } from "@/types/api";
 
@@ -73,6 +75,8 @@ export type FrameAsset = {
 export type ChatSendMeta = {
   generationMode?: GenerationMode;
   generationOptions?: GenerationOptions;
+  /** How much intelligence to apply to this message. */
+  tier?: string;
 };
 
 interface ChatInputProps {
@@ -85,6 +89,11 @@ interface ChatInputProps {
   /** When provided, shows mode toggle (icon + label) and uses this as current mode */
   mode?: ChatMode;
   onModeToggle?: () => void;
+  /** When provided, shows the intelligence picker. The code currently chosen —
+   *  a tier code or "auto". Changing it applies from the next message on, so a
+   *  conversation can move between tiers as often as it likes. */
+  tier?: string;
+  onTierChange?: (tier: string) => void;
   /** Max height (px) for textarea before scrolling. Default 120. Use 200+ for chat view. */
   textareaMaxHeight?: number;
   /** When set, display this message in the textarea and optionally animate it. Parent clears when send starts. */
@@ -381,6 +390,81 @@ function IconTipButton({
   );
 }
 
+/** The intelligence picker: Auto, then cheapest to dearest.
+ *
+ *  Options come from the backend rather than a list here. That is not
+ *  convenience — it is the boundary a model id must never cross, and a
+ *  hardcoded list is exactly how one would eventually leak into the product.
+ */
+function TierPicker({
+  tier,
+  onChange,
+  disabled,
+}: {
+  tier: string;
+  onChange: (code: string) => void;
+  disabled: boolean;
+}) {
+  const [options, setOptions] = useState<TierOption[]>([]);
+
+  useEffect(() => {
+    let alive = true;
+    listTiers()
+      .then((found) => {
+        if (alive) setOptions(found);
+      })
+      // The composer must still work if this fails; the picker just does not
+      // appear, and the turn runs on whatever the chat is already set to.
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  if (options.length === 0) return null;
+  const current = options.find((o) => o.code === tier) ?? options[0];
+
+  return (
+    <DropdownMenu>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={disabled}
+              className="h-[44px] shrink-0 flex items-center gap-1.5 px-3 border-border"
+            >
+              <Sparkles className="h-4 w-4" />
+              <span className="text-xs font-medium">{current.display_name}</span>
+              <ChevronDown className="h-3 w-3 opacity-60" />
+            </Button>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent side="top">{current.description}</TooltipContent>
+      </Tooltip>
+      <DropdownMenuContent align="end" side="top" className="max-w-[18rem]">
+        {options.map((option) => (
+          <DropdownMenuItem
+            key={option.code}
+            onClick={() => onChange(option.code)}
+            className={cn(
+              "flex flex-col items-start gap-0.5",
+              option.code === current.code && "bg-accent"
+            )}
+          >
+            <span className="text-sm font-medium">{option.display_name}</span>
+            <span className="text-xs text-muted-foreground">
+              {option.description}
+            </span>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 function OptionPopover({
   tip,
   disabled,
@@ -429,6 +513,8 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     disabled,
     mode,
     onModeToggle,
+    tier,
+    onTierChange,
     textareaMaxHeight = 120,
     prefillMessage,
     onPrefillComplete,
@@ -523,13 +609,23 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     if (isPrefillActive) return;
     if ((!message.trim() && files.length === 0) || isStreaming || disabled) return;
 
-    const meta: ChatSendMeta | undefined = enableGenerationModes
-      ? {
-          generationMode,
-          generationOptions:
-            Object.keys(generationOptions).length > 0 ? generationOptions : undefined,
-        }
-      : undefined;
+    // The tier rides on every message, not just when the generation pickers are
+    // on: it applies to any turn, on any surface.
+    const meta: ChatSendMeta | undefined =
+      enableGenerationModes || tier
+        ? {
+            ...(enableGenerationModes
+              ? {
+                  generationMode,
+                  generationOptions:
+                    Object.keys(generationOptions).length > 0
+                      ? generationOptions
+                      : undefined,
+                }
+              : {}),
+            ...(tier ? { tier } : {}),
+          }
+        : undefined;
 
     onSend(message.trim(), files.length > 0 ? files : undefined, meta);
     setMessage("");
@@ -683,6 +779,13 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             }
           }}
         />
+        {tier !== undefined && onTierChange && (
+          <TierPicker
+            tier={tier}
+            onChange={onTierChange}
+            disabled={isStreaming || disabled}
+          />
+        )}
         {onModeToggle && mode !== undefined && (
           <Button
             type="button"

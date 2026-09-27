@@ -86,6 +86,9 @@ export default function DeliverableCanvasPage() {
   const [optimisticMessages, setOptimisticMessages] = useState<ChatMessage[]>([]);
   const [streamingAssets, setStreamingAssets] = useState<ChatRenderableAsset[]>([]);
   const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
+  // The canvas gets the same picker as the chat view: a turn started here costs
+  // exactly what a turn started there costs.
+  const [tier, setTier] = useState<string>("auto");
   const [approvingIds, setApprovingIds] = useState<Set<string>>(new Set());
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [fixturePositions, setFixturePositions] = useState<FixturePositions>(() =>
@@ -365,6 +368,7 @@ export default function DeliverableCanvasPage() {
             referenceAssetIds: selectedAssetIds,
             generationMode: meta?.generationMode,
             generationOptions: meta?.generationOptions,
+            tier: meta?.tier ?? tier,
           },
           {
             onToken: (_delta, accumulated) => {
@@ -455,6 +459,7 @@ export default function DeliverableCanvasPage() {
       selectedAssetIds,
       setIsModifying,
       taskId,
+      tier,
       toast,
       user?.email,
     ]
@@ -483,12 +488,15 @@ export default function DeliverableCanvasPage() {
       onApprove: handleApprove,
       approvingIds,
       referenceCount: selectedAssetIds.length,
+      tier,
+      onTierChange: setTier,
     };
   }, [
     isCampaignCanvas,
     task,
     objects,
     chatId,
+    tier,
     canvasKey,
     campaignId,
     user,
