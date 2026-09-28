@@ -1,4 +1,9 @@
 import type { PricingFaqItem } from "./pricingData";
+import {
+  PRICING_BODY,
+  PRICING_SECTION_TITLE,
+  PRICING_SUBHEADING,
+} from "./pricingStyles";
 
 type PricingFaqProps = {
   items: PricingFaqItem[];
@@ -10,7 +15,7 @@ export function PricingFaq({ items }: PricingFaqProps) {
       <div className="container px-6 lg:px-12">
         <div className="mb-10 max-w-2xl">
           <div className="mb-4 h-1.5 w-40 bg-white/40 sm:w-64" />
-          <h2 className="font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl">
+          <h2 className={`${PRICING_SECTION_TITLE} text-foreground`}>
             FAQ&apos;s
           </h2>
         </div>
@@ -18,10 +23,10 @@ export function PricingFaq({ items }: PricingFaqProps) {
         <div className="mx-auto max-w-5xl grid grid-cols-1 gap-x-12 gap-y-8 lg:grid-cols-2">
           {items.map((item) => (
             <div key={item.question} className="min-w-0">
-              <h3 className="mb-2 text-base font-bold text-foreground sm:text-lg">
+              <h3 className={`mb-2 ${PRICING_SUBHEADING}`}>
                 {item.question}
               </h3>
-              <p className="text-sm leading-relaxed text-foreground/75 sm:text-base">
+              <p className={PRICING_BODY}>
                 {item.answer}
               </p>
             </div>
