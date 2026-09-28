@@ -48,6 +48,21 @@ function buildUrl(path: string, params?: Record<string, string>): string {
 // services/authHeaders.ts for why the two cannot share one header.
 const getHeaders = backendHeaders;
 
+// Fetch a legacy project section used by the overview screen.
+export async function getProjectSection<T>(
+  projectId: string,
+  section: SectionName,
+): Promise<SectionResponse<T>> {
+  const response = await fetch(buildUrl(`/projects/${projectId}/section/${section}`), {
+    headers: await getHeaders(),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || `Failed to fetch ${section}`);
+  }
+  return response.json();
+}
+
 // Health check
 export async function checkHealth(): Promise<HealthResponse> {
   const response = await fetch(buildUrl('/health'), {
@@ -170,9 +185,9 @@ export async function getCampaignByChatId(
     updated_at: string;
   };
   sections: {
-    brief: any;
-    research: any;
-    strategy: any;
+    brief: BriefModel;
+    research: ResearchModel;
+    strategy: StrategyModel;
   };
 }> {
   const response = await fetch(
@@ -203,9 +218,9 @@ export async function getCampaignById(
     updated_at: string;
   };
   sections: {
-    brief: any;
-    research: any;
-    strategy: any;
+    brief: BriefModel;
+    research: ResearchModel;
+    strategy: StrategyModel;
   };
 }> {
   const response = await fetch(

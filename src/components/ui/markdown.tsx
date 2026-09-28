@@ -1,4 +1,5 @@
-import ReactMarkdown from 'react-markdown';
+import { isValidElement, type ReactNode } from 'react';
+import ReactMarkdown, { type Components } from 'react-markdown';
 import { cn } from '@/lib/utils';
 import { ReferenceIcon, isReferenceLink } from '@/components/ui/reference-icon';
 
@@ -12,30 +13,22 @@ export function Markdown({ children, className, inline = false }: MarkdownProps)
   // Return null if no content
   if (!children) return null;
 
-  const components = {
+  const extractText = (child: ReactNode): string => {
+    if (typeof child === 'string' || typeof child === 'number') return String(child);
+    if (Array.isArray(child)) return child.map(extractText).join('');
+    if (isValidElement<{ children?: ReactNode }>(child)) {
+      return extractText(child.props.children);
+    }
+    return '';
+  };
+
+  const components: Components = {
     // Style links - replace references with icons
-    a: ({ node, href, children: linkChildren, ...props }: any) => {
+    a: ({ href, children: linkChildren, ...props }) => {
       // Extract display name from children (react-markdown passes text as children)
       let displayName = '';
       
-      if (typeof linkChildren === 'string') {
-        displayName = linkChildren;
-      } else if (Array.isArray(linkChildren)) {
-        // Flatten nested children to get text content
-        const extractText = (child: any): string => {
-          if (typeof child === 'string') return child;
-          if (typeof child === 'number') return String(child);
-          if (child?.props?.children) {
-            const nested = child.props.children;
-            if (typeof nested === 'string') return nested;
-            if (Array.isArray(nested)) return nested.map(extractText).join('');
-          }
-          return '';
-        };
-        displayName = linkChildren.map(extractText).join('');
-      } else if (linkChildren) {
-        displayName = String(linkChildren);
-      }
+      displayName = extractText(linkChildren);
       
       // Check if this is a reference link
       if (href && displayName && isReferenceLink(displayName)) {
@@ -62,15 +55,15 @@ export function Markdown({ children, className, inline = false }: MarkdownProps)
       );
     },
     // Style strong/bold
-    strong: ({ node, ...props }: any) => (
+    strong: (props) => (
       <strong {...props} className="font-semibold" />
     ),
     // Style emphasis/italic
-    em: ({ node, ...props }: any) => (
+    em: (props) => (
       <em {...props} className="italic" />
     ),
     // Style code
-    code: ({ node, ...props }: any) => (
+    code: (props) => (
       <code {...props} className="bg-muted px-1 py-0.5 rounded text-sm" />
     ),
   };
@@ -82,7 +75,7 @@ export function Markdown({ children, className, inline = false }: MarkdownProps)
         <ReactMarkdown
           components={{
             ...components,
-            p: ({ children }: any) => <>{children}</>, // No paragraph wrapper for inline
+            p: ({ children: paragraphChildren }) => <>{paragraphChildren}</>, // No paragraph wrapper for inline
           }}
         >
           {children}
@@ -98,21 +91,21 @@ export function Markdown({ children, className, inline = false }: MarkdownProps)
         components={{
           ...components,
           // Style paragraphs
-          p: ({ node, ...props }: any) => (
+          p: (props) => (
             <p {...props} className="mb-2 last:mb-0 break-words" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }} />
           ),
           // Style lists (list-disc/pl-5 restore bullets; Tailwind Preflight removes list-style)
-          ul: ({ node, ...props }: any) => (
+          ul: (props) => (
             <ul {...props} className="list-disc pl-5 space-y-1 break-words my-2" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }} />
           ),
-          ol: ({ node, ...props }: any) => (
+          ol: (props) => (
             <ol {...props} className="list-decimal pl-5 space-y-1 break-words my-2" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }} />
           ),
-          li: ({ node, ...props }: any) => (
+          li: (props) => (
             <li {...props} className="break-words" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }} />
           ),
           // Style code blocks
-          pre: ({ node, ...props }: any) => (
+          pre: (props) => (
             <pre {...props} className="overflow-x-auto break-words" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }} />
           ),
         }}

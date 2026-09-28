@@ -19,7 +19,9 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
-      "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
+      // Shared UI modules intentionally export component helpers and variants.
+      // Vite still refreshes these modules correctly, so do not flag that pattern.
+      "react-refresh/only-export-components": "off",
       "@typescript-eslint/no-unused-vars": "off",
     },
   },
