@@ -1,20 +1,32 @@
-const services = [
-  "Strategy",
-  "Branding",
-  "Creative Direction",
-  "Design",
-  "Content Systems",
-  "Film & Video",
-  "Editing",
-  "Voiceover",
-  "PR & Press",
-  "Web",
-  "Apps & Games",
-  "Email Marketing",
-  "Publishing",
-  "Music & Lyrics",
-  "Analytics",
-  "Scheduling",
+import { cn } from "@/lib/utils";
+
+type Service = {
+  label: string;
+  comingSoon?: boolean;
+};
+
+const services: readonly Service[] = [
+  { label: "Research" },
+  { label: "Strategy" },
+  { label: "Branding" },
+  { label: "Creative Direction" },
+  { label: "Design" },
+  { label: "Content Systems" },
+  { label: "Images" },
+  { label: "Film & Video" },
+  { label: "Editing" },
+  { label: "Voiceover" },
+  { label: "PR & Press" },
+  { label: "Web" },
+  { label: "Apps & Games", comingSoon: true },
+  { label: "Email Marketing" },
+  { label: "Articles" },
+  { label: "Print" },
+  { label: "Digital & Social Media" },
+  { label: "Publishing", comingSoon: true },
+  { label: "Music & Lyrics" },
+  { label: "Analytics", comingSoon: true },
+  { label: "Scheduling", comingSoon: true },
 ];
 
 export function ServicesGrid() {
@@ -40,12 +52,19 @@ export function ServicesGrid() {
             </div>
 
             <div className="flex flex-wrap gap-3">
-              {services.map((service) => (
+              {services.map(({ label, comingSoon }) => (
                 <span
-                  key={service}
-                  className="px-4 py-2 rounded-full text-sm border border-border text-foreground/65 hover:text-foreground hover:border-foreground/30 transition-colors cursor-default"
+                  key={label}
+                  aria-disabled={comingSoon || undefined}
+                  aria-label={comingSoon ? `${label} — coming soon` : undefined}
+                  className={cn(
+                    "rounded-full border px-4 py-2 text-sm cursor-default",
+                    comingSoon
+                      ? "border-foreground/10 text-foreground/30"
+                      : "border-border text-foreground/65 transition-colors hover:border-foreground/30 hover:text-foreground",
+                  )}
                 >
-                  {service}
+                  {label}
                 </span>
               ))}
             </div>
