@@ -30,7 +30,7 @@ import type {
 
 // Direct API base URL (bypassing Supabase Edge Function)
 import { API_BASE_URL } from '@/services/config';
-import { backendHeaders, gateOnlyHeaders } from '@/services/authHeaders';
+import { backendHeaders } from '@/services/authHeaders';
 
 // Helper to build URL with params
 function buildUrl(path: string, params?: Record<string, string>): string {
@@ -43,16 +43,14 @@ function buildUrl(path: string, params?: Record<string, string>): string {
   return url.toString();
 }
 
-// Headers for a backend call: the HF gate token plus the user's session token.
-// Async because a fresh session token is what identifies the caller — see
-// services/authHeaders.ts for why the two cannot share one header.
+// Headers for a backend call: the user's session token. Async because a fresh
+// session token is what identifies the caller — see services/authHeaders.ts.
 const getHeaders = backendHeaders;
 
-// Health check
+// Health check. Deliberately unauthenticated: it is one of the three open
+// endpoints, and it has to work before anyone has signed in.
 export async function checkHealth(): Promise<HealthResponse> {
-  const response = await fetch(buildUrl('/health'), {
-    headers: gateOnlyHeaders(),
-  });
+  const response = await fetch(buildUrl('/health'));
   if (!response.ok) {
     throw new Error('Health check failed');
   }
