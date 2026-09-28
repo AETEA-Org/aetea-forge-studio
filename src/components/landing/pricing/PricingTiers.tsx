@@ -47,7 +47,7 @@ function PricingPlanCard({
       </div>
 
       <h3
-        className="font-brush mx-auto -mt-10 w-[94%] text-center text-[4.4rem] leading-none tracking-tight sm:-mt-9 sm:text-[4.2rem]"
+        className="font-brush relative z-10 mx-auto -mt-12 w-full -translate-x-2 self-center text-center text-[6.6rem] leading-none tracking-tight sm:-mt-11 sm:text-[6.3rem]"
         style={{
           color: "#FFFFFF",
           // Figma-like outline: white fill + colored stroke via shadow.
