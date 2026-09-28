@@ -1,9 +1,0 @@
-project_id = "sprbamfghyaimfuvpgmp"
-
-[functions.api-proxy]
-verify_jwt = false
-
-# Stripe has no Supabase JWT to present; the request is authenticated by its own
-# signature, which the backend verifies.
-[functions.stripe-webhook]
-verify_jwt = false
