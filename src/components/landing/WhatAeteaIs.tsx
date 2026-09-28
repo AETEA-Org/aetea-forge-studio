@@ -1,10 +1,11 @@
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { LANDING_SECTION_SPACIOUS } from "./landingStyles";
 
 export function WhatAeteaIs() {
   return (
-    <section id="what-aetea-is" className="py-28 md:py-36 relative overflow-hidden grain">
+    <section id="what-aetea-is" className={`${LANDING_SECTION_SPACIOUS} relative overflow-hidden grain`}>
       {/* Subtle gradient */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-transparent" />
       
@@ -37,7 +38,7 @@ export function WhatAeteaIs() {
           </div>
 
           {/* CTA */}
-          <div className="mt-12">
+          <div className="mt-12 flex justify-center md:justify-start">
             <Link to="/auth">
               <Button 
                 variant="outline"

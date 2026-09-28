@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, FileText, Compass, Package, Rocket } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { LANDING_SECTION_SPACIOUS } from "./landingStyles";
 
 const steps = [
   {
@@ -31,7 +32,7 @@ const steps = [
 
 export function HowItWorks() {
   return (
-    <section id="how-it-works" className="py-28 md:py-36 relative overflow-hidden grain">
+    <section id="how-it-works" className={`${LANDING_SECTION_SPACIOUS} relative overflow-hidden grain`}>
       {/* Subtle background gradient */}
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/5 to-transparent" />
       

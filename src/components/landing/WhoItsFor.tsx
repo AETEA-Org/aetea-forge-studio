@@ -23,7 +23,7 @@ const audiences = [
 
 export function WhoItsFor() {
   return (
-    <section id="who-its-for" className="py-28 md:py-36 relative grain">
+    <section id="who-its-for" className={`${LANDING_SECTION_SPACIOUS} relative grain`}>
       <div className="container px-6 lg:px-12">
         <div className="max-w-6xl mx-auto">
           {/* Section header */}
@@ -65,3 +65,4 @@ export function WhoItsFor() {
     </section>
   );
 }
+import { LANDING_SECTION_SPACIOUS } from "./landingStyles";

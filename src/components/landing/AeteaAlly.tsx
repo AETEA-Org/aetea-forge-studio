@@ -1,5 +1,9 @@
 import { User } from "lucide-react";
 import aeteaWordmark from "@/assets/aetea-auth-wordmark.png";
+import {
+  LANDING_SECTION_STANDARD,
+  LANDING_SECTION_TRAILING,
+} from "./landingStyles";
 
 function AmplifyConnector() {
   return (
@@ -56,7 +60,7 @@ function PhilosophyInfographic() {
 
 function PhilosophySection() {
   return (
-    <section className="relative grain py-24 md:py-32">
+    <section className={`${LANDING_SECTION_STANDARD} relative grain`}>
       <div className="container px-6 lg:px-12">
         <div className="mx-auto max-w-5xl">
           <div className="grid items-start gap-12 lg:grid-cols-5 lg:gap-16">
@@ -100,7 +104,7 @@ function PhilosophySection() {
 
 function BroughtToLifeSection() {
   return (
-    <section className="relative grain pb-24 md:pb-32">
+    <section className={`${LANDING_SECTION_TRAILING} relative grain`}>
       <div className="container px-6 lg:px-12">
         <div className="mx-auto max-w-5xl">
           <div className="mb-6 flex items-center gap-3">

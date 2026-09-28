@@ -1,10 +1,11 @@
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { LANDING_SECTION_STANDARD } from "./landingStyles";
 
 export function FinalCTA() {
   return (
-    <section className="py-24 md:py-32 relative grain overflow-hidden">
+    <section className={`${LANDING_SECTION_STANDARD} relative grain overflow-hidden`}>
       {/* Pure black background */}
       <div className="absolute inset-0 bg-black" />
       
