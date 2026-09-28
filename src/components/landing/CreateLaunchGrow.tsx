@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { LANDING_SECTION_STANDARD } from "./landingStyles";
 
 const pillars = [
   {
@@ -44,7 +45,7 @@ export function CreateLaunchGrow() {
   const activePillar = pillars.find((p) => p.id === activeTab)!;
 
   return (
-    <section className="py-24 md:py-32 relative grain">
+    <section className={`${LANDING_SECTION_STANDARD} relative grain`}>
       <div className="container px-6 lg:px-12">
         <div className="max-w-5xl mx-auto">
           {/* Section header */}

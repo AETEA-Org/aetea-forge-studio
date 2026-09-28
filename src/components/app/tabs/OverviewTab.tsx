@@ -1,5 +1,5 @@
 import { Loader2 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useProjectOverview } from "@/hooks/useProjectSection";
 import { Markdown } from "@/components/ui/markdown";
 import { ModificationOverlay } from "@/components/app/ModificationOverlay";
@@ -18,7 +18,10 @@ export function OverviewTab({ projectId, isModifying }: OverviewTabProps) {
   const overview = data?.content as OverviewModel | undefined;
 
   // Safe accessors with defaults (must be before early returns for hooks)
-  const typography = overview?.brand_snapshot?.typography || [];
+  const typography = useMemo(
+    () => overview?.brand_snapshot?.typography || [],
+    [overview?.brand_snapshot?.typography],
+  );
 
   // Load fonts when typography is available (must be before early returns)
   useEffect(() => {

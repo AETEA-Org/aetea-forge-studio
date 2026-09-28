@@ -1,13 +1,25 @@
 import { useQuery } from "@tanstack/react-query";
-import { getCampaignByChatId } from "@/services/api";
+import { getCampaignByChatId, getProjectSection } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 import { normalizeStrategyFromApi } from "@/lib/normalizeStrategySection";
 import type { 
   BriefModel, 
+  OverviewModel,
   ResearchModel, 
   StrategyModel,
   SectionResponse 
 } from "@/types/api";
+
+export function useProjectOverview(projectId: string | undefined) {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['project', projectId, 'overview', user?.email],
+    queryFn: () => getProjectSection<OverviewModel>(projectId!, 'overview'),
+    enabled: !!projectId && !!user?.email,
+    staleTime: 1000 * 60 * 5,
+  });
+}
 
 // Generic hook to get a campaign section
 export function useCampaignSection<T>(

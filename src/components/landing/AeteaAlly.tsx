@@ -1,28 +1,24 @@
 import { User } from "lucide-react";
+import aeteaWordmark from "@/assets/aetea-auth-wordmark.png";
+import {
+  LANDING_SECTION_STANDARD,
+  LANDING_SECTION_TRAILING,
+} from "./landingStyles";
 
-function AmplifyArrows() {
+function AmplifyConnector() {
   return (
     <svg
-      width="56"
-      height="28"
-      viewBox="0 0 56 28"
+      width="72"
+      height="34"
+      viewBox="0 0 72 34"
       aria-hidden="true"
-      className="text-primary/70"
+      className="shrink-0 text-foreground"
+      style={{ filter: "drop-shadow(0 0 2px #d9efff) drop-shadow(0 0 4px #32a7ff) drop-shadow(0 0 8px #0064ff)" }}
     >
-      {/* AETEA → human (top arrow, points left) */}
       <path
-        d="M48 9 H12 M16 6 L12 9 L16 12"
+        d="M7 17 H65 M7 17 L14 24 M58 10 L65 17"
         stroke="currentColor"
-        strokeWidth="1.5"
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      {/* human → AETEA (bottom arrow, points right) */}
-      <path
-        d="M8 19 H44 M40 16 L44 19 L40 22"
-        stroke="currentColor"
-        strokeWidth="1.5"
+        strokeWidth="3.5"
         fill="none"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -33,24 +29,29 @@ function AmplifyArrows() {
 
 function PhilosophyInfographic() {
   return (
-    <div className="relative rounded-3xl border border-border/50 bg-card/20 px-6 py-10 sm:px-8">
-      <div className="flex items-center justify-center gap-8 sm:gap-10">
-        <User className="h-10 w-10 shrink-0 text-foreground/75" strokeWidth={1.5} aria-hidden="true" />
+    <div className="relative mx-auto w-full max-w-[300px] rounded-3xl border border-blue-400/70 bg-card/20 px-3 py-6 shadow-[0_0_22px_rgba(48,145,255,0.4),inset_0_0_16px_rgba(48,145,255,0.12)] sm:max-w-[340px] sm:px-4 sm:py-7">
+      <div className="flex items-center justify-center gap-3 sm:gap-4">
+        <User
+          className="-mr-1.5 h-12 w-12 shrink-0 text-foreground sm:h-14 sm:w-14"
+          style={{ filter: "drop-shadow(0 0 2px #d9efff) drop-shadow(0 0 4px #32a7ff) drop-shadow(0 0 8px #0064ff)" }}
+          strokeWidth={1.65}
+          aria-hidden="true"
+        />
 
-        <div className="flex flex-col items-center gap-2">
-          <AmplifyArrows />
-          <span className="text-[10px] uppercase tracking-[0.2em] text-primary/70">Amplify</span>
-        </div>
+        <AmplifyConnector />
 
         <img
-          src="/favicon.png"
+          src={aeteaWordmark}
           alt=""
           aria-hidden="true"
-          className="h-10 w-10 shrink-0 object-contain"
+          className="-ml-1.5 h-auto w-[102px] shrink-0 object-contain sm:w-[112px]"
+          style={{ filter: "drop-shadow(0 0 2px #d9efff) drop-shadow(0 0 4px #32a7ff) drop-shadow(0 0 8px #0064ff)" }}
         />
       </div>
 
-      <p className="mt-8 text-center text-sm tracking-wide text-foreground/70 sm:text-base">
+      <p
+        className="mx-auto mt-2.5 w-full text-center font-display text-base font-bold tracking-tight text-foreground sm:text-lg"
+      >
         Intelligence at work
       </p>
     </div>
@@ -59,7 +60,7 @@ function PhilosophyInfographic() {
 
 function PhilosophySection() {
   return (
-    <section className="relative grain py-24 md:py-32">
+    <section className={`${LANDING_SECTION_STANDARD} relative grain`}>
       <div className="container px-6 lg:px-12">
         <div className="mx-auto max-w-5xl">
           <div className="grid items-start gap-12 lg:grid-cols-5 lg:gap-16">
@@ -91,7 +92,7 @@ function PhilosophySection() {
               </div>
             </div>
 
-            <div className="lg:col-span-2 lg:sticky lg:top-28">
+            <div className="lg:col-span-2 lg:sticky lg:top-28 lg:pt-12">
               <PhilosophyInfographic />
             </div>
           </div>
@@ -103,7 +104,7 @@ function PhilosophySection() {
 
 function BroughtToLifeSection() {
   return (
-    <section className="relative grain pb-24 md:pb-32">
+    <section className={`${LANDING_SECTION_TRAILING} relative grain`}>
       <div className="container px-6 lg:px-12">
         <div className="mx-auto max-w-5xl">
           <div className="mb-6 flex items-center gap-3">

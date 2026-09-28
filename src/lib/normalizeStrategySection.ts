@@ -181,5 +181,5 @@ export function normalizeStrategyFromApi(raw: unknown): StrategyModel {
   if (normalized !== undefined) {
     next.creative_foundation = normalized;
   }
-  return next as StrategyModel;
+  return next as unknown as StrategyModel;
 }

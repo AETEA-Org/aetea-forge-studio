@@ -1,4 +1,9 @@
 import type { PricingAddon } from "./pricingData";
+import {
+  PRICING_DISCLAIMER,
+  PRICING_EYEBROW,
+  PRICING_SECTION_TITLE,
+} from "./pricingStyles";
 
 type PricingAddonsProps = {
   addons: PricingAddon[];
@@ -12,12 +17,12 @@ export function PricingAddons({ addons, footnote }: PricingAddonsProps) {
         <div className="mb-10 flex flex-col items-center text-center">
           <div className="mb-4 flex w-full max-w-xl items-center gap-4">
             <div className="h-px flex-1 bg-white/30" />
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+            <p className={PRICING_EYEBROW}>
               Add-ons
             </p>
             <div className="h-px flex-1 bg-white/30" />
           </div>
-          <h2 className="font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl">
+          <h2 className={`${PRICING_SECTION_TITLE} text-foreground`}>
             Extra credits
           </h2>
         </div>
@@ -48,7 +53,7 @@ export function PricingAddons({ addons, footnote }: PricingAddonsProps) {
           </ul>
         </div>
 
-        <p className="mt-6 max-w-3xl text-sm text-muted-foreground md:text-base">
+        <p className={`mt-6 max-w-3xl ${PRICING_DISCLAIMER}`}>
           {footnote}
         </p>
       </div>

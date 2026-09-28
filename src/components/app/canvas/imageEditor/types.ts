@@ -1,4 +1,4 @@
-import type { FabricImage, FabricObject } from "fabric";
+import type { FabricImage, FabricObject, IText } from "fabric";
 
 export type ShapeTool = "rect" | "ellipse" | "line" | "triangle" | "arrow";
 
@@ -95,9 +95,7 @@ export interface ImageEditorDialogProps {
 
 export type BgRef = { current: FabricImage | null };
 
-export function isTextObject(obj: FabricObject | null): obj is FabricObject & {
-  type: "i-text" | "text" | "textbox";
-} {
+export function isTextObject(obj: FabricObject | null): obj is IText {
   if (!obj) return false;
   const t = (obj.type || "").toLowerCase();
   return t === "i-text" || t === "text" || t === "textbox";

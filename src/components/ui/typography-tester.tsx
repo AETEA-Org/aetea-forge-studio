@@ -80,11 +80,14 @@ export function TypographyTester({ fonts }: TypographyTesterProps) {
                           {font}
                         </p>
                         {hasError && (
-                          <AlertCircle
-                            className="h-3 w-3 text-muted-foreground/60"
+                          <span
                             title={`Font "${font}" failed to load - showing fallback font`}
-                            aria-label={`Font ${font} failed to load`}
-                          />
+                          >
+                            <AlertCircle
+                              className="h-3 w-3 text-muted-foreground/60"
+                              aria-label={`Font ${font} failed to load`}
+                            />
+                          </span>
                         )}
                       </div>
                       <p

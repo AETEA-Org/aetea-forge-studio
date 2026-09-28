@@ -32,7 +32,7 @@ export function ChatHistoryDialog({
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const chats = data?.chats || [];
+  const chats = useMemo(() => data?.chats || [], [data?.chats]);
 
   // Filter chats by search query
   const filteredChats = useMemo(() => {

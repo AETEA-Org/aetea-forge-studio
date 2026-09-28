@@ -26,3 +26,5 @@ dist-ssr
 
 # Supabase CLI scratch (which project this machine is linked to)
 supabase/.temp/
+.vercel
+.env*

@@ -47,6 +47,21 @@ function buildUrl(path: string, params?: Record<string, string>): string {
 // session token is what identifies the caller — see services/authHeaders.ts.
 const getHeaders = backendHeaders;
 
+// Fetch a legacy project section used by the overview screen.
+export async function getProjectSection<T>(
+  projectId: string,
+  section: SectionName,
+): Promise<SectionResponse<T>> {
+  const response = await fetch(buildUrl(`/projects/${projectId}/section/${section}`), {
+    headers: await getHeaders(),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || `Failed to fetch ${section}`);
+  }
+  return response.json();
+}
+
 // Health check. Deliberately unauthenticated: it is one of the three open
 // endpoints, and it has to work before anyone has signed in.
 export async function checkHealth(): Promise<HealthResponse> {
@@ -168,9 +183,9 @@ export async function getCampaignByChatId(
     updated_at: string;
   };
   sections: {
-    brief: any;
-    research: any;
-    strategy: any;
+    brief: BriefModel;
+    research: ResearchModel;
+    strategy: StrategyModel;
   };
 }> {
   const response = await fetch(
@@ -201,9 +216,9 @@ export async function getCampaignById(
     updated_at: string;
   };
   sections: {
-    brief: any;
-    research: any;
-    strategy: any;
+    brief: BriefModel;
+    research: ResearchModel;
+    strategy: StrategyModel;
   };
 }> {
   const response = await fetch(

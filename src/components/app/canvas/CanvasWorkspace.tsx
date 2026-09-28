@@ -8,6 +8,7 @@ import {
   type Node,
   type NodeChange,
   type NodeTypes,
+  type OnNodeDrag,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import type { DeliverableObject } from "@/types/api";
@@ -156,8 +157,8 @@ function CanvasWorkspaceInner({
     [onNodesChange, onObjectResized]
   );
 
-  const handleNodeDragStop = useCallback(
-    (_event: React.MouseEvent, node: Node) => {
+  const handleNodeDragStop = useCallback<OnNodeDrag<Node>>(
+    (_event, node) => {
       const pos = { x: Math.round(node.position.x), y: Math.round(node.position.y) };
       if (node.id === "detail" || node.id === "chat" || node.id === KEY_VISUAL_NODE_ID) {
         onFixtureMoved(node.id === KEY_VISUAL_NODE_ID ? "keyVisual" : node.id, pos);

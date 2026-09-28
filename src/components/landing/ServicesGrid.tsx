@@ -1,25 +1,38 @@
-const services = [
-  "Strategy",
-  "Branding",
-  "Creative Direction",
-  "Design",
-  "Content Systems",
-  "Film & Video",
-  "Editing",
-  "Voiceover",
-  "PR & Press",
-  "Web",
-  "Apps & Games",
-  "Email Marketing",
-  "Publishing",
-  "Music & Lyrics",
-  "Analytics",
-  "Scheduling",
+import { cn } from "@/lib/utils";
+import { LANDING_SECTION_STANDARD } from "./landingStyles";
+
+type Service = {
+  label: string;
+  comingSoon?: boolean;
+};
+
+const services: readonly Service[] = [
+  { label: "Research" },
+  { label: "Strategy" },
+  { label: "Branding" },
+  { label: "Creative Direction" },
+  { label: "Design" },
+  { label: "Content Systems" },
+  { label: "Images" },
+  { label: "Film & Video" },
+  { label: "Editing" },
+  { label: "Voiceover" },
+  { label: "PR & Press" },
+  { label: "Web" },
+  { label: "Apps & Games", comingSoon: true },
+  { label: "Email Marketing" },
+  { label: "Articles" },
+  { label: "Print" },
+  { label: "Digital & Social Media" },
+  { label: "Publishing", comingSoon: true },
+  { label: "Music & Lyrics" },
+  { label: "Analytics", comingSoon: true },
+  { label: "Scheduling", comingSoon: true },
 ];
 
 export function ServicesGrid() {
   return (
-    <section className="py-24 md:py-28 relative overflow-hidden">
+    <section className={`${LANDING_SECTION_STANDARD} relative overflow-hidden`}>
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-card/30 to-transparent" />
       
       <div className="container relative px-6 lg:px-12">
@@ -40,12 +53,19 @@ export function ServicesGrid() {
             </div>
 
             <div className="flex flex-wrap gap-3">
-              {services.map((service) => (
+              {services.map(({ label, comingSoon }) => (
                 <span
-                  key={service}
-                  className="px-4 py-2 rounded-full text-sm border border-border text-foreground/65 hover:text-foreground hover:border-foreground/30 transition-colors cursor-default"
+                  key={label}
+                  aria-disabled={comingSoon || undefined}
+                  aria-label={comingSoon ? `${label} — coming soon` : undefined}
+                  className={cn(
+                    "rounded-full border px-4 py-2 text-sm cursor-default",
+                    comingSoon
+                      ? "border-foreground/10 text-foreground/30"
+                      : "border-border text-foreground/65 transition-colors hover:border-foreground/30 hover:text-foreground",
+                  )}
                 >
-                  {service}
+                  {label}
                 </span>
               ))}
             </div>

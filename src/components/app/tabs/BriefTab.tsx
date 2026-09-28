@@ -1,5 +1,5 @@
 import { Loader2, Calendar, Sparkles } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useCampaignBrief } from "@/hooks/useCampaignSection";
 import { ModificationOverlay } from "@/components/app/ModificationOverlay";
 import { FontPreview } from "@/components/ui/font-preview";
@@ -17,7 +17,10 @@ export function BriefTab({ campaignId, isModifying }: BriefTabProps) {
   const brief = data?.content as BriefModel | undefined;
 
   // Safe accessor for typography (must be before early returns for hooks)
-  const typographyList = brief?.brand_information?.typography || [];
+  const typographyList = useMemo(
+    () => brief?.brand_information?.typography || [],
+    [brief?.brand_information?.typography],
+  );
 
   // Load fonts when typography is available (must be before early returns)
   useEffect(() => {

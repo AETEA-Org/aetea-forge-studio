@@ -750,6 +750,8 @@ export function useFabricEditor({
 
     void init();
 
+    const host = hostRef.current;
+
     return () => {
       cancelled = true;
       clearCropRect();
@@ -759,7 +761,7 @@ export function useFabricEditor({
       bgRef.current = null;
       draftShapeRef.current = null;
       flattenedRef.current = false;
-      if (hostRef.current) hostRef.current.replaceChildren();
+      if (host) host.replaceChildren();
       setReady(false);
       setSelectedObject(null);
     };
