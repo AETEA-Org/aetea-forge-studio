@@ -227,16 +227,62 @@ export default function App() {
             </div>
           </div>
 
-          {/* Text Brief */}
-          <Textarea
-            placeholder="Describe your campaign goals, ideas, target audience, deliverables, timeline, or any other relevant details..."
-            value={briefText}
-            onChange={(e) => {
-              setBriefText(e.target.value);
-              if (error) reset();
-            }}
-            className="min-h-[150px] bg-background/50 border-border/50 resize-none"
-          />
+          {/* Text brief, shaped like the composer everywhere else in the app:
+              one surface holding the text and the controls that act on it,
+              rather than a bordered box with its options floating underneath.
+              The upload panel above is deliberately left as it is. */}
+          <div className="space-y-2 rounded-2xl border border-border bg-card/60 p-2 transition-colors focus-within:border-primary/50 focus-within:bg-card">
+            <Textarea
+              placeholder="Describe your campaign goals, ideas, target audience, deliverables, timeline, or any other relevant details..."
+              value={briefText}
+              onChange={(e) => {
+                setBriefText(e.target.value);
+                if (error) reset();
+              }}
+              className="min-h-[130px] w-full resize-none border-0 bg-transparent px-1 py-1.5 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+            />
+
+            <div className="flex flex-wrap items-center gap-2">
+              <TierPicker
+                tier={tier}
+                onChange={setTier}
+                disabled={isSubmitting || showLoadingScreen || isStartingBrainstorm}
+              />
+              <div className="flex-1 min-w-[8px]" />
+              {/* Two ways to begin, not two equal ones: a campaign build is the
+                  page's purpose and the expensive one, so it leads and
+                  brainstorming sits beside it as the lighter option. */}
+              <Button
+                onClick={handleStartBrainstorming}
+                disabled={isSubmitting || showLoadingScreen || isStartingBrainstorm}
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 rounded-lg"
+              >
+                {isStartingBrainstorm ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Lightbulb className="h-3.5 w-3.5" />
+                )}
+                {isStartingBrainstorm ? "Opening…" : "Brainstorm"}
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                disabled={isSubmitting || showLoadingScreen}
+                size="sm"
+                className="h-8 gap-1.5 rounded-lg"
+              >
+                {isSubmitting ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5" />
+                )}
+                {isSubmitting ? "Processing…" : "Campaign"}
+              </Button>
+            </div>
+          </div>
+
+          <CampaignCostNote tier={tier} />
 
           {/* Progress */}
           {error && (
@@ -253,47 +299,6 @@ export default function App() {
             />
           )}
 
-          {/* How much intelligence, and what a build usually costs. This page
-              can start a campaign build, so both belong here rather than only
-              inside a conversation. */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <TierPicker
-              tier={tier}
-              onChange={setTier}
-              disabled={isSubmitting || showLoadingScreen || isStartingBrainstorm}
-            />
-            <CampaignCostNote tier={tier} />
-          </div>
-
-          {/* Submit Buttons */}
-          <div className="flex gap-3">
-            <Button
-              onClick={handleStartBrainstorming}
-              disabled={isSubmitting || showLoadingScreen || isStartingBrainstorm}
-              className="flex-1"
-              size="lg"
-            >
-              {isStartingBrainstorm ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Lightbulb className="h-4 w-4 mr-2" />
-              )}
-              {isStartingBrainstorm ? "Opening..." : "Brainstorm"}
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={isSubmitting || showLoadingScreen}
-              className="flex-1"
-              size="lg"
-            >
-              {isSubmitting ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Sparkles className="h-4 w-4 mr-2" />
-              )}
-              {isSubmitting ? "Processing..." : "Campaign"}
-            </Button>
-          </div>
         </div>
       </div>
     </div>
