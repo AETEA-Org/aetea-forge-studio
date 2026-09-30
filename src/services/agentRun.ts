@@ -18,6 +18,21 @@ export interface ProgressStep {
   state: ProgressState;
 }
 
+/**
+ * A campaign change waiting on the user.
+ *
+ * The id is what matters: the decision is a row on the server, not a card in
+ * this tab. A page reloaded an hour later fetches the same proposal and
+ * decides on it, and approving applies the payload that was stored when the
+ * card was raised — never anything this client sends.
+ */
+export interface CampaignProposal {
+  proposal_id: string;
+  summary: string;
+  change_lines: string[];
+  content_hash: string;
+}
+
 export interface AssetHint {
   id: string;
   file_name?: string;
@@ -33,6 +48,7 @@ export interface AgentTurnHandlers {
   onDataChanged?: (entity: string, ids: string[]) => void;
   onCampaign?: (campaignId: string, state: CampaignState, section?: string) => void;
   onModeProposal?: (rationale: string) => void;
+  onCampaignProposal?: (proposal: CampaignProposal) => void;
   onCancelled?: () => void;
   onComplete?: (answer: string) => void;
   onError?: (message: string) => void;
@@ -209,6 +225,55 @@ export async function acceptCampaignMode(chatId: string): Promise<void> {
   if (!response.ok) throw new Error("Could not switch to campaign mode");
 }
 
+/**
+ * Campaign changes still waiting on a decision in this conversation.
+ *
+ * Asked for on load, because a run that ended while the person was away left
+ * nothing on screen — and a change nobody ever decides on is a change that
+ * silently never happens.
+ */
+export async function listProposals(chatId: string): Promise<CampaignProposal[]> {
+  const response = await fetch(url(`/ai/chats/${chatId}/proposals`), {
+    headers: await authHeaders(),
+  });
+  if (!response.ok) return [];
+  const body = await response.json();
+  return ((body.proposals ?? []) as Array<Record<string, unknown>>).map((row) => ({
+    proposal_id: String(row.id ?? ""),
+    summary: String(row.summary ?? ""),
+    change_lines: (row.change_lines as string[]) ?? [],
+    content_hash: String(row.content_hash ?? ""),
+  }));
+}
+
+/**
+ * Approve or decline a proposed campaign change.
+ *
+ * `expectedHash` is the hash this card was rendered from. The server refuses
+ * the decision when it no longer matches what is stored, so a stale tab cannot
+ * approve a change other than the one it is showing.
+ */
+export async function decideProposal(
+  chatId: string,
+  proposalId: string,
+  decision: "approve" | "decline",
+  expectedHash?: string
+): Promise<{ status: string }> {
+  const response = await fetch(
+    url(`/ai/chats/${chatId}/proposals/${proposalId}/decision`),
+    {
+      method: "POST",
+      headers: { ...(await authHeaders()), "Content-Type": "application/json" },
+      body: JSON.stringify({ decision, expected_hash: expectedHash }),
+    }
+  );
+  if (!response.ok) {
+    const detail = await response.json().catch(() => ({}));
+    throw new Error(detail.detail || "Could not record that decision");
+  }
+  return response.json();
+}
+
 interface ParsedFrame {
   id?: string;
   event?: string;
@@ -327,6 +392,14 @@ export async function followRun(
               break;
             case "mode_proposal":
               handlers.onModeProposal?.(String(data.rationale ?? ""));
+              break;
+            case "campaign_proposal":
+              handlers.onCampaignProposal?.({
+                proposal_id: String(data.proposal_id ?? ""),
+                summary: String(data.summary ?? ""),
+                change_lines: (data.change_lines as string[]) ?? [],
+                content_hash: String(data.content_hash ?? ""),
+              });
               break;
             case "cancelled":
               handlers.onCancelled?.();
