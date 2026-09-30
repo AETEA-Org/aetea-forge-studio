@@ -81,6 +81,13 @@ export interface UsageEvent {
   credits_charged: number;
   created_at: string;
   status: string | null;
+  /**
+   * The turn stopped partway, so its cost was self-counted rather than
+   * reported. This is the only trustworthy signal for that — `status` is the
+   * literal "settled" on every row the backend has ever written, so testing it
+   * against a list of healthy-looking words marks everything as stopped.
+   */
+  is_estimated?: boolean;
 }
 
 /** GET /billing/plan */
