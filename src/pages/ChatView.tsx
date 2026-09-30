@@ -377,7 +377,7 @@ export default function ChatView() {
               setIsStreaming(false);
               setOptimisticMessages([]);
             },
-            onError: (errorMsg: string) => {
+            onError: async (errorMsg: string) => {
               setShowCampaignLoading(false);
               setUpdateMessage(null);
               setStreamingContent("");
@@ -391,6 +391,15 @@ export default function ChatView() {
                 description: errorMsg,
                 variant: "destructive",
               });
+              // A failed turn still leaves behind whatever it finished. One
+              // campaign build wrote its sections, its creative direction and
+              // six tasks, then died on the last model call — and because this
+              // branch cleared the screen without re-reading anything, the
+              // client never learned the campaign existed. It showed an error
+              // over an empty chat while the finished campaign sat in the
+              // sidebar, reachable only by clicking it.
+              await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
+              queryClient.invalidateQueries({ queryKey: ["chat", chatId, user?.email] });
             },
           }
         );
@@ -410,6 +419,10 @@ export default function ChatView() {
           onStopped: () => setIsStreaming(false),
           onOutOfCredits: () => setOutOfCredits(true),
         });
+        // Same reasoning as `onError`: a turn that died on the way out may
+        // still have committed work server-side, and only a re-read finds it.
+        queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
+        queryClient.invalidateQueries({ queryKey: ["chat", chatId, user?.email] });
       }
     },
     [chatId, mode, tier, user, queryClient, toast, mergeStreamAssets, chatData?.campaign_id]

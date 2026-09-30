@@ -69,10 +69,11 @@ export function UsageTable({
           </thead>
           <tbody>
             {visible.map((event) => {
-              const stopped =
-                event.status && !["ok", "succeeded", "complete"].includes(
-                  event.status.toLowerCase(),
-                );
+              // Read from the backend's own record of an interrupted turn, not
+              // guessed from `status`. Every row the meter writes carries the
+              // literal "settled", which matched none of the words this once
+              // tested for, so every row in the history claimed to be stopped.
+              const stopped = event.is_estimated === true;
               const tier = tierLabel(event.tier);
               return (
                 <tr
