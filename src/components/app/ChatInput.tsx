@@ -436,12 +436,15 @@ export function TierPicker({
           <DropdownMenuTrigger asChild>
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="sm"
               disabled={disabled}
-              className="h-[44px] shrink-0 flex items-center gap-1.5 px-3 border-border"
+              // Carries the accent because it is the control that decides what
+              // the turn costs. The label stays visible down to the narrowest
+              // surface; which model is answering is not a detail to hide.
+              className="h-8 shrink-0 gap-1.5 rounded-lg px-2 text-primary hover:bg-primary/10 hover:text-primary"
             >
-              <Sparkles className="h-4 w-4" />
+              <Sparkles className="h-3.5 w-3.5" />
               <span className="text-xs font-medium">{current.display_name}</span>
               <ChevronDown className="h-3 w-3 opacity-60" />
             </Button>
@@ -719,10 +722,14 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   return (
     <div
       className={cn(
-        variant === "floating"
-          ? "rounded-2xl border border-border/50 bg-background/90 backdrop-blur-md shadow-2xl p-3 space-y-2 min-w-0 overflow-x-hidden"
-          : "border-t border-border bg-background p-4 space-y-3 min-w-0 overflow-x-hidden",
-        isDragging && "bg-primary/5 border-primary/50"
+        // One composer surface holding the text and its controls, instead of a
+        // bar with a separately bordered input sitting inside it. The ring
+        // follows focus into the textarea, so the whole thing reads as the
+        // field — which is what people are aiming at.
+        "rounded-2xl border border-border bg-card/60 p-2 space-y-2 min-w-0 overflow-x-hidden",
+        "transition-colors focus-within:border-primary/50 focus-within:bg-card",
+        variant === "floating" && "bg-background/90 backdrop-blur-md shadow-2xl",
+        isDragging && "border-primary/60 bg-primary/5"
       )}
       onDragEnter={handleDragEnterInput}
       onDragOver={handleDragOver}
@@ -751,7 +758,11 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="flex gap-2 min-w-0">
+      {/* A column, not a row. Every control used to sit beside the textarea and
+          compete with it for width, which the narrow surfaces lost: on the
+          campaign rail the text field was the part that gave way. The text now
+          spans the full width and the controls have their own line beneath. */}
+      <form onSubmit={handleSubmit} className="flex flex-col gap-2 min-w-0">
         <input
           ref={fileInputRef}
           type="file"
@@ -760,24 +771,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           onChange={(e) => handleFileSelect(e.target.files)}
           className="hidden"
         />
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isStreaming || disabled}
-              className={cn(
-                "h-[44px] w-[44px] shrink-0 flex-shrink-0",
-                variant === "floating" && "rounded-xl"
-              )}
-            >
-              <Paperclip className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="top">Attach files</TooltipContent>
-        </Tooltip>
         <Textarea
           ref={textareaRef}
           value={displayedValue}
@@ -786,8 +779,8 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           disabled={isStreaming || disabled}
           readOnly={isPrefillActive}
           className={cn(
-            "min-h-[44px] resize-none bg-background/50 border-border/50 flex-1 min-w-0",
-            variant === "floating" && "rounded-xl bg-background/70"
+            "min-h-[44px] w-full resize-none border-0 bg-transparent px-1 py-1.5 shadow-none",
+            "focus-visible:ring-0 focus-visible:ring-offset-0"
           )}
           style={{ maxHeight: `${textareaMaxHeight}px` }}
           onKeyDown={(e) => {
@@ -797,61 +790,460 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             }
           }}
         />
-        {tier !== undefined && onTierChange && (
-          <TierPicker
-            tier={tier}
-            onChange={onTierChange}
-            disabled={isStreaming || disabled}
-          />
-        )}
-        {onModeToggle && mode !== undefined && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onModeToggle}
-            disabled={isStreaming || disabled}
-            className="h-[44px] shrink-0 flex items-center gap-1.5 px-3 border-border"
-          >
-            {mode === "brainstorm" ? (
-              <Lightbulb className="h-4 w-4" />
-            ) : (
-              <LayoutDashboard className="h-4 w-4" />
-            )}
-            <span className="text-xs font-medium capitalize">{mode}</span>
-          </Button>
-        )}
-        <Tooltip>
-          <TooltipTrigger asChild>
+
+        {/* The toolbar. Wraps rather than squeezing, so a narrow surface loses
+            a line instead of losing a control. */}
+        <div className="flex items-center gap-1 min-w-0 flex-wrap">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isStreaming || disabled}
+                className="h-8 w-8 shrink-0 rounded-lg text-muted-foreground"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Attach files</TooltipContent>
+          </Tooltip>
+          {tier !== undefined && onTierChange && (
+            <TierPicker
+              tier={tier}
+              onChange={onTierChange}
+              disabled={isStreaming || disabled}
+            />
+          )}
+          {onModeToggle && mode !== undefined && (
             <Button
-              // While a run is going this is the stop control, so it must not
-              // submit the form or be disabled by an empty box.
-              type={canStop ? "button" : "submit"}
-              onClick={canStop ? onStop : undefined}
-              aria-label={canStop ? "Stop" : "Send"}
-              disabled={
-                canStop
-                  ? false
-                  : isPrefillActive ||
-                    ((!message.trim() && files.length === 0) || isStreaming || disabled)
-              }
-              size="icon"
-              className={cn(
-                "h-[44px] w-[44px] shrink-0 flex-shrink-0",
-                variant === "floating" && "rounded-xl"
-              )}
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onModeToggle}
+              disabled={isStreaming || disabled}
+              className="h-8 shrink-0 gap-1.5 rounded-lg px-2 text-muted-foreground"
             >
-              {canStop ? (
-                <Square className="h-3.5 w-3.5 fill-current" />
-              ) : isStreaming ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+              {mode === "brainstorm" ? (
+                <Lightbulb className="h-3.5 w-3.5" />
               ) : (
-                <Send className="h-4 w-4" />
+                <LayoutDashboard className="h-3.5 w-3.5" />
               )}
+              <span className="text-xs font-medium capitalize">{mode}</span>
             </Button>
-          </TooltipTrigger>
-          <TooltipContent side="top">{canStop ? "Stop" : "Send"}</TooltipContent>
-        </Tooltip>
+          )}
+
+        {enableGenerationModes && (
+          <div className="flex flex-wrap items-center gap-0.5 min-w-0">
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={pickerDisabled}
+                      className={cn(
+                        "h-7 gap-0.5 px-1.5 text-muted-foreground",
+                        generationMode !== "general" && "text-primary bg-primary/10"
+                      )}
+                    >
+                      <ModeIcon className="h-3.5 w-3.5" />
+                      <ChevronDown className="h-3 w-3 opacity-60" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="top">{modeLabel}</TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent align="start" side="top" className="min-w-[9rem]">
+                {(Object.keys(GENERATION_MODE_META) as GenerationMode[]).map((m) => {
+                  const meta = GENERATION_MODE_META[m];
+                  const Icon = meta.icon;
+                  return (
+                    <DropdownMenuItem
+                      key={m}
+                      disabled={pickerDisabled}
+                      onClick={() => {
+                        setGenerationMode(m);
+                        setGenerationOptions({});
+                      }}
+                      className={cn(
+                        "gap-2",
+                        generationMode === m && "bg-accent"
+                      )}
+                    >
+                      <Icon className="h-4 w-4" />
+                      <span>{meta.label}</span>
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {generationMode === "image" && (
+              <>
+                <OptionPopover
+                  tip="Aspect ratio"
+                  disabled={pickerDisabled}
+                  active={!!generationOptions.aspect_ratio}
+                  contentClassName="w-52"
+                  content={
+                    <>
+                      <p className="text-[11px] text-muted-foreground mb-1.5">Aspect ratio</p>
+                      <div className="flex flex-wrap gap-1">
+                        {IMAGE_ASPECTS.map((a) => (
+                          <OptionChip
+                            key={a}
+                            label={a}
+                            active={generationOptions.aspect_ratio === a}
+                            disabled={pickerDisabled}
+                            onClick={() =>
+                              patchOptions({
+                                aspect_ratio:
+                                  generationOptions.aspect_ratio === a ? undefined : a,
+                              })
+                            }
+                          />
+                        ))}
+                      </div>
+                    </>
+                  }
+                >
+                  <Ratio className="h-3.5 w-3.5" />
+                </OptionPopover>
+
+                <OptionPopover
+                  tip="Resolution"
+                  disabled={pickerDisabled}
+                  active={!!generationOptions.image_size}
+                  contentClassName="w-40"
+                  content={
+                    <>
+                      <p className="text-[11px] text-muted-foreground mb-1.5">Resolution</p>
+                      <div className="flex flex-wrap gap-1">
+                        {IMAGE_SIZES.map((s) => (
+                          <OptionChip
+                            key={s}
+                            label={s}
+                            active={generationOptions.image_size === s}
+                            disabled={pickerDisabled}
+                            onClick={() =>
+                              patchOptions({
+                                image_size:
+                                  generationOptions.image_size === s ? undefined : s,
+                              })
+                            }
+                          />
+                        ))}
+                      </div>
+                    </>
+                  }
+                >
+                  <Scan className="h-3.5 w-3.5" />
+                </OptionPopover>
+
+                <OptionPopover
+                  tip="Style"
+                  disabled={pickerDisabled}
+                  active={!!generationOptions.style_card_id}
+                  contentClassName="w-56 max-h-64 overflow-y-auto"
+                  content={
+                    <>
+                      <p className="text-[11px] text-muted-foreground mb-1.5">Style card</p>
+                      <StyleCardPicker
+                        cards={styleCards}
+                        selectedId={generationOptions.style_card_id}
+                        disabled={pickerDisabled}
+                        onToggle={(id) =>
+                          patchOptions({
+                            style_card_id:
+                              generationOptions.style_card_id === id ? undefined : id,
+                          })
+                        }
+                      />
+                    </>
+                  }
+                >
+                  <Palette className="h-3.5 w-3.5" />
+                </OptionPopover>
+              </>
+            )}
+
+            {generationMode === "video" && (
+              <>
+                <OptionPopover
+                  tip="Aspect ratio"
+                  disabled={pickerDisabled}
+                  active={!!generationOptions.aspect_ratio}
+                  contentClassName="w-40"
+                  content={
+                    <>
+                      <p className="text-[11px] text-muted-foreground mb-1.5">Aspect ratio</p>
+                      <div className="flex flex-wrap gap-1">
+                        {VIDEO_ASPECTS.map((a) => (
+                          <OptionChip
+                            key={a}
+                            label={a}
+                            active={generationOptions.aspect_ratio === a}
+                            disabled={pickerDisabled}
+                            onClick={() =>
+                              patchOptions({
+                                aspect_ratio:
+                                  generationOptions.aspect_ratio === a ? undefined : a,
+                              })
+                            }
+                          />
+                        ))}
+                      </div>
+                    </>
+                  }
+                >
+                  <Ratio className="h-3.5 w-3.5" />
+                </OptionPopover>
+
+                <OptionPopover
+                  tip="Resolution"
+                  disabled={pickerDisabled}
+                  active={!!generationOptions.resolution}
+                  contentClassName="w-40"
+                  content={
+                    <>
+                      <p className="text-[11px] text-muted-foreground mb-1.5">Resolution</p>
+                      <div className="flex flex-wrap gap-1">
+                        {VIDEO_RESOLUTIONS.map((r) => (
+                          <OptionChip
+                            key={r}
+                            label={r}
+                            active={generationOptions.resolution === r}
+                            disabled={pickerDisabled}
+                            onClick={() =>
+                              patchOptions({
+                                resolution:
+                                  generationOptions.resolution === r ? undefined : r,
+                              })
+                            }
+                          />
+                        ))}
+                      </div>
+                    </>
+                  }
+                >
+                  <Scan className="h-3.5 w-3.5" />
+                </OptionPopover>
+
+                <OptionPopover
+                  tip="Duration"
+                  disabled={pickerDisabled}
+                  active={!!generationOptions.duration_seconds}
+                  contentClassName="w-48"
+                  content={
+                    <>
+                      <p className="text-[11px] text-muted-foreground mb-1.5">Duration</p>
+                      <div className="flex flex-wrap gap-1">
+                        {VIDEO_DURATIONS.map((d) => (
+                          <OptionChip
+                            key={d}
+                            label={`${d}s`}
+                            active={generationOptions.duration_seconds === d}
+                            disabled={pickerDisabled}
+                            onClick={() =>
+                              patchOptions({
+                                duration_seconds:
+                                  generationOptions.duration_seconds === d
+                                    ? undefined
+                                    : d,
+                              })
+                            }
+                          />
+                        ))}
+                      </div>
+                    </>
+                  }
+                >
+                  <Timer className="h-3.5 w-3.5" />
+                </OptionPopover>
+
+                <OptionPopover
+                  tip="Style"
+                  disabled={pickerDisabled}
+                  active={!!generationOptions.style_card_id}
+                  contentClassName="w-56 max-h-64 overflow-y-auto"
+                  content={
+                    <>
+                      <p className="text-[11px] text-muted-foreground mb-1.5">Style card</p>
+                      <StyleCardPicker
+                        cards={styleCards}
+                        selectedId={generationOptions.style_card_id}
+                        disabled={pickerDisabled}
+                        onToggle={(id) =>
+                          patchOptions({
+                            style_card_id:
+                              generationOptions.style_card_id === id ? undefined : id,
+                          })
+                        }
+                      />
+                    </>
+                  }
+                >
+                  <Palette className="h-3.5 w-3.5" />
+                </OptionPopover>
+
+                <OptionPopover
+                  tip="Characters"
+                  disabled={pickerDisabled}
+                  active={selectedCharacterIds.length > 0}
+                  contentClassName="w-56 max-h-64 overflow-y-auto"
+                  content={
+                    <>
+                      <p className="text-[11px] text-muted-foreground mb-1.5">
+                        Keep these subjects identical (max 3)
+                      </p>
+                      <CharacterPicker
+                        characters={characters}
+                        selectedIds={selectedCharacterIds}
+                        disabled={pickerDisabled}
+                        onToggle={(id) => {
+                          const next = selectedCharacterIds.includes(id)
+                            ? selectedCharacterIds.filter((c) => c !== id)
+                            : [...selectedCharacterIds, id].slice(0, 3);
+                          patchOptions({
+                            character_ids: next.length > 0 ? next : undefined,
+                          });
+                        }}
+                        onCreate={() => setCharacterDialogOpen(true)}
+                      />
+                    </>
+                  }
+                >
+                  <Users className="h-3.5 w-3.5" />
+                </OptionPopover>
+
+                <OptionPopover
+                  tip="Start frame"
+                  disabled={pickerDisabled}
+                  active={!!generationOptions.first_frame_asset_id}
+                  contentClassName="w-56 max-h-64 overflow-y-auto"
+                  content={
+                    <>
+                      <p className="text-[11px] text-muted-foreground mb-1.5">
+                        Open the video on this image
+                      </p>
+                      <FramePicker
+                        assets={frameOptions}
+                        selectedId={generationOptions.first_frame_asset_id}
+                        disabled={pickerDisabled}
+                        onToggle={(id) => {
+                          const clearing =
+                            generationOptions.first_frame_asset_id === id;
+                          patchOptions({
+                            first_frame_asset_id: clearing ? undefined : id,
+                            // An end frame needs a start frame, so drop it too.
+                            ...(clearing ? { last_frame_asset_id: undefined } : {}),
+                          });
+                        }}
+                      />
+                    </>
+                  }
+                >
+                  <SkipBack className="h-3.5 w-3.5" />
+                </OptionPopover>
+
+                <OptionPopover
+                  tip={
+                    generationOptions.first_frame_asset_id
+                      ? "End frame"
+                      : "End frame — pick a start frame first"
+                  }
+                  disabled={
+                    pickerDisabled || !generationOptions.first_frame_asset_id
+                  }
+                  active={!!generationOptions.last_frame_asset_id}
+                  contentClassName="w-56 max-h-64 overflow-y-auto"
+                  content={
+                    <>
+                      <p className="text-[11px] text-muted-foreground mb-1.5">
+                        End the video on this image
+                      </p>
+                      <FramePicker
+                        assets={frameOptions}
+                        selectedId={generationOptions.last_frame_asset_id}
+                        disabled={pickerDisabled}
+                        onToggle={(id) =>
+                          patchOptions({
+                            last_frame_asset_id:
+                              generationOptions.last_frame_asset_id === id
+                                ? undefined
+                                : id,
+                          })
+                        }
+                      />
+                    </>
+                  }
+                >
+                  <SkipForward className="h-3.5 w-3.5" />
+                </OptionPopover>
+
+                <IconTipButton
+                  tip={generationOptions.audio === false ? "Audio off" : "Audio on"}
+                  disabled={pickerDisabled}
+                  active={generationOptions.audio === false}
+                  onClick={() =>
+                    patchOptions({
+                      audio: generationOptions.audio === false ? true : false,
+                    })
+                  }
+                >
+                  {generationOptions.audio === false ? (
+                    <VolumeX className="h-3.5 w-3.5" />
+                  ) : (
+                    <Volume2 className="h-3.5 w-3.5" />
+                  )}
+                </IconTipButton>
+              </>
+            )}
+          </div>
+        )}
+
+          {/* Pushes send to the far end, so the control you reach for while a
+              run is going is always in the same place. */}
+          <div className="flex-1 min-w-[8px]" />
+
+          {!canStop && !isStreaming && (
+            <span className="hidden shrink-0 pr-0.5 text-[10px] text-muted-foreground sm:inline">
+              ⏎
+            </span>
+          )}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                // While a run is going this is the stop control, so it must not
+                // submit the form or be disabled by an empty box.
+                type={canStop ? "button" : "submit"}
+                onClick={canStop ? onStop : undefined}
+                aria-label={canStop ? "Stop" : "Send"}
+                disabled={
+                  canStop
+                    ? false
+                    : isPrefillActive ||
+                      ((!message.trim() && files.length === 0) || isStreaming || disabled)
+                }
+                size="icon"
+                className="h-8 w-8 shrink-0 rounded-lg"
+              >
+                {canStop ? (
+                  <Square className="h-3 w-3 fill-current" />
+                ) : isStreaming ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">{canStop ? "Stop" : "Send"}</TooltipContent>
+          </Tooltip>
+        </div>
       </form>
 
       {/* What this is about to cost. Only for video, where the figure is a firm
@@ -887,378 +1279,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         withAudio={generationOptions.audio !== false}
         balance={creditBalance?.credits}
       />
-
-      {enableGenerationModes && (
-        <div className="flex flex-wrap items-center gap-0.5 pt-0.5">
-          <DropdownMenu>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    disabled={pickerDisabled}
-                    className={cn(
-                      "h-7 gap-0.5 px-1.5 text-muted-foreground",
-                      generationMode !== "general" && "text-primary bg-primary/10"
-                    )}
-                  >
-                    <ModeIcon className="h-3.5 w-3.5" />
-                    <ChevronDown className="h-3 w-3 opacity-60" />
-                  </Button>
-                </DropdownMenuTrigger>
-              </TooltipTrigger>
-              <TooltipContent side="top">{modeLabel}</TooltipContent>
-            </Tooltip>
-            <DropdownMenuContent align="start" side="top" className="min-w-[9rem]">
-              {(Object.keys(GENERATION_MODE_META) as GenerationMode[]).map((m) => {
-                const meta = GENERATION_MODE_META[m];
-                const Icon = meta.icon;
-                return (
-                  <DropdownMenuItem
-                    key={m}
-                    disabled={pickerDisabled}
-                    onClick={() => {
-                      setGenerationMode(m);
-                      setGenerationOptions({});
-                    }}
-                    className={cn(
-                      "gap-2",
-                      generationMode === m && "bg-accent"
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                    <span>{meta.label}</span>
-                  </DropdownMenuItem>
-                );
-              })}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {generationMode === "image" && (
-            <>
-              <OptionPopover
-                tip="Aspect ratio"
-                disabled={pickerDisabled}
-                active={!!generationOptions.aspect_ratio}
-                contentClassName="w-52"
-                content={
-                  <>
-                    <p className="text-[11px] text-muted-foreground mb-1.5">Aspect ratio</p>
-                    <div className="flex flex-wrap gap-1">
-                      {IMAGE_ASPECTS.map((a) => (
-                        <OptionChip
-                          key={a}
-                          label={a}
-                          active={generationOptions.aspect_ratio === a}
-                          disabled={pickerDisabled}
-                          onClick={() =>
-                            patchOptions({
-                              aspect_ratio:
-                                generationOptions.aspect_ratio === a ? undefined : a,
-                            })
-                          }
-                        />
-                      ))}
-                    </div>
-                  </>
-                }
-              >
-                <Ratio className="h-3.5 w-3.5" />
-              </OptionPopover>
-
-              <OptionPopover
-                tip="Resolution"
-                disabled={pickerDisabled}
-                active={!!generationOptions.image_size}
-                contentClassName="w-40"
-                content={
-                  <>
-                    <p className="text-[11px] text-muted-foreground mb-1.5">Resolution</p>
-                    <div className="flex flex-wrap gap-1">
-                      {IMAGE_SIZES.map((s) => (
-                        <OptionChip
-                          key={s}
-                          label={s}
-                          active={generationOptions.image_size === s}
-                          disabled={pickerDisabled}
-                          onClick={() =>
-                            patchOptions({
-                              image_size:
-                                generationOptions.image_size === s ? undefined : s,
-                            })
-                          }
-                        />
-                      ))}
-                    </div>
-                  </>
-                }
-              >
-                <Scan className="h-3.5 w-3.5" />
-              </OptionPopover>
-
-              <OptionPopover
-                tip="Style"
-                disabled={pickerDisabled}
-                active={!!generationOptions.style_card_id}
-                contentClassName="w-56 max-h-64 overflow-y-auto"
-                content={
-                  <>
-                    <p className="text-[11px] text-muted-foreground mb-1.5">Style card</p>
-                    <StyleCardPicker
-                      cards={styleCards}
-                      selectedId={generationOptions.style_card_id}
-                      disabled={pickerDisabled}
-                      onToggle={(id) =>
-                        patchOptions({
-                          style_card_id:
-                            generationOptions.style_card_id === id ? undefined : id,
-                        })
-                      }
-                    />
-                  </>
-                }
-              >
-                <Palette className="h-3.5 w-3.5" />
-              </OptionPopover>
-            </>
-          )}
-
-          {generationMode === "video" && (
-            <>
-              <OptionPopover
-                tip="Aspect ratio"
-                disabled={pickerDisabled}
-                active={!!generationOptions.aspect_ratio}
-                contentClassName="w-40"
-                content={
-                  <>
-                    <p className="text-[11px] text-muted-foreground mb-1.5">Aspect ratio</p>
-                    <div className="flex flex-wrap gap-1">
-                      {VIDEO_ASPECTS.map((a) => (
-                        <OptionChip
-                          key={a}
-                          label={a}
-                          active={generationOptions.aspect_ratio === a}
-                          disabled={pickerDisabled}
-                          onClick={() =>
-                            patchOptions({
-                              aspect_ratio:
-                                generationOptions.aspect_ratio === a ? undefined : a,
-                            })
-                          }
-                        />
-                      ))}
-                    </div>
-                  </>
-                }
-              >
-                <Ratio className="h-3.5 w-3.5" />
-              </OptionPopover>
-
-              <OptionPopover
-                tip="Resolution"
-                disabled={pickerDisabled}
-                active={!!generationOptions.resolution}
-                contentClassName="w-40"
-                content={
-                  <>
-                    <p className="text-[11px] text-muted-foreground mb-1.5">Resolution</p>
-                    <div className="flex flex-wrap gap-1">
-                      {VIDEO_RESOLUTIONS.map((r) => (
-                        <OptionChip
-                          key={r}
-                          label={r}
-                          active={generationOptions.resolution === r}
-                          disabled={pickerDisabled}
-                          onClick={() =>
-                            patchOptions({
-                              resolution:
-                                generationOptions.resolution === r ? undefined : r,
-                            })
-                          }
-                        />
-                      ))}
-                    </div>
-                  </>
-                }
-              >
-                <Scan className="h-3.5 w-3.5" />
-              </OptionPopover>
-
-              <OptionPopover
-                tip="Duration"
-                disabled={pickerDisabled}
-                active={!!generationOptions.duration_seconds}
-                contentClassName="w-48"
-                content={
-                  <>
-                    <p className="text-[11px] text-muted-foreground mb-1.5">Duration</p>
-                    <div className="flex flex-wrap gap-1">
-                      {VIDEO_DURATIONS.map((d) => (
-                        <OptionChip
-                          key={d}
-                          label={`${d}s`}
-                          active={generationOptions.duration_seconds === d}
-                          disabled={pickerDisabled}
-                          onClick={() =>
-                            patchOptions({
-                              duration_seconds:
-                                generationOptions.duration_seconds === d
-                                  ? undefined
-                                  : d,
-                            })
-                          }
-                        />
-                      ))}
-                    </div>
-                  </>
-                }
-              >
-                <Timer className="h-3.5 w-3.5" />
-              </OptionPopover>
-
-              <OptionPopover
-                tip="Style"
-                disabled={pickerDisabled}
-                active={!!generationOptions.style_card_id}
-                contentClassName="w-56 max-h-64 overflow-y-auto"
-                content={
-                  <>
-                    <p className="text-[11px] text-muted-foreground mb-1.5">Style card</p>
-                    <StyleCardPicker
-                      cards={styleCards}
-                      selectedId={generationOptions.style_card_id}
-                      disabled={pickerDisabled}
-                      onToggle={(id) =>
-                        patchOptions({
-                          style_card_id:
-                            generationOptions.style_card_id === id ? undefined : id,
-                        })
-                      }
-                    />
-                  </>
-                }
-              >
-                <Palette className="h-3.5 w-3.5" />
-              </OptionPopover>
-
-              <OptionPopover
-                tip="Characters"
-                disabled={pickerDisabled}
-                active={selectedCharacterIds.length > 0}
-                contentClassName="w-56 max-h-64 overflow-y-auto"
-                content={
-                  <>
-                    <p className="text-[11px] text-muted-foreground mb-1.5">
-                      Keep these subjects identical (max 3)
-                    </p>
-                    <CharacterPicker
-                      characters={characters}
-                      selectedIds={selectedCharacterIds}
-                      disabled={pickerDisabled}
-                      onToggle={(id) => {
-                        const next = selectedCharacterIds.includes(id)
-                          ? selectedCharacterIds.filter((c) => c !== id)
-                          : [...selectedCharacterIds, id].slice(0, 3);
-                        patchOptions({
-                          character_ids: next.length > 0 ? next : undefined,
-                        });
-                      }}
-                      onCreate={() => setCharacterDialogOpen(true)}
-                    />
-                  </>
-                }
-              >
-                <Users className="h-3.5 w-3.5" />
-              </OptionPopover>
-
-              <OptionPopover
-                tip="Start frame"
-                disabled={pickerDisabled}
-                active={!!generationOptions.first_frame_asset_id}
-                contentClassName="w-56 max-h-64 overflow-y-auto"
-                content={
-                  <>
-                    <p className="text-[11px] text-muted-foreground mb-1.5">
-                      Open the video on this image
-                    </p>
-                    <FramePicker
-                      assets={frameOptions}
-                      selectedId={generationOptions.first_frame_asset_id}
-                      disabled={pickerDisabled}
-                      onToggle={(id) => {
-                        const clearing =
-                          generationOptions.first_frame_asset_id === id;
-                        patchOptions({
-                          first_frame_asset_id: clearing ? undefined : id,
-                          // An end frame needs a start frame, so drop it too.
-                          ...(clearing ? { last_frame_asset_id: undefined } : {}),
-                        });
-                      }}
-                    />
-                  </>
-                }
-              >
-                <SkipBack className="h-3.5 w-3.5" />
-              </OptionPopover>
-
-              <OptionPopover
-                tip={
-                  generationOptions.first_frame_asset_id
-                    ? "End frame"
-                    : "End frame — pick a start frame first"
-                }
-                disabled={
-                  pickerDisabled || !generationOptions.first_frame_asset_id
-                }
-                active={!!generationOptions.last_frame_asset_id}
-                contentClassName="w-56 max-h-64 overflow-y-auto"
-                content={
-                  <>
-                    <p className="text-[11px] text-muted-foreground mb-1.5">
-                      End the video on this image
-                    </p>
-                    <FramePicker
-                      assets={frameOptions}
-                      selectedId={generationOptions.last_frame_asset_id}
-                      disabled={pickerDisabled}
-                      onToggle={(id) =>
-                        patchOptions({
-                          last_frame_asset_id:
-                            generationOptions.last_frame_asset_id === id
-                              ? undefined
-                              : id,
-                        })
-                      }
-                    />
-                  </>
-                }
-              >
-                <SkipForward className="h-3.5 w-3.5" />
-              </OptionPopover>
-
-              <IconTipButton
-                tip={generationOptions.audio === false ? "Audio off" : "Audio on"}
-                disabled={pickerDisabled}
-                active={generationOptions.audio === false}
-                onClick={() =>
-                  patchOptions({
-                    audio: generationOptions.audio === false ? true : false,
-                  })
-                }
-              >
-                {generationOptions.audio === false ? (
-                  <VolumeX className="h-3.5 w-3.5" />
-                ) : (
-                  <Volume2 className="h-3.5 w-3.5" />
-                )}
-              </IconTipButton>
-            </>
-          )}
-        </div>
-      )}
 
       <CharacterCreateDialog
         open={characterDialogOpen}
