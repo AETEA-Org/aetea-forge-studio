@@ -21,6 +21,7 @@ import {
   Users,
   Plus,
   Sparkles,
+  Check,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -452,22 +453,43 @@ export function TierPicker({
         </TooltipTrigger>
         <TooltipContent side="top">{current.description}</TooltipContent>
       </Tooltip>
-      <DropdownMenuContent align="end" side="top" className="max-w-[18rem]">
-        {options.map((option) => (
-          <DropdownMenuItem
-            key={option.code}
-            onClick={() => onChange(option.code)}
-            className={cn(
-              "flex flex-col items-start gap-0.5",
-              option.code === current.code && "bg-accent"
-            )}
-          >
-            <span className="text-sm font-medium">{option.display_name}</span>
-            <span className="text-xs text-muted-foreground">
-              {option.description}
-            </span>
-          </DropdownMenuItem>
-        ))}
+      <DropdownMenuContent
+        align="start"
+        side="top"
+        collisionPadding={8}
+        // The copilot panel is `z-[60]` and DropdownMenuContent ships at
+        // `z-50`, so in the campaign rail the panel painted straight over this
+        // menu: it opened half-hidden behind its own sidebar.
+        className="z-[70] w-[17rem]"
+      >
+        {options.map((option) => {
+          const selected = option.code === current.code;
+          return (
+            <DropdownMenuItem
+              key={option.code}
+              onClick={() => onChange(option.code)}
+              // Not `bg-accent`. In this theme `--accent` is the brand blue,
+              // not the quiet grey shadcn assumes, so the selected row came out
+              // as a solid blue slab and hovering any row did the same.
+              className="flex flex-col items-start gap-0.5 focus:bg-muted"
+            >
+              <span className="flex w-full items-center gap-1.5">
+                <span
+                  className={cn(
+                    "text-sm font-medium",
+                    selected && "text-primary"
+                  )}
+                >
+                  {option.display_name}
+                </span>
+                {selected && <Check className="h-3.5 w-3.5 text-primary" />}
+              </span>
+              <span className="whitespace-normal text-xs leading-snug text-muted-foreground">
+                {option.description}
+              </span>
+            </DropdownMenuItem>
+          );
+        })}
       </DropdownMenuContent>
     </DropdownMenu>
   );
