@@ -13,6 +13,7 @@ import { ChatPanelDropZone } from "@/components/app/ChatPanelDropZone";
 import { BriefAnalysisLoading } from "@/components/app/BriefAnalysisLoading";
 import { useQuery } from "@tanstack/react-query";
 import { useChatMessages } from "@/hooks/useChats";
+import { useRewind } from "@/hooks/useRewind";
 import { useAuth } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -34,7 +35,6 @@ import {
   acceptCampaignMode,
   cancelRun,
   decideProposal,
-  editTurn,
   followRun,
   getRunStatus,
   listProposals,
@@ -149,6 +149,13 @@ export default function ChatView() {
   );
 
   const messages = [...serverMessages, ...optimisticMessages];
+  const {
+    arm: armRewind,
+    cancel: cancelRewind,
+    target: rewindTarget,
+    targetId: rewindTargetId,
+    replacingCount: rewindReplacingCount,
+  } = useRewind(messages);
   const chatTitle = chatData?.title ?? "Chat";
 
   // A change the agent proposed and nobody answered. The card is raised as a
@@ -235,34 +242,6 @@ export default function ChatView() {
     }
   }, [chatData?.mode, chatData?.tier]);
 
-  // Rewriting a message replaces everything after it, then re-answers.
-  const handleEditMessage = useCallback(
-    async (messageId: string, text: string) => {
-      if (!user?.email || !chatId) return;
-      setStreamingContent("");
-      setThinkingText("");
-      setSteps([]);
-      setIsStreaming(true);
-      try {
-        await editTurn(chatId, messageId, {
-          message: text,
-          mode,
-        });
-      } catch (err) {
-        setIsStreaming(false);
-        toast({
-          title: "Could not edit that message",
-          description: err instanceof Error ? err.message : "Try again in a moment.",
-          variant: "destructive",
-        });
-        return;
-      }
-      await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
-      await followRun(chatId, streamHandlers());
-    },
-    [user?.email, chatId, mode, queryClient, toast, streamHandlers]
-  );
-
   // Stopping is the send button's other job while a run is going.
   const handleStop = useCallback(async () => {
     if (!user?.email || !chatId) return;
@@ -302,6 +281,11 @@ export default function ChatView() {
       const needsCampaignThisTurn = mode === "campaign" && !chatData?.campaign_id;
       let campaignCreationStarted = false;
 
+      // Read before clearing: the turn has to carry it, and the thread should
+      // stop looking rewound the moment it is on its way.
+      const rewindToMessageId = rewindTargetId ?? undefined;
+      cancelRewind();
+
       try {
         await runTurn(
           {
@@ -310,6 +294,7 @@ export default function ChatView() {
             mode,
             files,
             tier: meta?.tier ?? tier,
+            rewindToMessageId,
           },
           {
             onToken: (_delta, accumulated) => {
@@ -425,7 +410,8 @@ export default function ChatView() {
         queryClient.invalidateQueries({ queryKey: ["chat", chatId, user?.email] });
       }
     },
-    [chatId, mode, tier, user, queryClient, toast, mergeStreamAssets, chatData?.campaign_id]
+    [chatId, mode, tier, user, queryClient, toast, mergeStreamAssets, chatData?.campaign_id,
+     cancelRewind, rewindTargetId]
   );
 
   useEffect(() => {
@@ -550,7 +536,8 @@ export default function ChatView() {
         onFilesDropped={(files) => chatInputRef.current?.addFiles(files)}
       >
         <ChatMessages
-          onEditMessage={handleEditMessage}
+          onRewind={armRewind}
+          rewindingFromId={rewindTargetId}
           messages={messages}
           threadAssets={messagesData?.assets ?? []}
           streamingAssets={streamingAssets}
@@ -624,6 +611,16 @@ export default function ChatView() {
           tier={tier}
           onTierChange={setTier}
           textareaMaxHeight={200}
+          rewind={
+            rewindTarget
+              ? {
+                  messageId: rewindTarget.message_id,
+                  text: rewindTarget.content,
+                  replacingCount: rewindReplacingCount,
+                  onCancel: cancelRewind,
+                }
+              : null
+          }
         />
       </ChatPanelDropZone>
 

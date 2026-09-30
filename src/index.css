@@ -144,6 +144,40 @@
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter', system-ui, sans-serif;
   }
+
+  /* Message actions (copy, rewind) reveal on hover — but only where hovering
+   * exists. Tailwind's `group-hover:` alone left them at opacity 0 forever on a
+   * touch device, so they were invisible on every phone and tablet. With no
+   * hover to wait for they simply stay visible.
+   *
+   * A pointer media query rather than a JS check: no hydration flash, no resize
+   * listener, and a hybrid laptop with both a trackpad and a touchscreen gets
+   * the hover behaviour it should.
+   *
+   * The resting opacity is set here rather than as an `opacity-60` utility on
+   * the button. Tailwind utilities sit in a later cascade layer than `base`, so
+   * a utility would win over every rule below however specific they were, and
+   * the buttons would simply never hide.
+   *
+   * The hover is keyed on `.message-row` and NOT on Tailwind's `.group`:
+   * `.group` is used by outer containers too — a canvas node's card is one —
+   * and a descendant selector on it revealed every message in that node at
+   * once, from a hover anywhere inside it including the header and composer. */
+  .message-action {
+    opacity: 0.6;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .message-action {
+      opacity: 0;
+    }
+
+    .message-row:hover .message-action,
+    .message-action:focus-visible,
+    .message-action[data-state="active"] {
+      opacity: 1;
+    }
+  }
 }
 
 @layer utilities {

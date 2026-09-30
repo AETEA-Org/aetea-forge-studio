@@ -8,6 +8,7 @@
  */
 import { API_BASE_URL } from "@/services/config";
 import { backendHeaders } from "@/services/authHeaders";
+import { readErrorMessage } from "@/services/errorDetail";
 
 export type ProgressState = "started" | "done" | "failed";
 export type CampaignState = "creating" | "section_written" | "created" | "updated";
@@ -69,6 +70,18 @@ export interface StartTurnRequest {
   /** How much intelligence to apply: a tier code, or "auto" to let AETEA pick.
    *  Omitted falls back to whatever the chat is set to. */
   tier?: string;
+  /**
+   * Rewrite history rather than continue it: this message and everything after
+   * it are replaced by this turn, in the transcript and in what the agent
+   * remembers.
+   *
+   * It rides on an ordinary turn on purpose. A rewound turn needs everything an
+   * ordinary one needs — the task, the branch, the cards picked as references,
+   * the generation settings — and the composer is where all of that already
+   * lives. The endpoint this replaced carried none of it, which is why the
+   * canvas could never rewrite a message.
+   */
+  rewindToMessageId?: string;
 }
 
 export interface RunStatus {
@@ -145,6 +158,9 @@ export async function startTurn(req: StartTurnRequest): Promise<{ run_id: string
   if (req.generationOptions && Object.keys(req.generationOptions).length > 0) {
     form.append("generation_options", JSON.stringify(req.generationOptions));
   }
+  if (req.rewindToMessageId) {
+    form.append("rewind_to_message_id", req.rewindToMessageId);
+  }
   (req.files ?? []).forEach((file) => form.append("files", file));
 
   const response = await fetch(url("/ai/chat"), {
@@ -153,8 +169,7 @@ export async function startTurn(req: StartTurnRequest): Promise<{ run_id: string
     body: form,
   });
   if (!response.ok) {
-    const detail = await response.json().catch(() => ({}));
-    const message = detail.detail || "Could not start the message";
+    const message = await readErrorMessage(response, "Could not start the message");
     if (response.status === 409) throw new ChatBusyError(message);
     if (response.status === 402) throw new OutOfCreditsError(message);
     throw new Error(message);
@@ -180,37 +195,6 @@ export async function cancelRun(chatId: string): Promise<void> {
     headers: await authHeaders(),
     body: form,
   });
-}
-
-/**
- * Rewrite one of your messages and answer it again.
- *
- * Everything said from that message onward is replaced, in the transcript and
- * in what the agent remembers. Returns as soon as the run is accepted; the new
- * answer arrives on the stream like any other turn.
- */
-export async function editTurn(
-  chatId: string,
-  messageId: string,
-  req: { message: string; mode: string; branchId?: string }
-): Promise<{ run_id: string }> {
-  const form = new FormData();
-  form.append("message", req.message);
-  form.append("mode", req.mode);
-  form.append("branch_id", req.branchId ?? "main");
-
-  const response = await fetch(
-    url(`/ai/chats/${chatId}/messages/${messageId}/edit`),
-    { method: "POST", headers: await authHeaders(), body: form }
-  );
-  if (!response.ok) {
-    const detail = await response.json().catch(() => ({}));
-    const message = detail.detail || "Could not edit that message";
-    if (response.status === 409) throw new ChatBusyError(message);
-    if (response.status === 402) throw new OutOfCreditsError(message);
-    throw new Error(message);
-  }
-  return response.json();
 }
 
 /** Accept the agent's offer to turn this conversation into a campaign. */
@@ -268,8 +252,9 @@ export async function decideProposal(
     }
   );
   if (!response.ok) {
-    const detail = await response.json().catch(() => ({}));
-    throw new Error(detail.detail || "Could not record that decision");
+    throw new Error(
+      await readErrorMessage(response, "Could not record that decision")
+    );
   }
   return response.json();
 }

@@ -22,6 +22,7 @@ import {
   Plus,
   Sparkles,
   Check,
+  Undo2,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -116,6 +117,29 @@ interface ChatInputProps {
   enableGenerationModes?: boolean;
   /** Task-canvas only: images offered as a video's first/last frame. */
   frameAssets?: FrameAsset[];
+  /**
+   * The message this composer is rewinding to, if any: its text is taken as the
+   * starting point and a notice sits above the field saying what sending will
+   * replace.
+   *
+   * Rewriting a message happens here rather than inside the bubble because
+   * everything a turn needs is already here — the attachments, the generation
+   * mode and its pickers, the selected reference cards, the tier. A rewound
+   * turn is an ordinary turn, so it keeps all of them.
+   */
+  rewind?: {
+    /** Which message is armed. Seeding keys on this rather than on the text:
+     *  two different messages can say the same thing, and re-arming the same
+     *  one after typing over it has to seed again. */
+    messageId: string;
+    /** What was said, used to seed the field once per armed rewind. */
+    text: string;
+    /** How many messages sending will replace, including this one. */
+    replacingCount: number;
+    /** Extra line of notice, e.g. that generated files stay on the canvas. */
+    note?: string;
+    onCancel: () => void;
+  } | null;
 }
 
 export interface ChatInputHandle {
@@ -553,6 +577,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     variant = "default",
     enableGenerationModes = false,
     frameAssets,
+    rewind = null,
   },
   ref
 ) {
@@ -594,6 +619,26 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       }
     },
   }), [isStreaming, disabled]);
+
+  // Seed the field the moment a rewind arms, and put the caret at the end so
+  // it reads as "carry on from what you said". Keyed on the armed message, not
+  // on `rewind` itself, so a re-render never clobbers what has been typed since.
+  const armedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!rewind) {
+      armedRef.current = null;
+      return;
+    }
+    if (armedRef.current === rewind.messageId) return;
+    armedRef.current = rewind.messageId;
+    setMessage(rewind.text);
+    const el = textareaRef.current;
+    if (!el) return;
+    el.focus();
+    el.setSelectionRange(rewind.text.length, rewind.text.length);
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, textareaMaxHeight)}px`;
+  }, [rewind, textareaMaxHeight]);
 
   const isPrefillActive = prefillMessage != null && prefillMessage.length > 0;
   const displayedValue = isPrefillActive ? prefillDisplayText : message;
@@ -751,13 +796,43 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         "rounded-2xl border border-border bg-card/60 p-2 space-y-2 min-w-0 overflow-x-hidden",
         "transition-colors focus-within:border-primary/50 focus-within:bg-card",
         variant === "floating" && "bg-background/90 backdrop-blur-md shadow-2xl",
-        isDragging && "border-primary/60 bg-primary/5"
+        isDragging && "border-primary/60 bg-primary/5",
+        // Armed for a rewind: the composer is about to replace part of the
+        // conversation, so it stops looking like an ordinary one.
+        rewind && "border-primary/50 ring-1 ring-primary/20"
       )}
       onDragEnter={handleDragEnterInput}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
+      {rewind && (
+        <div className="flex items-start gap-2 rounded-lg border border-primary/35 bg-primary/10 px-2.5 py-2 text-[11.5px] leading-snug">
+          <Undo2 className="mt-px h-3.5 w-3.5 shrink-0 text-primary" />
+          <div className="min-w-0 flex-1">
+            <span className="font-semibold">Rewinding to your message.</span>{" "}
+            <span className="text-muted-foreground">
+              {rewind.replacingCount === 1
+                ? "It is greyed out until you send."
+                : `${rewind.replacingCount} messages below are greyed out until you send.`}
+            </span>
+            {rewind.note ? (
+              <span className="mt-0.5 block text-muted-foreground">{rewind.note}</span>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              rewind.onCancel();
+              setMessage("");
+            }}
+            className="shrink-0 text-primary underline underline-offset-2 hover:no-underline focus:outline-none focus-visible:ring-1 focus-visible:ring-primary rounded"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+
       {files.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {files.map((file, index) => (
@@ -806,6 +881,12 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           )}
           style={{ maxHeight: `${textareaMaxHeight}px` }}
           onKeyDown={(e) => {
+            if (e.key === "Escape" && rewind) {
+              e.preventDefault();
+              rewind.onCancel();
+              setMessage("");
+              return;
+            }
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
               handleSubmit(e);

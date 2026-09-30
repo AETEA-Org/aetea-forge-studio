@@ -141,7 +141,13 @@ export const ChatWindowNode = memo(function ChatWindowNode() {
     referenceCount,
     tier,
     onTierChange,
+    onRewind,
+    rewindingFromId,
+    rewindReplacingCount,
+    onCancelRewind,
   } = useCanvas();
+
+  const rewindTarget = messages.find((m) => m.message_id === rewindingFromId);
 
   return (
     <div className="group relative h-full w-full flex flex-col rounded-xl border border-border bg-card shadow-sm overflow-hidden">
@@ -185,6 +191,8 @@ export const ChatWindowNode = memo(function ChatWindowNode() {
               updateMessage={updateMessage}
               showEmptyState={false}
               surface="canvas"
+              onRewind={onRewind}
+              rewindingFromId={rewindingFromId}
               // On the canvas a published file becomes its own card, so showing
               // it in the bubble as well would say the same thing twice.
               suppressInlineAssets
@@ -203,6 +211,21 @@ export const ChatWindowNode = memo(function ChatWindowNode() {
               frameAssets={threadAssets}
               tier={tier}
               onTierChange={onTierChange}
+              rewind={
+                rewindingFromId
+                  ? {
+                      messageId: rewindingFromId,
+                      text: rewindTarget?.content ?? "",
+                      replacingCount: rewindReplacingCount,
+                      // Said here and not on the other surfaces because this is
+                      // the one where the cards are on screen: rewinding past
+                      // the turn that made them leaves them sitting there, and
+                      // that is deliberate — they cost credits.
+                      note: "Files already made stay on the canvas.",
+                      onCancel: onCancelRewind,
+                    }
+                  : null
+              }
             />
           </div>
         </ChatPanelDropZone>

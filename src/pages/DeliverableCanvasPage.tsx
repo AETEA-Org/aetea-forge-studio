@@ -21,6 +21,7 @@ import type { ProgressStep } from "@/services/agentRun";
 import { invalidateForDataChange } from "@/services/dataChanged";
 import { reportSendFailure } from "@/services/sendFailure";
 import { useChatMessages } from "@/hooks/useChats";
+import { useRewind } from "@/hooks/useRewind";
 import { useCreativeState } from "@/hooks/useCreativeState";
 import { ModificationOverlay } from "@/components/app/ModificationOverlay";
 import type { ChatInputHandle, ChatSendMeta } from "@/components/app/ChatInput";
@@ -130,6 +131,12 @@ export default function DeliverableCanvasPage() {
     () => [...(messagesData?.messages ?? []), ...optimisticMessages],
     [messagesData?.messages, optimisticMessages]
   );
+  const {
+    arm: armRewind,
+    cancel: cancelRewind,
+    targetId: rewindTargetId,
+    replacingCount: rewindReplacingCount,
+  } = useRewind(messages);
 
   const { data: deliverablesData } = useQuery({
     queryKey: deliverablesKey,
@@ -373,6 +380,11 @@ export default function DeliverableCanvasPage() {
       setUpdateMessage(null);
       setIsStreaming(true);
 
+      // Read before clearing: the turn has to carry it, and the thread should
+      // stop looking rewound the moment it is on its way.
+      const rewindToMessageId = rewindTargetId ?? undefined;
+      cancelRewind();
+
       try {
         await runTurn(
           {
@@ -380,6 +392,7 @@ export default function DeliverableCanvasPage() {
             message,
             mode: "campaign",
             branchId,
+            rewindToMessageId,
             activeTaskId: taskId,
             files,
             referenceAssetIds: selectedAssetIds,
@@ -473,6 +486,8 @@ export default function DeliverableCanvasPage() {
       isStreaming,
       mergeStreamAssets,
       queryClient,
+      cancelRewind,
+      rewindTargetId,
       selectedAssetIds,
       setIsModifying,
       taskId,
@@ -503,6 +518,10 @@ export default function DeliverableCanvasPage() {
       onSend: handleSend,
       onStop: handleStop,
       chatInputRef,
+      onRewind: armRewind,
+      rewindingFromId: rewindTargetId,
+      rewindReplacingCount: rewindReplacingCount,
+      onCancelRewind: cancelRewind,
       onApprove: handleApprove,
       approvingIds,
       referenceCount: selectedAssetIds.length,
@@ -528,6 +547,10 @@ export default function DeliverableCanvasPage() {
     steps,
     handleSend,
     handleStop,
+    armRewind,
+    rewindTargetId,
+    rewindReplacingCount,
+    cancelRewind,
     handleApprove,
     approvingIds,
     selectedAssetIds.length,
