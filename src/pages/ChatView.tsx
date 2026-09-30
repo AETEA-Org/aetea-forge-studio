@@ -26,17 +26,21 @@ import { AssetsModal } from "@/components/app/AssetsModal";
 import { AgentThinking } from "@/components/app/AgentThinking";
 import { AgentSteps } from "@/components/app/AgentSteps";
 import { CampaignModeOffer } from "@/components/app/CampaignModeOffer";
+import { CampaignChangeProposal } from "@/components/app/CampaignChangeProposal";
 import { invalidateForDataChange } from "@/services/dataChanged";
 import { reportSendFailure } from "@/services/sendFailure";
 import { OutOfCredits } from "@/components/app/billing/OutOfCredits";
 import {
   acceptCampaignMode,
   cancelRun,
+  decideProposal,
   editTurn,
   followRun,
   getRunStatus,
+  listProposals,
   runTurn,
   type AgentTurnHandlers,
+  type CampaignProposal,
   type ProgressStep,
 } from "@/services/agentRun";
 
@@ -59,6 +63,10 @@ export default function ChatView() {
   const [thinkingText, setThinkingText] = useState("");
   const [steps, setSteps] = useState<ProgressStep[]>([]);
   const [modeProposal, setModeProposal] = useState<string | null>(null);
+  // A campaign change waiting on the user. Unlike the mode offer this has an
+  // id on the server, so it survives the run that raised it and comes back on
+  // a reload — see the fetch below.
+  const [changeProposal, setChangeProposal] = useState<CampaignProposal | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   // Shown where the answer would have been, and cleared as soon as they try
   // again — a stale "out of credits" card after a successful top-up would be
@@ -105,6 +113,7 @@ export default function ChatView() {
           return next;
         }),
       onModeProposal: (rationale) => setModeProposal(rationale),
+      onCampaignProposal: (proposal) => setChangeProposal(proposal),
       onAssets: (assets) => {
         mergeStreamAssets(
           assets.map((a) => ({ id: a.id, mime_type: a.mime_type ?? "" }))
@@ -141,6 +150,81 @@ export default function ChatView() {
 
   const messages = [...serverMessages, ...optimisticMessages];
   const chatTitle = chatData?.title ?? "Chat";
+
+  // A change the agent proposed and nobody answered. The card is raised as a
+  // run event, which only the client that was watching ever saw — so a person
+  // who closed the tab would come back to a campaign quietly waiting on a
+  // decision they were never shown. Asked for on open, and again whenever a
+  // run ends, so the card outlives the turn that raised it.
+  useEffect(() => {
+    if (!chatId || !user?.email || isStreaming) return;
+    let cancelled = false;
+    listProposals(chatId)
+      .then((open) => {
+        if (!cancelled) setChangeProposal(open[0] ?? null);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [chatId, user?.email, isStreaming]);
+
+  // Answering the card. The decision is recorded and applied on the server:
+  // approving applies the payload stored when the card was raised, never
+  // anything sent from here.
+  const decideChange = useCallback(
+    async (decision: "approve" | "decline") => {
+      if (!chatId || !changeProposal) return;
+      let outcome: { status: string };
+      try {
+        outcome = await decideProposal(
+          chatId,
+          changeProposal.proposal_id,
+          decision,
+          changeProposal.content_hash
+        );
+      } catch (err) {
+        // Without this the rejection was silent: the card stayed put, nothing
+        // happened, and the person had no idea the click had failed.
+        toast({
+          title: "Could not record that",
+          description: err instanceof Error ? err.message : "Try again in a moment.",
+          variant: "destructive",
+        });
+        return;
+      }
+      setChangeProposal(null);
+
+      // Approving does not always apply. The campaign can move while the card
+      // is open, or the card can go stale, and the server answers 200 with a
+      // status saying so — which the catch above never sees. Clearing the card
+      // and saying nothing would mean they pressed Apply, watched it vanish,
+      // and got no change and no reason: the same silent failure the catch
+      // exists to prevent, one layer down.
+      const stalled: Record<string, string> = {
+        conflict:
+          "The campaign changed while this was waiting, so nothing was applied. " +
+          "Ask AETEA to propose it again.",
+        expired:
+          "That suggestion sat too long to apply. Nothing changed — ask AETEA to propose it again.",
+        superseded: "A newer suggestion replaced that one, so nothing was applied.",
+      };
+      if (stalled[outcome.status]) {
+        toast({ title: "Nothing was changed", description: stalled[outcome.status] });
+        return;
+      }
+
+      if (outcome.status === "applied") {
+        // The campaign tabs are now showing the old version of whatever moved.
+        ["section", "creative_state", "task"].forEach((entity) =>
+          invalidateForDataChange(queryClient, entity, { chatId, userEmail: user?.email })
+        );
+      }
+      // Nothing else to do. If the turn that raised this is still running it is
+      // watching the same row and carries on by itself.
+    },
+    [chatId, changeProposal, queryClient, toast, user?.email]
+  );
 
   // Open the composer where the chat was left: the mode it was in, and the
   // tier it was last sent on.
@@ -252,6 +336,7 @@ export default function ChatView() {
               if (state === "created") setShowCampaignLoading(false);
             },
             onModeProposal: (rationale) => setModeProposal(rationale),
+            onCampaignProposal: (proposal) => setChangeProposal(proposal),
             onAssets: (assets) => {
               mergeStreamAssets(
                 assets.map((a) => ({ id: a.id, mime_type: a.mime_type ?? "" }))
@@ -372,6 +457,7 @@ export default function ChatView() {
                 return next;
               }),
             onModeProposal: (rationale) => setModeProposal(rationale),
+            onCampaignProposal: (proposal) => setChangeProposal(proposal),
             onAssets: (assets) => {
               mergeStreamAssets(
                 assets.map((a) => ({ id: a.id, mime_type: a.mime_type ?? "" }))
@@ -460,7 +546,7 @@ export default function ChatView() {
           updateMessage={updateMessage}
         />
 
-        {(thinkingText || steps.length > 0 || modeProposal) && (
+        {(thinkingText || steps.length > 0 || modeProposal || changeProposal) && (
           <div className="space-y-2 px-4 pb-2">
             <AgentThinking text={thinkingText} />
             <AgentSteps steps={steps} />
@@ -490,6 +576,13 @@ export default function ChatView() {
                   // carries on building the campaign in the same answer.
                 }}
                 onDecline={() => setModeProposal(null)}
+              />
+            )}
+            {changeProposal && (
+              <CampaignChangeProposal
+                proposal={changeProposal}
+                onApprove={() => decideChange("approve")}
+                onDecline={() => decideChange("decline")}
               />
             )}
           </div>
