@@ -16,7 +16,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useModification } from "@/hooks/useModification";
 import { useToast } from "@/hooks/use-toast";
-import { runTurn, followRun, getRunStatus } from "@/services/agentRun";
+import { runTurn, followRun, getRunStatus, cancelRun } from "@/services/agentRun";
 import type { ProgressStep } from "@/services/agentRun";
 import { invalidateForDataChange } from "@/services/dataChanged";
 import { reportSendFailure } from "@/services/sendFailure";
@@ -340,6 +340,23 @@ export default function DeliverableCanvasPage() {
   }, [chatId, user?.email, branchId, campaignId, taskId, canvasKey,
       deliverablesKey, queryClient, mergeStreamAssets, toast]);
 
+  // Stopping is the send button's other job while a run is going. The canvas
+  // went without one until now, which made it the only surface where a turn
+  // could not be interrupted — and the longest, dearest work in the product,
+  // video, is started from here.
+  const handleStop = useCallback(async () => {
+    if (!user?.email || !chatId) return;
+    await cancelRun(chatId);
+    setIsStreaming(false);
+    setSteps([]);
+    setThinkingText("");
+    setStreamingContent("");
+    setUpdateMessage(null);
+    await queryClient.refetchQueries({
+      queryKey: ["chat-messages", chatId, branchId],
+    });
+  }, [user?.email, chatId, branchId, queryClient]);
+
   const handleSend = useCallback(
     async (message: string, files?: File[], meta?: ChatSendMeta) => {
       if (!user?.email || !chatId || isStreaming) return;
@@ -484,6 +501,7 @@ export default function DeliverableCanvasPage() {
       thinkingText,
       steps,
       onSend: handleSend,
+      onStop: handleStop,
       chatInputRef,
       onApprove: handleApprove,
       approvingIds,
@@ -509,6 +527,7 @@ export default function DeliverableCanvasPage() {
     thinkingText,
     steps,
     handleSend,
+    handleStop,
     handleApprove,
     approvingIds,
     selectedAssetIds.length,

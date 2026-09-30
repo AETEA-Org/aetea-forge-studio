@@ -136,6 +136,7 @@ export const ChatWindowNode = memo(function ChatWindowNode() {
     thinkingText,
     steps,
     onSend,
+    onStop,
     chatInputRef,
     referenceCount,
     tier,
@@ -194,6 +195,7 @@ export const ChatWindowNode = memo(function ChatWindowNode() {
               ref={chatInputRef}
               onSend={onSend}
               isStreaming={isStreaming}
+              onStop={onStop}
               inputPlaceholder="Describe what to generate or refine..."
               textareaMaxHeight={140}
               variant="floating"

@@ -37,6 +37,10 @@ export interface CanvasContextValue {
   /** Named steps, so a long turn shows a checklist rather than one line. */
   steps: ProgressStep[];
   onSend: (message: string, files?: File[], meta?: ChatSendMeta) => void;
+  /** Stop the run in progress. Without this the composer's send button stays a
+   *  spinner for the whole turn, which is what the canvas did until now — the
+   *  one surface where a long render could not be called off. */
+  onStop: () => void;
   chatInputRef: React.RefObject<ChatInputHandle>;
   /** How much intelligence to apply, and how to change it. Same picker as the
    *  chat view, because a canvas turn costs exactly what a chat turn costs. */
