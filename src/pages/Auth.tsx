@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Loader2, Chrome } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,10 +9,22 @@ import { useAuth } from "@/hooks/useAuth";
 import logo from "@/assets/aetea-auth-wordmark.png";
 import { z } from "zod";
 
+import { PolicyDialog, PolicyReview } from "@/components/legal/PolicyReview";
+import { GoogleSignIn } from "@/components/legal/GoogleSignIn";
+import { LegalAcceptance, LegalDocument, legalDocuments } from "@/services/legal";
+import { RegistrationError } from "@/services/registration";
+
 const emailSchema = z.string().email("Please enter a valid email address");
 const passwordSchema = z.string().min(6, "Password must be at least 6 characters");
 
 export default function Auth() {
+  const [documents, setDocuments] = useState<LegalDocument[]>([]);
+  const [policyError, setPolicyError] = useState("");
+  const [acceptance, setAcceptance] = useState<LegalAcceptance | null>(null);
+  const [pendingGoogle, setPendingGoogle] = useState<{ token: string; challenge: string } | null>(null);
+  const [googleAttempt, setGoogleAttempt] = useState(0);
+  const [openPolicy, setOpenPolicy] = useState<LegalDocument["kind"] | null>(null);
+  const handlePolicyOpen = useCallback(() => setOpenPolicy(null), []);
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -44,6 +56,30 @@ export default function Auth() {
     }
   }, [user, loading, navigate, searchParams]);
 
+  const loadPolicies = async () => {
+    try { setDocuments(await legalDocuments()); setPolicyError(""); }
+    catch (error) { setPolicyError(error instanceof Error ? error.message : "Could not load policies."); }
+  };
+  useEffect(() => { void loadPolicies(); }, []);
+
+  const handleGoogle = async (token: string, challenge: string) => {
+    setIsSubmitting(true);
+    try {
+      await signInWithGoogle(token, challenge, !isLogin && acceptance ? acceptance : undefined);
+      setPendingGoogle(null);
+    } catch (error) {
+      if (error instanceof RegistrationError && error.code === "LEGAL_ACCEPTANCE_REQUIRED") {
+        setPendingGoogle({ token, challenge }); setIsLogin(false);
+        toast({ title: "Review our policies", description: "Review both documents and agree to create your Google account." });
+      } else {
+        setPendingGoogle(null);
+        setGoogleAttempt((attempt) => attempt + 1);
+        toast({ title: "Google sign-in failed", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" });
+        void loadPolicies();
+      }
+    } finally { setIsSubmitting(false); }
+  };
+
   const validateForm = () => {
     const newErrors: { email?: string; password?: string } = {};
     
@@ -64,6 +100,8 @@ export default function Auth() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!isLogin && !acceptance) return;
+    if (pendingGoogle) { await handleGoogle(pendingGoogle.token, pendingGoogle.challenge); return; }
     if (!validateForm()) return;
     
     setIsSubmitting(true);
@@ -92,8 +130,9 @@ export default function Auth() {
           });
         }
       } else {
-        const { error } = await signUp(email, password, username);
+        const { error } = await signUp(email, password, username, acceptance!);
         if (error) {
+          void loadPolicies();
           if (error.message.includes("already registered")) {
             toast({
               title: "Account exists",
@@ -142,7 +181,7 @@ export default function Auth() {
 
       {/* Auth Card */}
       <div className="flex-1 flex items-center justify-center p-6 relative z-10">
-        <div className="w-full max-w-sm">
+        <div className="w-full max-w-md">
           <div className="text-center mb-10">
             <img src={logo} alt="AETEA" className="mx-auto mb-2 h-auto w-40 max-w-full" />
             <h1 className="font-display text-2xl font-bold mb-2">
@@ -154,36 +193,19 @@ export default function Auth() {
           </div>
 
           <form onSubmit={handleSubmit} className="p-8 rounded-2xl glass space-y-5">
-            {/* Google Sign In */}
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full bg-background/50 border-border/50 hover:bg-background/80"
-              onClick={async () => {
-                const { error } = await signInWithGoogle(searchParams.get("next") ?? undefined);
-                if (error) {
-                  toast({
-                    title: "Google sign-in failed",
-                    description: error.message,
-                    variant: "destructive",
-                  });
-                }
-              }}
-            >
-              <Chrome className="h-4 w-4 mr-2" />
-              Continue with Google
-            </Button>
+            <GoogleSignIn attempt={googleAttempt} onCredential={handleGoogle} disabled={isSubmitting || (!isLogin && !acceptance)} />
+            {pendingGoogle && <p className="text-sm text-primary">Your Google identity is ready. Review and agree below to finish creating your account.</p>}
 
-            <div className="relative">
+            {!pendingGoogle && <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t border-border/50" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
                 <span className="bg-transparent px-2 text-muted-foreground">Or continue with email</span>
               </div>
-            </div>
+            </div>}
 
-            {!isLogin && (
+            {!isLogin && !pendingGoogle && (
               <div className="space-y-2">
                 <Label htmlFor="username">Username</Label>
                 <Input
@@ -197,7 +219,7 @@ export default function Auth() {
               </div>
             )}
             
-            <div className="space-y-2">
+            {!pendingGoogle && <><div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
@@ -232,11 +254,17 @@ export default function Auth() {
                 <p className="text-xs text-destructive">{errors.password}</p>
               )}
             </div>
+            </>}
+
+            {!isLogin && <div>
+              {policyError && <p role="alert" className="text-xs text-destructive mb-3">{policyError} <button type="button" className="underline" onClick={() => void loadPolicies()}>Retry</button></p>}
+              {documents.length > 0 ? <PolicyReview documents={documents} onChange={setAcceptance} openKind={openPolicy} onOpenHandled={handlePolicyOpen} /> : !policyError && <p role="status" className="text-xs text-muted-foreground">Loading policies…</p>}
+            </div>}
 
             <Button
               type="submit"
               className="w-full"
-              disabled={isSubmitting}
+              disabled={isSubmitting || (!isLogin && !acceptance)}
             >
               {isSubmitting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -252,7 +280,7 @@ export default function Auth() {
                 type="button"
                 onClick={() => {
                   setIsLogin(!isLogin);
-                  setErrors({});
+                  setErrors({}); setPendingGoogle(null); setAcceptance(null);
                 }}
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
@@ -262,8 +290,11 @@ export default function Auth() {
           </form>
 
           <p className="text-center text-xs text-muted-foreground/50 mt-8">
-            By signing in, you agree to our Terms of Service and Privacy Policy.
+            <button type="button" className="underline disabled:opacity-50" disabled={!documents.length} onClick={() => setOpenPolicy("terms")}>Terms & Conditions</button> · <button type="button" className="underline disabled:opacity-50" disabled={!documents.length} onClick={() => setOpenPolicy("privacy")}>Privacy Policy</button>
+            <span className="block mt-2">Questions? <a href="mailto:support@aetea.studio" className="underline">Contact support</a></span>
           </p>
+          {isLogin && openPolicy && documents.find((doc) => doc.kind === openPolicy) && <PolicyDialog document={documents.find((doc) => doc.kind === openPolicy)!} onClose={() => setOpenPolicy(null)} onReview={() => setOpenPolicy(null)} />}
+          {isLogin && policyError && <p role="alert" className="text-xs text-muted-foreground text-center mt-3">{policyError} <button type="button" className="underline" onClick={() => void loadPolicies()}>Retry policies</button></p>}
         </div>
       </div>
     </div>

@@ -23,6 +23,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export function detailToMessage(body: unknown): string | undefined {
   if (!isRecord(body)) return undefined;
   const { detail } = body;
+  if (isRecord(detail) && detail.code === "LEGAL_ACCEPTANCE_REQUIRED") {
+    window.dispatchEvent(new Event("aetea:legal-required"));
+    return "Review the current policies before continuing.";
+  }
 
   if (typeof detail === "string") {
     return detail.trim() || undefined;

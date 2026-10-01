@@ -18,6 +18,8 @@ import ChatOrCampaign from "./pages/ChatOrCampaign";
 import DeliverableCanvasPage from "./pages/DeliverableCanvasPage";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import Policy from "./pages/Policy";
+import { AgreementBoundary } from "@/components/legal/AgreementBoundary";
 
 const queryClient = new QueryClient();
 
@@ -28,11 +30,14 @@ const App = () => (
         <TooltipProvider>
           <Toaster />
           <BrowserRouter>
+            <AgreementBoundary>
             <Routes>
               <Route path="/" element={<Landing />} />
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/advisory" element={<Advisory />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/privacy" element={<Policy kind="privacy" />} />
+              <Route path="/terms" element={<Policy kind="terms" />} />
               
               {/* Protected App Routes */}
               <Route
@@ -57,6 +62,7 @@ const App = () => (
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </AgreementBoundary>
           </BrowserRouter>
           <Analytics />
           <SpeedInsights />
