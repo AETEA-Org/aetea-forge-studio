@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react";
 import type { ChatInputHandle, ChatSendMeta } from "@/components/app/ChatInput";
-import type { ProgressStep } from "@/services/agentRun";
+import type { ProgressStep, RunConnectionState } from "@/services/agentRun";
 import type {
   Asset,
   CampaignTask,
@@ -36,6 +36,10 @@ export interface CanvasContextValue {
   thinkingText: string;
   /** Named steps, so a long turn shows a checklist rather than one line. */
   steps: ProgressStep[];
+  connection: RunConnectionState;
+  onReconnect: () => void;
+  runError: string | null;
+  onRetry: () => void;
   onSend: (message: string, files?: File[], meta?: ChatSendMeta) => void;
   /** Stop the run in progress. Without this the composer's send button stays a
    *  spinner for the whole turn, which is what the canvas did until now — the

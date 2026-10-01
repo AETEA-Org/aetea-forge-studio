@@ -1,3 +1,4 @@
+import type { RunConnectionState } from "@/services/agentRun";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ChevronLeft, ChevronRight, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -22,8 +23,7 @@ import { invalidateForDataChange } from "@/services/dataChanged";
 import { useNavigate } from "react-router-dom";
 import { reportSendFailure } from "@/services/sendFailure";
 import { OutOfCredits } from "@/components/app/billing/OutOfCredits";
-import { AgentThinking } from "@/components/app/AgentThinking";
-import { AgentSteps } from "@/components/app/AgentSteps";
+import { AgentProgress } from "@/components/app/AgentProgress";
 import { useAuth } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -73,11 +73,10 @@ export function AICopilotPanel({
   const [isResizing, setIsResizing] = useState(false);
   const panelRef = useRef<HTMLElement>(null);
   const chatInputRef = useRef<ChatInputHandle>(null);
+  const subscriptionRef = useRef<AbortController | null>(null);
   
   // Refs to track modification state
   const isModifyingActiveRef = useRef(false);
-  // One re-attach per mounted chat; sending a message drives its own stream.
-  const reattachedRef = useRef(false);
   const updateClearTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { setIsModifying } = useModification();
@@ -105,7 +104,9 @@ export function AICopilotPanel({
 
   const mergeStreamAssets = useCallback(async (hints: StreamAssetHint[]) => {
     if (!user?.email || hints.length === 0) return;
+    const signal = subscriptionRef.current?.signal;
     const resolved = await resolveStreamAssetHints(hints);
+    if (signal?.aborted) return;
     setStreamingAssets((prev) => {
       const m = new Map(prev.map((a) => [a.id, a]));
       resolved.forEach((a) => m.set(a.id, a));
@@ -129,6 +130,7 @@ export function AICopilotPanel({
 
   const navigate = useNavigate();
   const [isStreaming, setIsStreaming] = useState(false);
+  const [connection, setConnection] = useState<RunConnectionState>("idle");
   // The copilot starts billable turns like any other surface, so it gets the
   // same control. Without this the picker simply did not render here and every
   // copilot turn ran on the default with no way to choose.
@@ -150,6 +152,7 @@ export function AICopilotPanel({
     onComplete?: () => void;
     onError?: (msg: string) => void;
   };
+  const activeSendRef = useRef<{ controller: AbortController; finish: (error?: string) => void } | null>(null);
 
   const handleSendMessage = useCallback(
     async (
@@ -168,6 +171,19 @@ export function AICopilotPanel({
 
       const ctxToUse = override?.contextOverride ?? context;
 
+      subscriptionRef.current?.abort();
+      const controller = new AbortController();
+      subscriptionRef.current = controller;
+      let finished = false;
+      const finish = (error?: string) => {
+        if (finished) return;
+        finished = true;
+        if (activeSendRef.current?.controller === controller) activeSendRef.current = null;
+        if (error !== undefined) override?.onError?.(error);
+        else override?.onComplete?.();
+      };
+      activeSendRef.current = { controller, finish };
+
       // Add optimistic user message immediately
       const optimisticMessage: ChatMessage = {
         message_id: `temp-${Date.now()}`,
@@ -180,6 +196,9 @@ export function AICopilotPanel({
       setStreamingContent("");
       setStreamingAssets([]);
       setUpdateMessage(null);
+      setThinkingText("");
+      setSteps([]);
+      setConnection("idle");
       setIsStreaming(true);
       setError(null);
       
@@ -216,6 +235,7 @@ export function AICopilotPanel({
             generationOptions: override?.generationOptions,
           },
           {
+            onConnectionState: setConnection,
             onToken: (_delta, accumulated) => {
               if (updateClearTimeoutRef.current) {
                 clearTimeout(updateClearTimeoutRef.current);
@@ -271,17 +291,18 @@ export function AICopilotPanel({
               });
             },
             onCancelled: () => {
+              if (updateClearTimeoutRef.current) clearTimeout(updateClearTimeoutRef.current);
               setUpdateMessage(null);
               setStreamingContent("");
-              setSteps([]);
+              setStreamingAssets([]);
               setThinkingText("");
+              setSteps([]);
               setIsStreaming(false);
               setOptimisticMessages([]);
-              if (isModifyingActiveRef.current) {
-                isModifyingActiveRef.current = false;
-                setIsModifying(false, null);
-              }
-              queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
+              setIsModifying(false, null);
+              isModifyingActiveRef.current = false;
+              void queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
+              finish();
             },
             onComplete: async () => {
               if (updateClearTimeoutRef.current) {
@@ -292,6 +313,7 @@ export function AICopilotPanel({
               await queryClient.refetchQueries({
                 queryKey: ["chat-messages", chatId],
               });
+              if (controller.signal.aborted) return;
               setStreamingContent("");
               setStreamingAssets([]);
               setThinkingText("");
@@ -302,7 +324,7 @@ export function AICopilotPanel({
                 setIsModifying(false, null);
                 isModifyingActiveRef.current = false;
               }
-              override?.onComplete?.();
+              finish();
             },
             onError: (errorMsg: string) => {
               if (updateClearTimeoutRef.current) {
@@ -324,11 +346,13 @@ export function AICopilotPanel({
                 description: errorMsg,
                 variant: "destructive",
               });
-              override?.onError?.(errorMsg);
+              finish(errorMsg);
             },
-          }
+          },
+          controller.signal
         );
       } catch (error) {
+        if (controller.signal.aborted) return;
         console.error("❌ Failed to send message:", error);
         const errorMsg = error instanceof Error ? error.message : "Failed to send message";
         if (updateClearTimeoutRef.current) {
@@ -339,6 +363,9 @@ export function AICopilotPanel({
         setStreamingContent("");
         setStreamingAssets([]);
         setIsStreaming(false);
+        setThinkingText("");
+        setSteps([]);
+        setConnection("idle");
         setOptimisticMessages([]);
         setError(errorMsg);
         isModifyingActiveRef.current = false;
@@ -351,7 +378,7 @@ export function AICopilotPanel({
           userEmail: user?.email,
           onStopped: () => setIsStreaming(false),
         });
-        override?.onError?.(errorMsg);
+        finish(errorMsg);
       }
     },
     [chatId, campaignId, context, contextLabel, selectedTaskId, user, setIsModifying, queryClient, toast, mergeStreamAssets,
@@ -396,18 +423,19 @@ export function AICopilotPanel({
   // the only copy of this. Refreshing mid-answer therefore left the run going
   // on the server with nothing following it, and the reply never arrived.
   useEffect(() => {
-    if (!chatId || !user?.email || reattachedRef.current) return;
+    if (!chatId || !user?.email) return;
+    subscriptionRef.current?.abort();
     const controller = new AbortController();
-    const email = user.email;
+    subscriptionRef.current = controller;
 
     getRunStatus(chatId)
       .then((status) => {
         if (!status.active || controller.signal.aborted) return;
-        reattachedRef.current = true;
         setIsStreaming(true);
         return followRun(
           chatId,
           {
+            onConnectionState: setConnection,
             onToken: (_delta, accumulated) => {
               setUpdateMessage(null);
               setStreamingContent(accumulated);
@@ -440,6 +468,7 @@ export function AICopilotPanel({
               await queryClient.refetchQueries({
                 queryKey: ["chat-messages", chatId],
               });
+              if (controller.signal.aborted) return;
               setStreamingContent("");
               setThinkingText("");
               setSteps([]);
@@ -460,28 +489,47 @@ export function AICopilotPanel({
               setIsStreaming(false);
             },
           },
-          // Resume from where this client got to, rather than replaying the
-          // whole run from the beginning.
-          { signal: controller.signal, sinceEventId: status.last_event_id },
+          // Rebuild partial text and progress from retained run events.
+          { signal: controller.signal, sinceEventId: 0 },
         );
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (!controller.signal.aborted) { setIsStreaming(true); setConnection("interrupted"); }
+      });
 
-    return () => controller.abort();
+    return () => { controller.abort(); subscriptionRef.current?.abort(); };
   }, [chatId, campaignId, user?.email, queryClient, mergeStreamAssets]);
 
   // Stopping is the send button's other job while a run is going, so the
   // handler lives with the send path rather than beside a separate control.
   const handleStop = useCallback(async () => {
     if (!user?.email || !chatId) return;
-    await cancelRun(chatId);
+    if (connection === "stopping") return;
+    const controller = subscriptionRef.current;
+    setConnection("stopping");
+    try {
+      await cancelRun(chatId);
+      if (controller?.signal.aborted) return;
+    } catch (error) {
+      if (controller?.signal.aborted) return;
+      setConnection("interrupted");
+      toast({ title: "Could not stop the run", description: error instanceof Error ? error.message : "Try again.", variant: "destructive" });
+      return;
+    }
+    controller?.abort();
+    if (activeSendRef.current?.controller === controller) activeSendRef.current.finish();
+    setConnection("idle");
     setIsStreaming(false);
+    setOptimisticMessages([]);
+    setStreamingAssets([]);
+    isModifyingActiveRef.current = false;
+    setIsModifying(false, null);
     setSteps([]);
     setThinkingText("");
     setStreamingContent("");
     setUpdateMessage(null);
     await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
-  }, [user?.email, chatId, queryClient]);
+  }, [user?.email, chatId, queryClient, connection, toast, setIsModifying]);
 
   const handlePrefillComplete = useCallback(() => {
     const pending = autoMessageRef.current;
@@ -516,6 +564,10 @@ export function AICopilotPanel({
     setUpdateMessage(null);
     setOptimisticMessages([]);
     setError(null);
+    setThinkingText("");
+    setSteps([]);
+    setIsStreaming(false);
+    setConnection("idle");
     setAutoMessage(null);
     isModifyingActiveRef.current = false;
     setIsModifying(false, null);
@@ -648,12 +700,7 @@ export function AICopilotPanel({
               <p className="text-xs text-destructive">{error}</p>
             </div>
           )}
-          {(thinkingText || steps.length > 0) && (
-            <div className="space-y-2 px-4 pb-2">
-              <AgentThinking text={thinkingText} />
-              <AgentSteps steps={steps} />
-            </div>
-          )}
+          <AgentProgress thinkingText={thinkingText} steps={steps} connection={connection} onReconnect={() => window.location.reload()} onStop={handleStop} />
 
           {outOfCredits && (
             <OutOfCredits
@@ -663,7 +710,8 @@ export function AICopilotPanel({
             />
           )}
 
-          <ChatInput
+          <div className="chat-scrollbar shrink-0 min-h-0 max-h-[calc(100%-72px)] overflow-y-auto px-3 pb-3">
+        <ChatInput
             ref={chatInputRef}
             onSend={(message, files, meta) => {
               setOutOfCredits(false);
@@ -688,6 +736,7 @@ export function AICopilotPanel({
                 : null
             }
           />
+        </div>
         </ChatPanelDropZone>
         </div>
     </aside>

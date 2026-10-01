@@ -145,6 +145,8 @@ interface ChatInputProps {
 export interface ChatInputHandle {
   /** Append validated files (same as picking via paperclip). */
   addFiles: (files: File[]) => void;
+  /** Restore an editable draft without sending it. */
+  setDraft: (text: string) => void;
 }
 
 const PREFILL_INSTANT_DELAY_MS = 180;
@@ -608,6 +610,15 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   const selectedCharacterIds = generationOptions.character_ids ?? [];
 
   useImperativeHandle(ref, () => ({
+    setDraft: (text: string) => {
+      setMessage(text);
+      requestAnimationFrame(() => {
+        const field = textareaRef.current;
+        if (!field) return;
+        field.focus();
+        field.setSelectionRange(text.length, text.length);
+      });
+    },
     addFiles: (incoming: File[]) => {
       if (!incoming.length || isStreaming || disabled) return;
       const valid: File[] = [];
@@ -796,6 +807,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         "rounded-2xl border border-border bg-card/60 p-2 space-y-2 min-w-0 overflow-x-hidden",
         "transition-colors focus-within:border-primary/50 focus-within:bg-card",
         variant === "floating" && "bg-background/90 backdrop-blur-md shadow-2xl",
+        "shrink-0",
         isDragging && "border-primary/60 bg-primary/5",
         // Armed for a rewind: the composer is about to replace part of the
         // conversation, so it stops looking like an ordinary one.

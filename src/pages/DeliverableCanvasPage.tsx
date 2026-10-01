@@ -16,14 +16,13 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useModification } from "@/hooks/useModification";
 import { useToast } from "@/hooks/use-toast";
-import { runTurn, followRun, getRunStatus, cancelRun } from "@/services/agentRun";
-import type { ProgressStep } from "@/services/agentRun";
+import { ChatBusyError, runTurn, followRun, getRunStatus, cancelRun } from "@/services/agentRun";
+import type { AgentTurnHandlers, ProgressStep, RunConnectionState } from "@/services/agentRun";
 import { invalidateForDataChange } from "@/services/dataChanged";
 import { reportSendFailure } from "@/services/sendFailure";
 import { useChatMessages } from "@/hooks/useChats";
 import { useRewind } from "@/hooks/useRewind";
 import { useCreativeState } from "@/hooks/useCreativeState";
-import { ModificationOverlay } from "@/components/app/ModificationOverlay";
 import type { ChatInputHandle, ChatSendMeta } from "@/components/app/ChatInput";
 import type {
   ChatMessage,
@@ -32,7 +31,6 @@ import type {
   StreamAssetHint,
 } from "@/types/api";
 import type { CanvasScope } from "@/services/api";
-import { cn } from "@/lib/utils";
 import { CanvasContext, type CanvasContextValue } from "@/components/app/canvas/canvasContext";
 import {
   CanvasWorkspace,
@@ -52,11 +50,9 @@ export default function DeliverableCanvasPage() {
   const { chatId, taskId } = useParams<{ chatId: string; taskId: string }>();
   const navigate = useNavigate();
   const outletContext = useOutletContext<{
-    isModifying?: boolean;
     setActiveTab?: (tab: string) => void;
     setSelectedTaskId?: (id: string | null) => void;
   }>();
-  const isModifying = outletContext?.isModifying ?? false;
   const setActiveTab = outletContext?.setActiveTab;
   const setSelectedTaskId = outletContext?.setSelectedTaskId;
 
@@ -84,6 +80,12 @@ export default function DeliverableCanvasPage() {
   const [thinkingText, setThinkingText] = useState("");
   const [steps, setSteps] = useState<ProgressStep[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [connection, setConnection] = useState<RunConnectionState>("idle");
+  const [runError, setRunError] = useState<string | null>(null);
+  const lastSentRef = useRef("");
+  const streamControllerRef = useRef<AbortController | null>(null);
+  const [reconnectVersion, setReconnectVersion] = useState(0);
+  const replayFinishedRef = useRef(false);
   const [optimisticMessages, setOptimisticMessages] = useState<ChatMessage[]>([]);
   const [streamingAssets, setStreamingAssets] = useState<ChatRenderableAsset[]>([]);
   const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
@@ -114,10 +116,10 @@ export default function DeliverableCanvasPage() {
     enabled: !!keyVisualAssetId && !!user?.email,
     staleTime: 50 * 60 * 1000,
   });
-  const keyVisual: KeyVisualProp =
+  const keyVisual = useMemo<KeyVisualProp>(() =>
     keyVisualAssetId && keyVisualUrl
       ? { assetId: keyVisualAssetId, downloadUrl: keyVisualUrl }
-      : null;
+      : null, [keyVisualAssetId, keyVisualUrl]);
 
   const { data: task, isLoading, error } = useQuery({
     queryKey: ["campaign-task", taskId, user?.email],
@@ -163,6 +165,15 @@ export default function DeliverableCanvasPage() {
   // were the one thing missed: switch task while a run is going and the
   // running task's new files rendered on the canvas you had switched to.
   useEffect(() => {
+    streamControllerRef.current?.abort();
+    setIsStreaming(false);
+    setConnection("idle");
+    setRunError(null);
+    lastSentRef.current = "";
+    replayFinishedRef.current = false;
+    setStreamingContent("");
+    setUpdateMessage(null);
+    setOptimisticMessages([]);
     setSelectedAssetIds([]);
     setStreamingAssets([]);
     setThinkingText("");
@@ -196,13 +207,21 @@ export default function DeliverableCanvasPage() {
   const handleFixtureMoved = useCallback(
     (which: keyof FixturePositions, pos: XY) => {
       setFixturePositions((prev) => {
-        const next = { ...prev, [which]: pos };
+        const next = { ...prev, [which]: { ...prev[which], ...pos } };
         saveFixturePositions(canvasKey, next);
         return next;
       });
     },
     [canvasKey]
   );
+
+  const handleChatResized = useCallback((size: { width: number; height: number }, position: XY) => {
+    setFixturePositions((prev) => {
+      const next = { ...prev, chat: { ...prev.chat, ...size, ...position } };
+      saveFixturePositions(canvasKey, next);
+      return next;
+    });
+  }, [canvasKey]);
 
   const handleObjectMoved = useCallback(
     (objectId: string, pos: XY) => {
@@ -251,9 +270,10 @@ export default function DeliverableCanvasPage() {
   );
 
   const mergeStreamAssets = useCallback(
-    async (hints: StreamAssetHint[]) => {
+    async (hints: StreamAssetHint[], signal?: AbortSignal) => {
       if (!user?.email || hints.length === 0) return;
       const resolved = await resolveStreamAssetHints(hints);
+      if (signal?.aborted) return;
       setStreamingAssets((prev) => {
         const m = new Map(prev.map((a) => [a.id, a]));
         resolved.forEach((a) => m.set(a.id, a));
@@ -263,239 +283,153 @@ export default function DeliverableCanvasPage() {
     [user?.email]
   );
 
-  // Rejoin a turn that is already running.
-  //
-  // Without this the canvas was the one surface that showed an idle, enabled
-  // composer while work was in flight — so the next message came back as a
-  // conflict. The main panel and the copilot have done this since the run
-  // outlived its request; the canvas was simply missed.
-  const rejoinedRef = useRef(false);
-  useEffect(() => {
-    if (!chatId || !user?.email || rejoinedRef.current) return;
-    const controller = new AbortController();
-    const email = user.email;
-
-    getRunStatus(chatId)
-      .then((status) => {
-        if (!status.active || controller.signal.aborted) return;
-        rejoinedRef.current = true;
-        setIsStreaming(true);
-        return followRun(chatId, {
-          onToken: (_delta, accumulated) => {
-            setUpdateMessage(null);
-            setStreamingContent(accumulated);
-          },
-          onThinking: (_delta, accumulated) => setThinkingText(accumulated),
-          onProgress: (step) => {
-            setUpdateMessage(step.label);
-            setSteps((current) => {
-              const at = current.findIndex((s) => s.step_id === step.step_id);
-              if (at === -1) return [...current, step];
-              const next = [...current];
-              next[at] = step;
-              return next;
-            });
-          },
-          onAssets: (assets) => {
-            mergeStreamAssets(
-              assets.map((a) => ({ id: a.id, mime_type: a.mime_type ?? "" }))
-            ).catch(() => {});
-          },
-          onDataChanged: (entity) => {
-            invalidateForDataChange(queryClient, entity, {
-              chatId,
-              campaignId,
-              taskId,
-              canvasKey,
-              userEmail: user?.email,
-            });
-          },
-          onComplete: async () => {
-            await queryClient.refetchQueries({
-              queryKey: ["chat-messages", chatId, branchId],
-            });
-            queryClient.invalidateQueries({ queryKey: deliverablesKey });
-            setStreamingContent("");
-            setStreamingAssets([]);
-            setUpdateMessage(null);
-            setThinkingText("");
-            setSteps([]);
-            setIsStreaming(false);
-          },
-          onError: (errorMsg: string) => {
-            setStreamingContent("");
-            setUpdateMessage(null);
-            setThinkingText("");
-            setSteps([]);
-            setIsStreaming(false);
-            toast({
-              title: "That turn stopped",
-              description: errorMsg,
-              variant: "destructive",
-            });
-          },
-        },
-        // Resume from where this client got to rather than replaying the whole
-        // run, and let leaving the page actually stop the stream — without the
-        // signal the cleanup below aborts nothing and the handlers keep firing
-        // into an unmounted page.
-        { signal: controller.signal, sinceEventId: status.last_event_id });
-      })
-      .catch(() => {});
-
-    return () => controller.abort();
-  }, [chatId, user?.email, branchId, campaignId, taskId, canvasKey,
-      deliverablesKey, queryClient, mergeStreamAssets, toast]);
-
-  // Stopping is the send button's other job while a run is going. The canvas
-  // went without one until now, which made it the only surface where a turn
-  // could not be interrupted — and the longest, dearest work in the product,
-  // video, is started from here.
-  const handleStop = useCallback(async () => {
-    if (!user?.email || !chatId) return;
-    await cancelRun(chatId);
+  const clearRun = useCallback(() => {
+    setIsModifying(false, null);
     setIsStreaming(false);
-    setSteps([]);
+    setConnection("idle");
     setThinkingText("");
+    setSteps([]);
     setStreamingContent("");
+    setStreamingAssets([]);
     setUpdateMessage(null);
-    await queryClient.refetchQueries({
-      queryKey: ["chat-messages", chatId, branchId],
-    });
-  }, [user?.email, chatId, branchId, queryClient]);
+    setOptimisticMessages([]);
+  }, [setIsModifying]);
 
-  const handleSend = useCallback(
-    async (message: string, files?: File[], meta?: ChatSendMeta) => {
-      if (!user?.email || !chatId || isStreaming) return;
-
-      const optimisticMessage: ChatMessage = {
-        message_id: `temp-${Date.now()}`,
-        role: "user",
-        content: message,
-        timestamp: new Date().toISOString(),
-      };
-      setOptimisticMessages([optimisticMessage]);
-      setStreamingContent("");
-      setStreamingAssets([]);
-      setUpdateMessage(null);
-      setIsStreaming(true);
-
-      // Read before clearing: the turn has to carry it, and the thread should
-      // stop looking rewound the moment it is on its way.
-      const rewindToMessageId = rewindTargetId ?? undefined;
-      cancelRewind();
-
-      try {
-        await runTurn(
-          {
-            chatId,
-            message,
-            mode: "campaign",
-            branchId,
-            rewindToMessageId,
-            activeTaskId: taskId,
-            files,
-            referenceAssetIds: selectedAssetIds,
-            generationMode: meta?.generationMode,
-            generationOptions: meta?.generationOptions,
-            tier: meta?.tier ?? tier,
-          },
-          {
-            onToken: (_delta, accumulated) => {
-              setUpdateMessage(null);
-              setStreamingContent(accumulated);
-            },
-            onThinking: (_delta, accumulated) => setThinkingText(accumulated),
-            onProgress: (step) => {
-              setUpdateMessage(step.label);
-              setSteps((current) => {
-                const at = current.findIndex((s) => s.step_id === step.step_id);
-                if (at === -1) return [...current, step];
-                const next = [...current];
-                next[at] = step;
-                return next;
-              });
-            },
-            onAssets: (assets) => {
-              mergeStreamAssets(
-                assets.map((a) => ({ id: a.id, mime_type: a.mime_type ?? "" }))
-              ).catch(() => {});
-            },
-            onDataChanged: (entity) => {
-              invalidateForDataChange(queryClient, entity, {
-                chatId,
-                campaignId,
-                taskId,
-                canvasKey,
-                userEmail: user?.email,
-              });
-            },
-            onComplete: async () => {
-              await queryClient.refetchQueries({
-                queryKey: ["chat-messages", chatId, branchId],
-              });
-              queryClient.invalidateQueries({
-                queryKey: ["campaign-task", taskId, user.email],
-              });
-              queryClient.invalidateQueries({
-                queryKey: deliverablesKey,
-              });
-              if (campaignId) {
-                queryClient.invalidateQueries({
-                  queryKey: ["creative", campaignId, user.email],
-                });
-              }
-              setIsModifying(false, null);
-              setStreamingContent("");
-              setStreamingAssets([]);
-              setUpdateMessage(null);
-              setOptimisticMessages([]);
-              setIsStreaming(false);
-            },
-            onError: (errorMsg: string) => {
-              setIsModifying(false, null);
-              setStreamingContent("");
-              setStreamingAssets([]);
-              setUpdateMessage(null);
-              setOptimisticMessages([]);
-              setIsStreaming(false);
-              toast({
-                title: "Something went wrong",
-                description: errorMsg,
-                variant: "destructive",
-              });
-            },
-          }
-        );
-      } catch (e) {
-        setIsModifying(false, null);
-        setStreamingContent("");
-        setStreamingAssets([]);
+  // Event callbacks read the latest query keys, but the subscription belongs
+  // only to this chat/canvas. A campaign query loading must not abort it.
+  const makeHandlers = (controller: AbortController): AgentTurnHandlers => {
+    const current = () => !controller.signal.aborted;
+    const refresh = () => {
+      void queryClient.refetchQueries({ queryKey: ["chat-messages", chatId, branchId] });
+      void queryClient.invalidateQueries({ queryKey: deliverablesKey });
+      void queryClient.invalidateQueries({ queryKey: ["campaign-task", taskId, user?.email] });
+      if (campaignId) void queryClient.invalidateQueries({ queryKey: ["creative", campaignId, user?.email] });
+    };
+    const finish = () => {
+      if (!current()) return;
+      clearRun();
+      refresh();
+    };
+    return {
+      onConnectionState: (state) => { if (current()) setConnection(state); },
+      onToken: (_delta, accumulated) => {
+        if (!current()) return;
         setUpdateMessage(null);
-        setOptimisticMessages([]);
-        setIsStreaming(false);
-        reportSendFailure(e, { toast, chatId, userEmail: user?.email });
+        setStreamingContent(accumulated);
+      },
+      onThinking: (_delta, accumulated) => { if (current()) setThinkingText(accumulated); },
+      onProgress: (step) => {
+        if (!current()) return;
+        setUpdateMessage(step.label);
+        setSteps((steps) => {
+          const at = steps.findIndex((s) => s.step_id === step.step_id);
+          return at === -1 ? [...steps, step] : steps.map((s, i) => i === at ? step : s);
+        });
+      },
+      onAssets: (assets) => {
+        if (current()) void mergeStreamAssets(assets.map((a) => ({ id: a.id, mime_type: a.mime_type ?? "" })), controller.signal).catch(() => {});
+      },
+      onDataChanged: (entity) => {
+        if (current()) invalidateForDataChange(queryClient, entity, { chatId, campaignId, taskId, canvasKey, userEmail: user?.email });
+      },
+      onComplete: finish,
+      onCancelled: finish,
+      onError: (message) => {
+        if (!current()) return;
+        finish();
+        setRunError(message);
+      },
+    };
+  };
+  const handlersRef = useRef(makeHandlers);
+  handlersRef.current = makeHandlers;
+
+  const requestRejoin = useCallback((replayFinished: boolean) => {
+    replayFinishedRef.current = replayFinished;
+    streamControllerRef.current?.abort();
+    setConnection("reconnecting");
+    setReconnectVersion((value) => value + 1);
+  }, []);
+
+  const handleReconnect = useCallback(() => requestRejoin(true), [requestRejoin]);
+
+  useEffect(() => {
+    if (!chatId || !user?.email) return;
+    const replayFinished = replayFinishedRef.current;
+    const controller = new AbortController();
+    streamControllerRef.current = controller;
+    getRunStatus(chatId).then((status) => {
+      if (controller.signal.aborted) return;
+      if (!status.active && !replayFinished) {
+        clearRun();
+        void queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
+        return;
       }
-    },
-    [
-      branchId,
-      campaignId,
-      chatId,
-      canvasKey,
-      deliverablesKey,
-      isStreaming,
-      mergeStreamAssets,
-      queryClient,
-      cancelRewind,
-      rewindTargetId,
-      selectedAssetIds,
-      setIsModifying,
-      taskId,
-      tier,
-      toast,
-      user?.email,
-    ]
-  );
+      setIsStreaming(true);
+      // Manual reconnect also replays a just-finished run: its terminal error
+      // or completion may have arrived while this client was disconnected.
+      // Replay retained events to recover reasoning/checklist and partial text.
+      // This follows existing work; it never starts another paid turn.
+      return followRun(chatId, handlersRef.current(controller), { signal: controller.signal });
+    }).catch(() => {
+      if (!controller.signal.aborted) {
+        setIsStreaming(true);
+        setConnection("interrupted");
+      }
+    });
+    return () => {
+      controller.abort();
+      streamControllerRef.current?.abort();
+    };
+  }, [chatId, user?.email, canvasKey, branchId, reconnectVersion, clearRun, queryClient]);
+
+  const handleStop = useCallback(async () => {
+    if (!user?.email || !chatId || connection === "stopping") return;
+    const controller = streamControllerRef.current;
+    setConnection("stopping");
+    try {
+      await cancelRun(chatId);
+      if (controller?.signal.aborted) return;
+      controller?.abort();
+      clearRun();
+      void queryClient.refetchQueries({ queryKey: ["chat-messages", chatId, branchId] });
+      void queryClient.invalidateQueries({ queryKey: deliverablesKey });
+    } catch (error) {
+      if (controller?.signal.aborted) return;
+      setConnection("interrupted");
+      toast({ title: "Could not stop the run", description: error instanceof Error ? error.message : "Try again.", variant: "destructive" });
+    }
+  }, [user?.email, chatId, branchId, connection, clearRun, queryClient, deliverablesKey, toast]);
+
+  const handleSend = useCallback(async (message: string, files?: File[], meta?: ChatSendMeta) => {
+    if (!user?.email || !chatId || isStreaming) return;
+    streamControllerRef.current?.abort();
+    const controller = new AbortController();
+    streamControllerRef.current = controller;
+    clearRun();
+    setRunError(null);
+    lastSentRef.current = message;
+    setOptimisticMessages([{ message_id: `temp-${Date.now()}`, role: "user", content: message, timestamp: new Date().toISOString() }]);
+    setIsStreaming(true);
+    const rewindToMessageId = rewindTargetId ?? undefined;
+    cancelRewind();
+    try {
+      await runTurn({
+        chatId, message, mode: "campaign", branchId, rewindToMessageId,
+        activeTaskId: taskId, files, referenceAssetIds: selectedAssetIds,
+        generationMode: meta?.generationMode, generationOptions: meta?.generationOptions,
+        tier: meta?.tier ?? tier,
+      }, handlersRef.current(controller), controller.signal);
+    } catch (error) {
+      if (controller.signal.aborted) return;
+      clearRun();
+      setRunError(error instanceof Error ? error.message : "Could not send the message.");
+      reportSendFailure(error, { toast, chatId, userEmail: user?.email });
+      // A conflict or lost acknowledgement may mean work was accepted. Check
+      // active work only; a confirmed rejected start must retain its own error.
+      if (error instanceof ChatBusyError || error instanceof TypeError) requestRejoin(false);
+    }
+  }, [user?.email, chatId, isStreaming, clearRun, branchId, rewindTargetId, cancelRewind, taskId, selectedAssetIds, tier, toast, requestRejoin]);
 
   const canvasContextValue = useMemo<CanvasContextValue | null>(() => {
     if (!chatId || !user?.email) return null;
@@ -515,6 +449,10 @@ export default function DeliverableCanvasPage() {
       updateMessage,
       thinkingText,
       steps,
+      connection,
+      onReconnect: handleReconnect,
+      runError,
+      onRetry: () => { chatInputRef.current?.setDraft(lastSentRef.current || messages.filter((m) => m.role === "user").at(-1)?.content || ""); setRunError(null); },
       onSend: handleSend,
       onStop: handleStop,
       chatInputRef,
@@ -545,6 +483,9 @@ export default function DeliverableCanvasPage() {
     updateMessage,
     thinkingText,
     steps,
+    connection,
+    handleReconnect,
+    runError,
     handleSend,
     handleStop,
     armRewind,
@@ -599,9 +540,7 @@ export default function DeliverableCanvasPage() {
           />
         )}
 
-        <div className={cn("relative flex-1 min-w-0", isModifying && "pointer-events-none")}>
-          <ModificationOverlay isActive={isModifying} message="AETEA is modifying campaign..." />
-
+        <div className="relative flex-1 min-w-0">
           <div className="absolute top-3 left-3 z-10">
             <Button
               variant="secondary"
@@ -619,6 +558,7 @@ export default function DeliverableCanvasPage() {
             keyVisual={keyVisual}
             fixturePositions={fixturePositions}
             onFixtureMoved={handleFixtureMoved}
+            onChatResized={handleChatResized}
             onObjectMoved={handleObjectMoved}
             onObjectResized={handleObjectResized}
             onSelectionChange={setSelectedAssetIds}

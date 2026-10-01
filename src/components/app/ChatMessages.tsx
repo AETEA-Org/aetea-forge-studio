@@ -59,6 +59,11 @@ export function ChatMessages({
   surface = "wide",
 }: ChatMessagesProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const trailingSpaceRef = useRef<HTMLDivElement>(null);
+  const readingTopRef = useRef(0);
+  const viewportHeightRef = useRef(0);
+  const contentHeightRef = useRef(0);
   const prevMessageCountRef = useRef<number>(0);
   const prevFirstMessageIdRef = useRef<string | null>(null);
   const [showJumpToBottom, setShowJumpToBottom] = useState(false);
@@ -69,6 +74,37 @@ export function ChatMessages({
     const hasOverflow = el.scrollHeight > el.clientHeight + 2;
     setShowJumpToBottom(hasOverflow && !isNearBottom(el));
   }, []);
+
+  // A taller viewport normally clamps scrollTop near the end of the history.
+  // Leave only the trailing space needed to keep the same text at the top.
+  const preserveReadingPosition = useCallback(() => {
+    const el = scrollRef.current;
+    const content = contentRef.current;
+    const trailing = trailingSpaceRef.current;
+    if (!el || !content || !trailing) return;
+    const contentHeight = content.offsetHeight;
+    // Reflow at a wider width, loaded fonts, or shortened history must not
+    // leave the conversation scrolled into empty space.
+    if (contentHeight < contentHeightRef.current) {
+      readingTopRef.current = Math.min(readingTopRef.current, Math.max(0, contentHeight - el.clientHeight));
+    }
+    contentHeightRef.current = contentHeight;
+    trailing.style.height = `${Math.max(0, Math.ceil(readingTopRef.current + el.clientHeight - contentHeight))}px`;
+    el.scrollTop = readingTopRef.current;
+    viewportHeightRef.current = el.clientHeight;
+    updateJumpVisibility();
+  }, [updateJumpVisibility]);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    // Ignore native clamping caused by a resize, before ResizeObserver restores it.
+    if (el.clientHeight === viewportHeightRef.current) {
+      readingTopRef.current = el.scrollTop;
+      preserveReadingPosition();
+    }
+    updateJumpVisibility();
+  }, [preserveReadingPosition, updateJumpVisibility]);
 
   /** Where the rewind cut falls, and how much sits below it. -1 when idle. */
   const rewindIndex = useMemo(() => {
@@ -96,7 +132,10 @@ export function ChatMessages({
   const scrollToBottom = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
+    if (trailingSpaceRef.current) trailingSpaceRef.current.style.height = "0px";
     el.scrollTop = el.scrollHeight;
+    readingTopRef.current = el.scrollTop;
+    viewportHeightRef.current = el.clientHeight;
     setShowJumpToBottom(false);
   }, []);
 
@@ -115,7 +154,10 @@ export function ChatMessages({
     const shouldAutoScroll = isInitialLoad || chatSwitched;
 
     if (shouldAutoScroll) {
+      if (trailingSpaceRef.current) trailingSpaceRef.current.style.height = "0px";
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      readingTopRef.current = scrollRef.current.scrollTop;
+      viewportHeightRef.current = scrollRef.current.clientHeight;
       setShowJumpToBottom(false);
     }
 
@@ -125,15 +167,24 @@ export function ChatMessages({
 
   /** Re-evaluate jump button when content grows (e.g. streaming) without a scroll event. */
   useLayoutEffect(() => {
-    updateJumpVisibility();
+    preserveReadingPosition();
   }, [
     messages,
     streamingContent,
     updateMessage,
     isStreaming,
     streamingAssets,
-    updateJumpVisibility,
+    preserveReadingPosition,
   ]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(preserveReadingPosition);
+    observer.observe(el);
+    if (contentRef.current) observer.observe(contentRef.current);
+    return () => observer.disconnect();
+  }, [preserveReadingPosition]);
 
   const truncatedUpdateMessage = (() => {
     if (!updateMessage) return null;
@@ -143,13 +194,13 @@ export function ChatMessages({
   })();
 
   return (
-    <div className="relative flex-1 h-full min-h-0 flex flex-col">
+    <div className="relative flex-1 min-h-[72px] flex flex-col">
       <div
-        className="flex-1 h-full overflow-y-auto overflow-x-hidden custom-scrollbar"
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden chat-scrollbar"
         ref={scrollRef}
-        onScroll={updateJumpVisibility}
+        onScroll={handleScroll}
       >
-      <div className="p-4 space-y-4 min-w-0">
+      <div ref={contentRef} className="p-4 space-y-4 min-w-0">
         {messages.map((message, index) => {
           const msgAssets = resolveMessageAssets(message);
           const hasText = Boolean(message.content?.trim());
@@ -279,6 +330,7 @@ export function ChatMessages({
             </div>
           )}
       </div>
+      <div ref={trailingSpaceRef} aria-hidden="true" />
       </div>
 
       {showJumpToBottom && (

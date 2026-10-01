@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import {
   Background,
+  applyNodeChanges,
   Controls,
   ReactFlow,
   ReactFlowProvider,
@@ -21,6 +22,7 @@ import {
 } from "./nodes";
 import {
   autoObjectPosition,
+  CHAT_DEFAULT_SIZE,
   KEY_VISUAL_SIZE,
   OBJECT_DEFAULT_HEIGHT,
   OBJECT_DEFAULT_WIDTH,
@@ -36,7 +38,6 @@ const nodeTypes: NodeTypes = {
 };
 
 const DETAIL_SIZE = { width: 340, height: 300 };
-const CHAT_SIZE = { width: 400, height: 520 };
 
 const OBJECT_ID_PREFIX = "obj:";
 export const KEY_VISUAL_NODE_ID = "keyVisual";
@@ -51,6 +52,7 @@ interface CanvasWorkspaceProps {
   keyVisual: KeyVisualProp;
   fixturePositions: FixturePositions;
   onFixtureMoved: (which: keyof FixturePositions, pos: XY) => void;
+  onChatResized: (size: { width: number; height: number }, position: XY) => void;
   onObjectMoved: (objectId: string, pos: XY) => void;
   onObjectResized: (objectId: string, size: { width: number; height: number }) => void;
   /** Selected asset ids (deliverable assets + key visual) for chat references. */
@@ -75,7 +77,7 @@ function buildNodes(
     id: "chat",
     type: "chatWindow",
     position: fixtures.chat,
-    style: CHAT_SIZE,
+    style: { width: fixtures.chat.width ?? CHAT_DEFAULT_SIZE.width, height: fixtures.chat.height ?? CHAT_DEFAULT_SIZE.height },
     dragHandle: ".drag-handle",
     selectable: false,
     data: {},
@@ -118,11 +120,14 @@ function CanvasWorkspaceInner({
   keyVisual,
   fixturePositions,
   onFixtureMoved,
+  onChatResized,
   onObjectMoved,
   onObjectResized,
   onSelectionChange,
 }: CanvasWorkspaceProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
+  const nodesRef = useRef(nodes);
+  nodesRef.current = nodes;
   const keyVisualRef = useRef(keyVisual);
   keyVisualRef.current = keyVisual;
 
@@ -131,16 +136,28 @@ function CanvasWorkspaceInner({
   useEffect(() => {
     setNodes((prev) => {
       const selected = new Set(prev.filter((n) => n.selected).map((n) => n.id));
-      return buildNodes(objects, fixturePositions, keyVisual).map((n) =>
-        selected.has(n.id) ? { ...n, selected: true } : n
-      );
+      const chat = prev.find((n) => n.id === "chat");
+      return buildNodes(objects, fixturePositions, keyVisual).map((n) => {
+        // Incoming assets can rebuild the node array mid-drag. Keep live size
+        // until the resize finishes and its dimensions are saved by the page.
+        if (n.id === "chat" && chat?.resizing) {
+          n = { ...n, position: chat.position, style: chat.style, width: chat.width, height: chat.height, resizing: true };
+        }
+        return selected.has(n.id) ? { ...n, selected: true } : n;
+      });
     });
   }, [objects, fixturePositions, keyVisual, setNodes]);
 
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
+      const updated = applyNodeChanges(changes, nodesRef.current);
+      nodesRef.current = updated;
       onNodesChange(changes);
       for (const change of changes) {
+        if (change.type === "dimensions" && change.resizing === false && change.dimensions && change.id === "chat") {
+          const position = updated.find((node) => node.id === "chat")?.position;
+          if (position) onChatResized({ width: Math.round(change.dimensions.width), height: Math.round(change.dimensions.height) }, position);
+        }
         if (
           change.type === "dimensions" &&
           change.resizing === false &&
@@ -154,7 +171,7 @@ function CanvasWorkspaceInner({
         }
       }
     },
-    [onNodesChange, onObjectResized]
+    [onNodesChange, onObjectResized, onChatResized]
   );
 
   const handleNodeDragStop = useCallback<OnNodeDrag<Node>>(

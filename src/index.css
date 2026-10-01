@@ -265,3 +265,26 @@
     transform: rotateY(180deg);
   }
 }
+
+/* Readable, stable scrollbars on all chat surfaces and progress details. */
+.chat-scrollbar {
+  scrollbar-width: auto;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.65) transparent;
+  scrollbar-gutter: stable;
+  overflow-anchor: none;
+}
+.chat-scrollbar::-webkit-scrollbar { width: 8px; }
+.chat-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.65);
+  border-radius: 4px;
+}
+.chat-scrollbar::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground)); }
+.canvas-chat-resize-handle { opacity: 1; }
+@media (hover: hover) and (pointer: fine) {
+  .canvas-chat-resize-handle { opacity: 0; }
+  .group:hover .canvas-chat-resize-handle,
+  .group:focus-within .canvas-chat-resize-handle { opacity: 1; }
+}
+@media (hover: none), (pointer: coarse) {
+  .message-action { width: 36px; height: 36px; }
+}

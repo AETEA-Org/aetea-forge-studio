@@ -1,3 +1,4 @@
+import type { RunConnectionState } from "@/services/agentRun";
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { FolderOpen } from "lucide-react";
@@ -10,7 +11,6 @@ import {
   type ChatSendMeta,
 } from "@/components/app/ChatInput";
 import { ChatPanelDropZone } from "@/components/app/ChatPanelDropZone";
-import { BriefAnalysisLoading } from "@/components/app/BriefAnalysisLoading";
 import { useQuery } from "@tanstack/react-query";
 import { useChatMessages } from "@/hooks/useChats";
 import { useRewind } from "@/hooks/useRewind";
@@ -24,8 +24,7 @@ import {
 } from "@/services/api";
 import type { ChatMessage, ChatRenderableAsset, StreamAssetHint } from "@/types/api";
 import { AssetsModal } from "@/components/app/AssetsModal";
-import { AgentThinking } from "@/components/app/AgentThinking";
-import { AgentSteps } from "@/components/app/AgentSteps";
+import { AgentProgress } from "@/components/app/AgentProgress";
 import { CampaignModeOffer } from "@/components/app/CampaignModeOffer";
 import { CampaignChangeProposal } from "@/components/app/CampaignChangeProposal";
 import { invalidateForDataChange } from "@/services/dataChanged";
@@ -50,8 +49,8 @@ export default function ChatView() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const consumedPendingRef = useRef(false);
   const chatInputRef = useRef<ChatInputHandle>(null);
+  const subscriptionRef = useRef<AbortController | null>(null);
 
   const [mode, setMode] = useState<ChatMode>("brainstorm");
   // How much intelligence to apply. "auto" lets AETEA choose per message, which
@@ -68,6 +67,7 @@ export default function ChatView() {
   // a reload — see the fetch below.
   const [changeProposal, setChangeProposal] = useState<CampaignProposal | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [connection, setConnection] = useState<RunConnectionState>("idle");
   // Shown where the answer would have been, and cleared as soon as they try
   // again — a stale "out of credits" card after a successful top-up would be
   // worse than not showing one at all.
@@ -87,7 +87,9 @@ export default function ChatView() {
 
   const mergeStreamAssets = useCallback(async (hints: StreamAssetHint[]) => {
     if (!user?.email || hints.length === 0) return;
+    const signal = subscriptionRef.current?.signal;
     const resolved = await resolveStreamAssetHints(hints);
+    if (signal?.aborted) return;
     setStreamingAssets((prev) => {
       const m = new Map(prev.map((a) => [a.id, a]));
       resolved.forEach((a) => m.set(a.id, a));
@@ -99,6 +101,7 @@ export default function ChatView() {
    *  path and the re-attach path, which want identical behaviour. */
   const streamHandlers = useCallback(
     (): AgentTurnHandlers => ({
+      onConnectionState: setConnection,
       onToken: (_delta, accumulated) => {
         setUpdateMessage(null);
         setStreamingContent(accumulated);
@@ -245,14 +248,30 @@ export default function ChatView() {
   // Stopping is the send button's other job while a run is going.
   const handleStop = useCallback(async () => {
     if (!user?.email || !chatId) return;
-    await cancelRun(chatId);
+    if (connection === "stopping") return;
+    const controller = subscriptionRef.current;
+    setConnection("stopping");
+    try {
+      await cancelRun(chatId);
+      if (controller?.signal.aborted) return;
+    } catch (error) {
+      if (controller?.signal.aborted) return;
+      setConnection("interrupted");
+      toast({ title: "Could not stop the run", description: error instanceof Error ? error.message : "Try again.", variant: "destructive" });
+      return;
+    }
+    controller?.abort();
+    setConnection("idle");
+    setShowCampaignLoading(false);
     setIsStreaming(false);
+    setOptimisticMessages([]);
+    setStreamingAssets([]);
     setSteps([]);
     setThinkingText("");
     setStreamingContent("");
     setUpdateMessage(null);
     await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
-  }, [user?.email, chatId, queryClient]);
+  }, [user?.email, chatId, queryClient, connection, toast]);
 
 
   const handleSendMessage = useCallback(
@@ -266,6 +285,10 @@ export default function ChatView() {
         return;
       }
 
+      subscriptionRef.current?.abort();
+      const controller = new AbortController();
+      subscriptionRef.current = controller;
+
       const optimisticMessage: ChatMessage = {
         message_id: `temp-${Date.now()}`,
         role: "user",
@@ -276,6 +299,9 @@ export default function ChatView() {
       setStreamingContent("");
       setStreamingAssets([]);
       setUpdateMessage(null);
+      setThinkingText("");
+      setSteps([]);
+      setConnection("idle");
       setIsStreaming(true);
 
       const needsCampaignThisTurn = mode === "campaign" && !chatData?.campaign_id;
@@ -297,6 +323,7 @@ export default function ChatView() {
             rewindToMessageId,
           },
           {
+            onConnectionState: setConnection,
             onToken: (_delta, accumulated) => {
               setUpdateMessage(null);
               setStreamingContent(accumulated);
@@ -328,8 +355,13 @@ export default function ChatView() {
               ).catch(() => {});
             },
             onCancelled: () => {
+              setShowCampaignLoading(false);
               setIsStreaming(false);
               setStreamingContent("");
+              setStreamingAssets([]);
+              setThinkingText("");
+              setUpdateMessage(null);
+              setOptimisticMessages([]);
               setSteps([]);
               queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
             },
@@ -349,11 +381,13 @@ export default function ChatView() {
                   variant: "destructive",
                 });
                 await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
+                if (controller.signal.aborted) return;
                 return;
               }
               setShowCampaignLoading(false);
               setUpdateMessage(null);
               await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
+              if (controller.signal.aborted) return;
               queryClient.invalidateQueries({ queryKey: ["chat", chatId, user?.email] });
               setStreamingContent("");
               setStreamingAssets([]);
@@ -384,11 +418,14 @@ export default function ChatView() {
               // over an empty chat while the finished campaign sat in the
               // sidebar, reachable only by clicking it.
               await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
+              if (controller.signal.aborted) return;
               queryClient.invalidateQueries({ queryKey: ["chat", chatId, user?.email] });
             },
-          }
+          },
+          controller.signal
         );
       } catch (err) {
+        if (controller.signal.aborted) return;
         setShowCampaignLoading(false);
         setUpdateMessage(null);
         setStreamingContent("");
@@ -420,7 +457,10 @@ export default function ChatView() {
     setUpdateMessage(null);
     setOptimisticMessages([]);
     setShowCampaignLoading(false);
-    consumedPendingRef.current = false;
+    setThinkingText("");
+    setSteps([]);
+    setIsStreaming(false);
+    setConnection("idle");
   }, [chatId]);
 
   // Attach to a run already in progress.
@@ -430,18 +470,19 @@ export default function ChatView() {
   // belongs to the server, so there is nothing to hand over — we just ask
   // where it got to and follow from there.
   useEffect(() => {
-    if (!chatId || !user?.email || consumedPendingRef.current) return;
+    if (!chatId || !user?.email) return;
+    subscriptionRef.current?.abort();
     const controller = new AbortController();
-    const email = user.email;
+    subscriptionRef.current = controller;
 
     getRunStatus(chatId)
       .then((status) => {
         if (!status.active || controller.signal.aborted) return;
-        consumedPendingRef.current = true;
         setIsStreaming(true);
         return followRun(
           chatId,
           {
+            onConnectionState: setConnection,
             onToken: (_delta, accumulated) => {
               setUpdateMessage(null);
               setStreamingContent(accumulated);
@@ -465,8 +506,9 @@ export default function ChatView() {
             onComplete: async () => {
               setUpdateMessage(null);
               await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
+              if (controller.signal.aborted) return;
               queryClient.invalidateQueries({ queryKey: ["chats"] });
-              queryClient.invalidateQueries({ queryKey: ["chat", chatId, email] });
+              queryClient.invalidateQueries({ queryKey: ["chat", chatId, user?.email] });
               setStreamingContent("");
               setStreamingAssets([]);
               setThinkingText("");
@@ -477,8 +519,11 @@ export default function ChatView() {
             onCancelled: () => {
               setIsStreaming(false);
               setStreamingContent("");
-              setSteps([]);
+              setStreamingAssets([]);
               setThinkingText("");
+              setUpdateMessage(null);
+              setOptimisticMessages([]);
+              setSteps([]);
             },
             onError: (message) => {
               setStreamingContent("");
@@ -492,14 +537,15 @@ export default function ChatView() {
               });
             },
           },
-          // Resume from where this client got to, rather than replaying the
-          // whole run from the beginning.
-          { signal: controller.signal, sinceEventId: status.last_event_id }
+          // Rebuild partial text and progress from retained run events.
+          { signal: controller.signal, sinceEventId: 0 }
         );
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (!controller.signal.aborted) { setIsStreaming(true); setConnection("interrupted"); }
+      });
 
-    return () => controller.abort();
+    return () => { controller.abort(); subscriptionRef.current?.abort(); };
   }, [chatId, user?.email, queryClient, toast, mergeStreamAssets]);
 
   if (!chatId) {
@@ -508,10 +554,6 @@ export default function ChatView() {
         <p className="text-muted-foreground">No chat selected</p>
       </div>
     );
-  }
-
-  if (showCampaignLoading) {
-    return <BriefAnalysisLoading steps={steps} />;
   }
 
   return (
@@ -546,10 +588,12 @@ export default function ChatView() {
           updateMessage={updateMessage}
         />
 
-        {(thinkingText || steps.length > 0 || modeProposal || changeProposal) && (
+        {showCampaignLoading && isStreaming && (
+          <p role="status" className="shrink-0 px-4 pb-2 text-sm text-muted-foreground">Building your campaign…</p>
+        )}
+        <AgentProgress thinkingText={thinkingText} steps={steps} connection={connection} onReconnect={() => window.location.reload()} onStop={handleStop} />
+        {(modeProposal || changeProposal) && (
           <div className="space-y-2 px-4 pb-2">
-            <AgentThinking text={thinkingText} />
-            <AgentSteps steps={steps} />
             {modeProposal && (
               <CampaignModeOffer
                 rationale={modeProposal}
@@ -596,6 +640,7 @@ export default function ChatView() {
           />
         )}
 
+        <div className="chat-scrollbar shrink-0 min-h-0 max-h-[calc(100%-72px)] overflow-y-auto px-3 pb-3">
         <ChatInput
           ref={chatInputRef}
           onSend={(message, files, meta) => {
@@ -605,7 +650,6 @@ export default function ChatView() {
           }}
           isStreaming={isStreaming}
           onStop={handleStop}
-          disabled={showCampaignLoading}
           mode={mode}
           onModeToggle={() => setMode((m) => (m === "brainstorm" ? "campaign" : "brainstorm"))}
           tier={tier}
@@ -622,6 +666,7 @@ export default function ChatView() {
               : null
           }
         />
+        </div>
       </ChatPanelDropZone>
 
       <AssetsModal

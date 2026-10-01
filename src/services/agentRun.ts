@@ -10,6 +10,8 @@ import { API_BASE_URL } from "@/services/config";
 import { backendHeaders } from "@/services/authHeaders";
 import { readErrorMessage } from "@/services/errorDetail";
 
+export type RunConnectionState = "idle" | "connected" | "reconnecting" | "interrupted" | "stopping";
+
 export type ProgressState = "started" | "done" | "failed";
 export type CampaignState = "creating" | "section_written" | "created" | "updated";
 
@@ -42,6 +44,7 @@ export interface AssetHint {
 
 /** Everything a caller can react to while a turn runs. */
 export interface AgentTurnHandlers {
+  onConnectionState?: (state: RunConnectionState) => void;
   onToken?: (delta: string, accumulated: string) => void;
   onThinking?: (delta: string, accumulated: string) => void;
   onProgress?: (step: ProgressStep) => void;
@@ -183,18 +186,19 @@ export async function getRunStatus(chatId: string): Promise<RunStatus> {
     url(`/ai/chats/${chatId}/run`),
     { headers: await authHeaders() }
   );
-  if (!response.ok) return { active: false };
+  if (!response.ok) throw new Error(await readErrorMessage(response, "Could not check the run"));
   return response.json();
 }
 
 /** Stop the run in progress. Whatever it already produced is kept. */
 export async function cancelRun(chatId: string): Promise<void> {
   const form = new FormData();
-  await fetch(url(`/ai/chats/${chatId}/cancel`), {
+  const response = await fetch(url(`/ai/chats/${chatId}/cancel`), {
     method: "POST",
     headers: await authHeaders(),
     body: form,
   });
+  if (!response.ok) throw new Error(await readErrorMessage(response, "Could not stop the run"));
 }
 
 /** Accept the agent's offer to turn this conversation into a campaign. */
@@ -292,6 +296,16 @@ export async function followRun(
   let attempts = 0;
 
   while (!options.signal?.aborted) {
+    const connection = new AbortController();
+    const abort = () => connection.abort();
+    options.signal?.addEventListener("abort", abort, { once: true });
+    // Heartbeats count as activity. Silence means a lost connection, not proof
+    // that a slow provider stopped; reconnect without starting another turn.
+    let silenceTimer = setTimeout(abort, 45_000);
+    const touch = () => {
+      clearTimeout(silenceTimer);
+      silenceTimer = setTimeout(abort, 45_000);
+    };
     try {
       const response = await fetch(
         url(`/ai/chats/${chatId}/stream`),
@@ -299,7 +313,7 @@ export async function followRun(
           headers: await authHeaders(
             lastEventId ? { "Last-Event-ID": String(lastEventId) } : undefined
           ),
-          signal: options.signal,
+          signal: connection.signal,
         }
       );
       if (response.status === 404) {
@@ -312,9 +326,9 @@ export async function followRun(
         );
         return;
       }
+      if (!response.ok) throw new Error(`Stream returned ${response.status}`);
       if (!response.body) throw new Error("No response body");
-
-      attempts = 0;
+      handlers.onConnectionState?.("connected");
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
@@ -322,6 +336,8 @@ export async function followRun(
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
+        if (options.signal?.aborted) return;
+        touch();
         buffer += decoder.decode(value, { stream: true });
 
         let split = buffer.indexOf("\n\n");
@@ -341,8 +357,10 @@ export async function followRun(
             continue;
           }
           const type = payload.type ?? frame.event ?? "";
+          if (type) attempts = 0;
           const data = payload.data ?? {};
 
+          if (TERMINAL.has(type)) handlers.onConnectionState?.("idle");
           switch (type) {
             case "token": {
               const delta = String(data.text ?? "");
@@ -404,17 +422,23 @@ export async function followRun(
         }
       }
 
-      // The stream ended without a terminal event: the connection dropped
-      // rather than the run finishing, so reconnect and replay from here.
-    } catch (error) {
+      // EOF without a terminal event also consumes a reconnect attempt.
+    } catch {
       if (options.signal?.aborted) return;
-      attempts += 1;
-      if (attempts >= 4) {
-        handlers.onError?.("Lost connection to the response. Refresh to catch up.");
-        return;
-      }
-      await new Promise((resolve) => setTimeout(resolve, 400 * attempts));
+    } finally {
+      clearTimeout(silenceTimer);
+      options.signal?.removeEventListener("abort", abort);
+      connection.abort();
     }
+    if (options.signal?.aborted) return;
+    attempts += 1;
+    if (attempts >= 4) {
+      if (handlers.onConnectionState) handlers.onConnectionState("interrupted");
+      else handlers.onError?.("Lost connection to the response. Refresh to catch up.");
+      return;
+    }
+    handlers.onConnectionState?.("reconnecting");
+    await new Promise((resolve) => setTimeout(resolve, 400 * attempts));
   }
 }
 

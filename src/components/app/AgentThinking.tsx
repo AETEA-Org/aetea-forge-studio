@@ -21,7 +21,7 @@ export function AgentThinking({ text }: AgentThinkingProps) {
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-muted-foreground hover:text-foreground"
+        className="min-h-9 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-muted-foreground hover:text-foreground"
         aria-expanded={open}
       >
         {open ? (
@@ -35,7 +35,7 @@ export function AgentThinking({ text }: AgentThinkingProps) {
       {open && (
         <p
           className={cn(
-            "max-h-56 overflow-y-auto whitespace-pre-wrap px-3 pb-3",
+            "chat-scrollbar max-h-40 overflow-y-auto whitespace-pre-wrap px-3 pb-3",
             "text-xs leading-relaxed text-muted-foreground"
           )}
         >

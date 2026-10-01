@@ -19,8 +19,7 @@ import {
 import { ChatMessages } from "@/components/app/ChatMessages";
 import { ChatInput } from "@/components/app/ChatInput";
 import { ChatPanelDropZone } from "@/components/app/ChatPanelDropZone";
-import { AgentThinking } from "@/components/app/AgentThinking";
-import { AgentSteps } from "@/components/app/AgentSteps";
+import { AgentProgress } from "@/components/app/AgentProgress";
 import { cn } from "@/lib/utils";
 import type { CampaignTaskStatus, DeliverableObject } from "@/types/api";
 import { useCanvas } from "./canvasContext";
@@ -135,6 +134,10 @@ export const ChatWindowNode = memo(function ChatWindowNode() {
     updateMessage,
     thinkingText,
     steps,
+    connection,
+    onReconnect,
+    runError,
+    onRetry,
     onSend,
     onStop,
     chatInputRef,
@@ -150,12 +153,12 @@ export const ChatWindowNode = memo(function ChatWindowNode() {
   const rewindTarget = messages.find((m) => m.message_id === rewindingFromId);
 
   return (
-    <div className="group relative h-full w-full flex flex-col rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+    <div className="group relative h-full w-full flex flex-col rounded-xl border border-border bg-card shadow-sm">
       <NodeResizer
         minWidth={320}
         minHeight={300}
         lineClassName={RESIZE_LINE}
-        handleClassName={RESIZE_HANDLE}
+        handleClassName="canvas-chat-resize-handle !bg-primary !border-background transition-opacity"
         handleStyle={RESIZE_HANDLE_STYLE}
         autoScale={false}
       />
@@ -169,19 +172,13 @@ export const ChatWindowNode = memo(function ChatWindowNode() {
           />
         }
       />
-      <div className="nodrag nowheel flex-1 min-h-0 flex flex-col">
+      <div className="nodrag nowheel flex-1 min-h-0 flex flex-col overflow-hidden rounded-b-xl">
         <ChatPanelDropZone
           className="flex-1 min-h-0"
           disabled={isStreaming}
           onFilesDropped={(files) => chatInputRef.current?.addFiles(files)}
         >
-          {(thinkingText || steps.length > 0) && (
-            <div className="px-2 pt-2 space-y-2">
-              <AgentThinking text={thinkingText} />
-              <AgentSteps steps={steps} />
-            </div>
-          )}
-          <div className="flex-1 min-h-0">
+          <div className="flex flex-col flex-1 min-h-[72px] overflow-hidden">
             <ChatMessages
               messages={messages}
               threadAssets={threadAssets}
@@ -198,7 +195,13 @@ export const ChatWindowNode = memo(function ChatWindowNode() {
               suppressInlineAssets
             />
           </div>
-          <div className="px-2 pb-2">
+          {runError && !isStreaming && <div role="alert" className="chat-scrollbar min-h-0 max-h-[20%] shrink overflow-y-auto px-3 pb-2 text-xs text-destructive">
+            <p>{runError}</p>
+            <p>Try again restores text. Reattach files if needed.</p>
+            <button type="button" onClick={onRetry} className="min-h-8 rounded underline focus-visible:outline focus-visible:outline-2">Try again</button>
+          </div>}
+          <AgentProgress thinkingText={thinkingText} steps={steps} connection={connection} onReconnect={onReconnect} onStop={onStop} />
+          <div className="chat-scrollbar shrink-0 min-h-0 max-h-[calc(100%-72px)] overflow-y-auto px-3 pb-3">
             <ChatInput
               ref={chatInputRef}
               onSend={onSend}
@@ -206,7 +209,6 @@ export const ChatWindowNode = memo(function ChatWindowNode() {
               onStop={onStop}
               inputPlaceholder="Describe what to generate or refine..."
               textareaMaxHeight={140}
-              variant="floating"
               enableGenerationModes
               frameAssets={threadAssets}
               tier={tier}

@@ -3,7 +3,6 @@ import { Check, Copy, Undo2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { copyMarkdown } from "@/lib/clipboard";
 import {
-  formatDistanceCompactFromUTC,
   formatDistanceFromUTC,
 } from "@/lib/dateUtils";
 // The module-level `toast`, not `useToast()`: the hook subscribes a
@@ -40,7 +39,6 @@ export function MessageActions({
   canRewind = false,
   onRewind,
   isRewinding = false,
-  surface = "wide",
 }: {
   /** The raw markdown of the message. Empty means there is nothing to copy. */
   content: string;
@@ -110,9 +108,7 @@ export function MessageActions({
       ) : null}
 
       <span className="min-w-0 truncate text-xs text-muted-foreground">
-        {surface === "canvas"
-          ? formatDistanceCompactFromUTC(timestamp)
-          : formatDistanceFromUTC(timestamp, { addSuffix: true })}
+        {formatDistanceFromUTC(timestamp, { addSuffix: true })}
       </span>
 
       {/* The icon swap is invisible to a screen reader on its own. */}

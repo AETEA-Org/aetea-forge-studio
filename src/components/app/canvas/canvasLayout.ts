@@ -7,12 +7,14 @@ export interface XY {
 
 export interface FixturePositions {
   detail: XY;
-  chat: XY;
+  chat: XY & { width?: number; height?: number };
   keyVisual: XY;
 }
 
 export const OBJECT_DEFAULT_WIDTH = 300;
 export const OBJECT_DEFAULT_HEIGHT = 240;
+
+export const CHAT_DEFAULT_SIZE = { width: 400, height: 520 };
 
 export const KEY_VISUAL_SIZE = { width: 260, height: 260 };
 
@@ -40,7 +42,11 @@ export function loadFixturePositions(taskId: string): FixturePositions {
     const parsed = JSON.parse(raw) as Partial<FixturePositions>;
     return {
       detail: parsed.detail ?? DEFAULT_FIXTURES.detail,
-      chat: parsed.chat ?? DEFAULT_FIXTURES.chat,
+      chat: {
+        ...(parsed.chat ?? DEFAULT_FIXTURES.chat),
+        width: Number.isFinite(parsed.chat?.width) ? Math.max(320, parsed.chat!.width!) : CHAT_DEFAULT_SIZE.width,
+        height: Number.isFinite(parsed.chat?.height) ? Math.max(300, parsed.chat!.height!) : CHAT_DEFAULT_SIZE.height,
+      },
       keyVisual: parsed.keyVisual ?? DEFAULT_FIXTURES.keyVisual,
     };
   } catch {
