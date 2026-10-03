@@ -128,6 +128,7 @@ export const DetailCardNode = memo(function DetailCardNode() {
 export const ChatWindowNode = memo(function ChatWindowNode() {
   const {
     chatId,
+    task,
     messages,
     threadAssets,
     streamingAssets,
@@ -202,8 +203,8 @@ export const ChatWindowNode = memo(function ChatWindowNode() {
             <p>Try again restores text. Reattach files if needed.</p>
             <button type="button" onClick={onRetry} className="min-h-8 rounded underline focus-visible:outline focus-visible:outline-2">Try again</button>
           </div>}
-          <AgentProgress chatId={chatId} isStreaming={isStreaming} onReview={onRetry} thinkingText={thinkingText} steps={steps} connection={connection} onReconnect={onReconnect} onStop={onStop} />
-          <AgentDecision chatId={chatId} ready={!isStreaming} onReady={() => { if (!isStreaming) chatInputRef.current?.focus(); }} />
+          <AgentProgress chatId={chatId} scope={task?.id} isStreaming={isStreaming} onReview={onRetry} thinkingText={thinkingText} steps={steps} connection={connection} onReconnect={onReconnect} onStop={onStop} />
+          <AgentDecision chatId={chatId} scope={task?.id} ready={!isStreaming} onReady={() => { if (!isStreaming) chatInputRef.current?.focus(); }} />
           <div className="chat-scrollbar shrink-0 min-h-0 max-h-[calc(100%-72px)] overflow-y-auto px-3 pb-3">
             <ChatInput
               ref={chatInputRef}

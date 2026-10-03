@@ -355,12 +355,15 @@ export default function DeliverableCanvasPage() {
 
   const handleReconnect = useCallback(() => requestRejoin(true), [requestRejoin]);
 
+  /** Which run this canvas is following, once the server has resolved it. */
+  const runScopeRef = useRef<string | undefined>(taskId);
+
   useEffect(() => {
     if (!chatId || !user?.email) return;
     const replayFinished = replayFinishedRef.current;
     const controller = new AbortController();
     streamControllerRef.current = controller;
-    getRunStatus(chatId).then((status) => {
+    getRunStatus(chatId, taskId).then((status) => {
       if (controller.signal.aborted) return;
       if (!status.active && !replayFinished) {
         clearRun();
@@ -372,7 +375,12 @@ export default function DeliverableCanvasPage() {
       // or completion may have arrived while this client was disconnected.
       // Replay retained events to recover reasoning/checklist and partial text.
       // This follows existing work; it never starts another paid turn.
-      return followRun(chatId, handlersRef.current(controller), { signal: controller.signal, runId: status.run_id });
+      // The scope the server resolved, not the id in the URL. Work nested
+      // inside a deliverable folds into its parent, so a canvas opened on a
+      // child id would otherwise subscribe to a store entry nothing writes —
+      // which looks exactly like a UI that has stopped updating.
+      runScopeRef.current = status.scope ?? taskId;
+      return followRun(chatId, handlersRef.current(controller), { signal: controller.signal, runId: status.run_id, scope: runScopeRef.current });
     }).catch(() => {
       if (!controller.signal.aborted) {
         setIsStreaming(true);
@@ -383,14 +391,14 @@ export default function DeliverableCanvasPage() {
       controller.abort();
       streamControllerRef.current?.abort();
     };
-  }, [chatId, user?.email, canvasKey, branchId, reconnectVersion, clearRun, queryClient]);
+  }, [chatId, user?.email, canvasKey, branchId, taskId, reconnectVersion, clearRun, queryClient]);
 
   const handleStop = useCallback(async () => {
     if (!user?.email || !chatId || connection === "stopping") return;
     const controller = streamControllerRef.current;
     setConnection("stopping");
     try {
-      await cancelRun(chatId);
+      await cancelRun(chatId, runScopeRef.current);
       if (controller?.signal.aborted) return;
       controller?.abort();
       clearRun();
@@ -427,7 +435,7 @@ export default function DeliverableCanvasPage() {
       clearRun();
       setRunError(error instanceof Error ? error.message : "Could not send the message.");
       chatInputRef.current?.restoreDraft(message, files, meta);
-      reportSendFailure(error, { toast, chatId, userEmail: user?.email });
+      reportSendFailure(error, { toast, chatId, scope: runScopeRef.current, userEmail: user?.email });
       // A conflict or lost acknowledgement may mean work was accepted. Check
       // active work only; a confirmed rejected start must retain its own error.
       if (error instanceof ChatBusyError || error instanceof TypeError) requestRejoin(false);
@@ -456,7 +464,7 @@ export default function DeliverableCanvasPage() {
       onReconnect: handleReconnect,
       runError,
       onRetry: () => {
-        const request = readRunState(chatId).request;
+        const request = readRunState(chatId, runScopeRef.current).request;
         const restored = chatInputRef.current?.restoreDraft(request?.message ?? (lastSentRef.current || messages.filter((m) => m.role === "user").at(-1)?.content || ""), request?.files,
           request?.activeTaskId === taskId ? { generationMode: request.generationMode as ChatSendMeta["generationMode"], generationOptions: request.generationOptions } : undefined);
         if (restored && request?.tier) setTier(request.tier);

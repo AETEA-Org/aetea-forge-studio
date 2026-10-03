@@ -41,8 +41,20 @@ const AFFIRMATIVE =
   /^\s*(?:yes|yep|yeah|yup|ok|okay|sure|do it|go ahead|please go ahead|go for it|approve(?:d)?|apply(?: it)?|sounds good|looks good|perfect|confirm(?:ed)?)\s*[.!]*\s*$/i;
 
 /** Decisions outlive a stream. Never treat a failed fetch as an empty list. */
-export function useCampaignProposal(chatId?: string) {
-  const { proposal, execution } = useAgentRunState(chatId);
+/**
+ * `scope` names the run whose state should trigger a re-check — a deliverable's
+ * task id, or the conversation when omitted.
+ *
+ * The **proposal itself stays conversation-keyed** whatever the scope, and
+ * deliberately: a campaign change is one decision about the campaign, with a
+ * durable row and a chat-level endpoint, so there is one card per conversation
+ * no matter which run raised it. Only `execution` is read per scope, because
+ * "has this run just changed state, go and look again" is a question about the
+ * run in front of the person.
+ */
+export function useCampaignProposal(chatId?: string, scope?: string) {
+  const { proposal } = useAgentRunState(chatId);
+  const { execution } = useAgentRunState(chatId, scope);
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);

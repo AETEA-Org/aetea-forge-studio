@@ -6,7 +6,12 @@
  * cancel it — reconnecting resumes from the last event seen instead of losing
  * the answer.
  */
-import { readRunState, receiveExecution, updateRunState } from "./agentRunState";
+import {
+  CONVERSATION_SCOPE,
+  readRunState,
+  receiveExecution,
+  updateRunState,
+} from "./agentRunState";
 import { API_BASE_URL } from "@/services/config";
 import { backendHeaders } from "@/services/authHeaders";
 import { readErrorMessage } from "@/services/errorDetail";
@@ -110,9 +115,32 @@ export interface StartTurnRequest {
   rewindToMessageId?: string;
 }
 
+/**
+ * Which run slot a turn will land in, as this client can work it out.
+ *
+ * Mirrors the backend's rule exactly: the **branch** decides, never the
+ * selected task, because a scope is one message thread. The server has the
+ * last word — it also folds nested work into its parent deliverable, which
+ * needs a lookup — and every call returns the scope it resolved, which is what
+ * subsequent calls and the local store use.
+ */
+export function scopeFromBranch(branchId?: string): string {
+  const match = /^task:(.+)$/.exec((branchId ?? "").trim());
+  return match ? match[1] : CONVERSATION_SCOPE;
+}
+
+export interface ActiveRun {
+  scope: string;
+  run_id: string;
+  last_event_id: number;
+  execution?: ExecutionSnapshot;
+}
+
 export interface RunStatus {
   active: boolean;
   run_id?: string;
+  /** What the server resolved the requested scope to. */
+  scope?: string;
   last_event_id?: number;
   execution?: ExecutionSnapshot;
   recoverable?: boolean;
@@ -171,8 +199,15 @@ export class OutOfCreditsError extends Error {
   }
 }
 
-export async function startTurn(req: StartTurnRequest): Promise<{ run_id: string }> {
-  updateRunState(req.chatId, { runId: undefined, execution: undefined, modeOffer: undefined, request: req, startVersion: (readRunState(req.chatId).startVersion ?? 0) + 1 });
+export async function startTurn(
+  req: StartTurnRequest
+): Promise<{ run_id: string; scope?: string }> {
+  // Optimistically under the branch-derived scope, because the authoritative
+  // one does not exist until the server answers. The two differ only for a
+  // canvas opened on nested work, where the server folds it into its parent;
+  // the entry left behind then holds a request nothing reads.
+  const asked = scopeFromBranch(req.branchId);
+  updateRunState(req.chatId, { runId: undefined, execution: undefined, modeOffer: undefined, request: req, startVersion: (readRunState(req.chatId, asked).startVersion ?? 0) + 1 }, asked);
   const form = new FormData();
   form.append("chat_id", req.chatId);
   form.append("message", req.message);
@@ -204,41 +239,59 @@ export async function startTurn(req: StartTurnRequest): Promise<{ run_id: string
     updateRunState(req.chatId, { execution: {
       run_id: "submission", state: "failed", phase: "submission", reason: "start_failed",
       meaningful_activity_at: new Date().toISOString(), state_changed_at: new Date().toISOString(), active_steps: [],
-    } });
+    } }, asked);
     throw new Error(message);
   }
   const accepted = await response.json();
-  updateRunState(req.chatId, { runId: accepted.run_id, execution: undefined, modeOffer: undefined, request: req });
-  return accepted;
+  const scope = String(accepted.scope || asked);
+  updateRunState(req.chatId, { runId: accepted.run_id, execution: undefined, modeOffer: undefined, request: req }, scope);
+  return { ...accepted, scope };
 }
 
-/** Whether a run is in progress, and how far its events have got. */
-export async function getRunStatus(chatId: string): Promise<RunStatus> {
-  const before = readRunState(chatId).runId;
-  const beforeVersion = readRunState(chatId).startVersion;
+/**
+ * Whether a run is in progress for one scope, and how far its events have got.
+ *
+ * `scope` is a deliverable's task id; omitted means the conversation. A chat
+ * runs several things at once (#111), so a deliverable canvas has to say which
+ * one it is asking about or it is told about whatever the chat did last.
+ */
+export async function getRunStatus(chatId: string, scope?: string): Promise<RunStatus> {
+  const before = readRunState(chatId, scope).runId;
+  const beforeVersion = readRunState(chatId, scope).startVersion;
   const response = await fetch(
-    url(`/ai/chats/${chatId}/run`),
+    url(`/ai/chats/${chatId}/run`, scope ? { scope } : undefined),
     { headers: await authHeaders() }
   );
   if (!response.ok) throw new Error(await readErrorMessage(response, "Could not check the run"));
   const status: RunStatus = await response.json();
-  const previous = readRunState(chatId);
+  // The server's answer, not the request: it folds nested work into its parent
+  // deliverable, so storing under what we asked for would split one run across
+  // two store entries.
+  const key = status.scope || scope;
+  const previous = readRunState(chatId, key);
   // A delayed status response must not overwrite a request accepted meanwhile.
   if (previous.runId === before && previous.startVersion === beforeVersion) {
-    if (previous.runId !== status.run_id) updateRunState(chatId, { execution: undefined, modeOffer: undefined, request: undefined });
-    updateRunState(chatId, { runId: status.run_id });
-    if (status.execution) receiveExecution(chatId, status.execution);
+    if (previous.runId !== status.run_id) updateRunState(chatId, { execution: undefined, modeOffer: undefined, request: undefined }, key);
+    updateRunState(chatId, { runId: status.run_id }, key);
+    if (status.execution) receiveExecution(chatId, status.execution, key);
     const offer = status.execution?.pending_decision;
     if (status.active && offer?.kind === "mode" && offer.offer_id) {
-      updateRunState(chatId, { modeOffer: { offer_id: offer.offer_id, rationale: offer.rationale ?? "", status: offer.status ?? "pending" } });
+      updateRunState(chatId, { modeOffer: { offer_id: offer.offer_id, rationale: offer.rationale ?? "", status: offer.status ?? "pending" } }, key);
     }
   }
   return status;
 }
 
-/** Stop the run in progress. Whatever it already produced is kept. */
-export async function cancelRun(chatId: string): Promise<boolean> {
+/**
+ * Stop one run. Whatever it already produced is kept.
+ *
+ * One scope only, so stopping a deliverable leaves the rest running. Omitting
+ * `scope` stops the conversation turn, which is what every surface but the
+ * deliverable canvas means.
+ */
+export async function cancelRun(chatId: string, scope?: string): Promise<boolean> {
   const form = new FormData();
+  if (scope) form.append("scope", scope);
   const response = await fetch(url(`/ai/chats/${chatId}/cancel`), {
     method: "POST",
     headers: await authHeaders(),
@@ -246,10 +299,35 @@ export async function cancelRun(chatId: string): Promise<boolean> {
   });
   if (!response.ok) throw new Error(await readErrorMessage(response, "Could not stop the run"));
   const outcome = await response.json();
-  const previous = readRunState(chatId).execution;
-  if (outcome.cancelled === true && previous) receiveExecution(chatId, { ...previous, state: "stopped", reason: "stopped" });
-  if (outcome.cancelled !== true) await getRunStatus(chatId);
+  const key = outcome.scope || scope;
+  const previous = readRunState(chatId, key).execution;
+  if (outcome.cancelled === true && previous) receiveExecution(chatId, { ...previous, state: "stopped", reason: "stopped" }, key);
+  if (outcome.cancelled !== true) await getRunStatus(chatId, scope);
   return outcome.cancelled === true;
+}
+
+/**
+ * Everything running in this chat right now, by scope.
+ *
+ * One call for every deliverable rather than one subscription each. #111 asks
+ * that the interface make clear which deliverables are active and what each is
+ * doing, and a client cannot ask per scope about a deliverable it has not got
+ * on screen. `limit` is the server's concurrency ceiling, so a surface can say
+ * "2 of 2 running" without hardcoding the number.
+ *
+ * Live runs only. A finished deliverable is read from its own task status.
+ */
+export async function listActiveRuns(
+  chatId: string
+): Promise<{ runs: ActiveRun[]; limit: number }> {
+  const response = await fetch(url(`/ai/chats/${chatId}/runs`), {
+    headers: await authHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, "Could not check what is running"));
+  }
+  const body = await response.json();
+  return { runs: (body.runs ?? []) as ActiveRun[], limit: Number(body.limit ?? 0) };
 }
 
 /** Accept the agent's offer to turn this conversation into a campaign. */
@@ -340,9 +418,23 @@ function parseFrame(raw: string): ParsedFrame {
 export async function followRun(
   chatId: string,
   handlers: AgentTurnHandlers,
-  options: { signal?: AbortSignal; sinceEventId?: number; runId?: string } = {}
+  options: {
+    signal?: AbortSignal;
+    sinceEventId?: number;
+    runId?: string;
+    /** Which of the chat's runs to follow: a deliverable's task id, or the
+     *  conversation when omitted. */
+    scope?: string;
+  } = {}
 ): Promise<void> {
-  const runId = options.runId ?? readRunState(chatId).runId ?? (await getRunStatus(chatId)).run_id;
+  // Every read here is scoped. An unscoped one sends a deliverable canvas
+  // after the *conversation's* run id, and because the server then cannot
+  // match it, replays the conversation's recorded events onto that canvas —
+  // a wrong answer that looks like a working one.
+  const runId =
+    options.runId ??
+    readRunState(chatId, options.scope).runId ??
+    (await getRunStatus(chatId, options.scope)).run_id;
   let lastEventId = options.sinceEventId ?? 0;
   let answer = "";
   let thinking = "";
@@ -361,7 +453,10 @@ export async function followRun(
     };
     try {
       const response = await fetch(
-        url(`/ai/chats/${chatId}/stream`, runId ? { run_id: runId } : undefined),
+        url(`/ai/chats/${chatId}/stream`, {
+          ...(runId ? { run_id: runId } : {}),
+          ...(options.scope ? { scope: options.scope } : {}),
+        }),
         {
           headers: await authHeaders(
             lastEventId ? { "Last-Event-ID": String(lastEventId) } : undefined
@@ -419,22 +514,22 @@ export async function followRun(
           if (type === "execution_status" && data.run_id !== runId) continue;
           lastEventId = seq;
           attempts = 0;
-          if (readRunState(chatId).runId !== runId) return;
+          if (readRunState(chatId, options.scope).runId !== runId) return;
 
           if (TERMINAL.has(type)) handlers.onConnectionState?.("idle");
           switch (type) {
             case "execution_status": {
               const snapshot = data as unknown as ExecutionSnapshot;
-              receiveExecution(chatId, snapshot);
+              receiveExecution(chatId, snapshot, options.scope);
               handlers.onExecutionStatus?.(snapshot);
               break;
             }
             case "tier":
-              updateRunState(chatId, { tier: String(data.display_name ?? data.tier ?? "") });
+              updateRunState(chatId, { tier: String(data.display_name ?? data.tier ?? "") }, options.scope);
               handlers.onTier?.(String(data.tier ?? ""));
               break;
             case "mode_proposal_decision":
-              updateRunState(chatId, { modeOffer: undefined });
+              updateRunState(chatId, { modeOffer: undefined }, options.scope);
               handlers.onModeDecision?.(String(data.status ?? ""));
               break;
             case "token": {
@@ -469,7 +564,7 @@ export async function followRun(
               );
               break;
             case "mode_proposal":
-              updateRunState(chatId, { modeOffer: { offer_id: String(data.offer_id ?? ""), rationale: String(data.rationale ?? ""), status: "pending" } });
+              updateRunState(chatId, { modeOffer: { offer_id: String(data.offer_id ?? ""), rationale: String(data.rationale ?? ""), status: "pending" } }, options.scope);
               handlers.onModeProposal?.(String(data.rationale ?? ""));
               break;
             case "campaign_proposal": {
@@ -478,20 +573,20 @@ export async function followRun(
                 summary: String(data.summary ?? ""),
                 content_hash: String(data.content_hash ?? ""), status: "pending",
               };
-              updateRunState(chatId, { proposal });
+              updateRunState(chatId, { proposal });  // conversation-keyed; see useCampaignProposal
               handlers.onCampaignProposal?.(proposal);
               break;
             }
             case "cancelled":
-              updateRunState(chatId, { modeOffer: undefined });
+              updateRunState(chatId, { modeOffer: undefined }, options.scope);
               handlers.onCancelled?.();
               break;
             case "complete":
-              updateRunState(chatId, { modeOffer: undefined });
+              updateRunState(chatId, { modeOffer: undefined }, options.scope);
               handlers.onComplete?.(answer);
               break;
             case "error":
-              updateRunState(chatId, { modeOffer: undefined });
+              updateRunState(chatId, { modeOffer: undefined }, options.scope);
               handlers.onError?.(
                 String(data.user_message ?? "Something went wrong.")
               );
@@ -530,7 +625,9 @@ export async function runTurn(
   signal?: AbortSignal
 ): Promise<void> {
   const accepted = await startTurn(req);
-  await followRun(req.chatId, handlers, { signal, runId: accepted.run_id });
+  await followRun(req.chatId, handlers, {
+    signal, runId: accepted.run_id, scope: accepted.scope,
+  });
 }
 
 

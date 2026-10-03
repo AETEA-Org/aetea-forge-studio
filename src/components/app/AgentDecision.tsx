@@ -13,8 +13,8 @@ import { Button } from "@/components/ui/button";
  *  language, in the reply they are already reading. The server will not raise a
  *  card unless that reply covers what the change touches — see
  *  `proposals.unexplained`. What is left here is the decision. */
-export function AgentDecision({ chatId, onReady, ready = true }: { chatId?: string; onReady?: () => void; ready?: boolean }) {
-  const { proposal, error, busy, refresh, decide } = useCampaignProposal(chatId);
+export function AgentDecision({ chatId, scope, onReady, ready = true }: { chatId?: string; scope?: string; onReady?: () => void; ready?: boolean }) {
+  const { proposal, error, busy, refresh, decide } = useCampaignProposal(chatId, scope);
   const [dismissed, setDismissed] = useState<string | null>(null);
   useEffect(() => {
     try { setDismissed(localStorage.getItem(`aetea:decision-dismissed:${chatId}`)); } catch { /* Optional preference. */ }

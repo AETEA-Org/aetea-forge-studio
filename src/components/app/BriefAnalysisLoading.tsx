@@ -120,7 +120,10 @@ export function BriefAnalysisLoading({
         <h2 className="mb-3 text-center text-2xl font-bold">
           Building your campaign
         </h2>
-        <p className="mb-5 min-h-[1.75rem] text-center text-lg text-primary">
+        {/* A live region, like the inline variant already had. Without it a
+            screen reader gets the first stage and silence thereafter — and
+            this is the variant on the main path in from a new brief. */}
+        <p role="status" className="mb-5 min-h-[1.75rem] text-center text-lg text-primary">
           {current?.label ?? "Getting started..."}
         </p>
 

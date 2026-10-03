@@ -30,13 +30,17 @@ export function reportSendFailure(
   opts: {
     toast: ToastFn;
     chatId?: string;
+    /** Which run the Stop button should stop: a deliverable's task id, or the
+     *  conversation when omitted. A deliverable canvas must pass its own, or
+     *  Stop halts the conversation and leaves the busy deliverable running. */
+    scope?: string;
     userEmail?: string;
     onStopped?: () => void;
     /** Show the out-of-credits state in place of the answer. */
     onOutOfCredits?: () => void;
   }
 ): void {
-  const { toast, chatId, userEmail, onStopped, onOutOfCredits } = opts;
+  const { toast, chatId, scope, userEmail, onStopped, onOutOfCredits } = opts;
 
   if (error instanceof OutOfCreditsError) {
     // The surface handles it inline where the answer would have been. Falling
@@ -72,7 +76,7 @@ export function reportSendFailure(
           <ToastAction
             altText="Stop the current turn"
             onClick={() => {
-              cancelRun(chatId)
+              cancelRun(chatId, scope)
                 .then(() => onStopped?.())
                 .catch(() => {});
             }}

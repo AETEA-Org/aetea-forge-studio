@@ -5,8 +5,11 @@ import { useAgentRunState } from "@/hooks/useAgentRunState";
 import type { ProgressStep, RunConnectionState } from "@/services/agentRun";
 
 /** Execution and connection health are distinct. Never guess a percentage. */
-export function AgentProgress({ chatId, isStreaming, thinkingText, steps, connection, onReconnect, onStop, onReview }: {
+export function AgentProgress({ chatId, scope, isStreaming, thinkingText, steps, connection, onReconnect, onStop, onReview }: {
   chatId?: string;
+  /** The deliverable this surface is showing, or the conversation when
+   *  omitted. A canvas without it reports on the conversation's run. */
+  scope?: string;
   isStreaming?: boolean;
   thinkingText: string;
   steps: ProgressStep[];
@@ -15,7 +18,7 @@ export function AgentProgress({ chatId, isStreaming, thinkingText, steps, connec
   onStop?: () => void;
   onReview?: () => void;
 }) {
-  const { execution, tier } = useAgentRunState(chatId);
+  const { execution, tier } = useAgentRunState(chatId, scope);
   const [expanded, setExpanded] = useState(false);
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
