@@ -25,6 +25,7 @@ import {
 import type { ChatMessage, ChatRenderableAsset, StreamAssetHint } from "@/types/api";
 import { AssetsModal } from "@/components/app/AssetsModal";
 import { AgentProgress } from "@/components/app/AgentProgress";
+import { BriefAnalysisLoading } from "@/components/app/BriefAnalysisLoading";
 import { CampaignModeOffer } from "@/components/app/CampaignModeOffer";
 import { AgentDecision } from "@/components/app/AgentDecision";
 import { useAgentRunState } from "@/hooks/useAgentRunState";
@@ -548,7 +549,7 @@ export default function ChatView() {
         />
 
         {showCampaignLoading && isStreaming && (
-          <p role="status" className="shrink-0 px-4 pb-2 text-sm text-muted-foreground">Building your campaign…</p>
+          <BriefAnalysisLoading steps={steps} variant="inline" />
         )}
         <AgentProgress chatId={chatId} isStreaming={isStreaming} onReview={() => {
           const request = runState.request;
