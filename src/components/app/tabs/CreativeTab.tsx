@@ -91,7 +91,7 @@ export function CreativeTab({
   const selectedTerritory = getSelectedCreativeTerritory(strategy?.creative_foundation);
 
   // Fetch campaign tasks (for Tasks section below Key Visual)
-  const { data: tasksData, isLoading: tasksLoading } = useCampaignTasks(campaignId);
+  const { data: tasksData, isLoading: tasksLoading, isError: tasksError, refetch: refetchTasks } = useCampaignTasks(campaignId);
   const tasks = useMemo(() => tasksData?.tasks ?? [], [tasksData]);
 
   // What each deliverable is doing right now (#111). One call for all of them
@@ -800,10 +800,17 @@ export function CreativeTab({
           <div className="flex justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
+        ) : tasksError ? (
+          <div className="py-4 text-sm text-muted-foreground" role="alert">
+            <p>Couldn’t load deliverables.</p>
+            <Button variant="outline" size="sm" className="mt-3" onClick={() => void refetchTasks()}>
+              Try again
+            </Button>
+          </div>
         ) : tasks.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4">No tasks yet.</p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="border-t border-border">
             {deliverables.map((task) => (
               <CreativeTaskCard
                 key={task.id}
