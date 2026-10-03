@@ -1,9 +1,35 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useAgentRunState } from "./useAgentRunState";
 import { decideProposal, getProposal, listProposals } from "@/services/agentRun";
 import { readRunState, updateRunState } from "@/services/agentRunState";
-import { invalidateForDataChange } from "@/services/dataChanged";
+/** Everything on screen is stale now, so refetch everything on screen.
+ *
+ *  An approved proposal is the one moment where a single click rewrites several
+ *  unrelated parts of the campaign at once — this one changed the brief, the
+ *  strategy and the creative direction together — and it is the only write in
+ *  the product that happens with **no run attached**, so no `data_changed`
+ *  event exists to say what moved. The client is on its own.
+ *
+ *  It used to name the keys: `['campaign']`, `['creative']`, `['assets']` and a
+ *  few more, through `invalidateForDataChange`. That list has to stay in step
+ *  with every query key in the app, by hand, forever — and it already was not.
+ *  `['campaign']` does not match `['campaign-tasks', …]`, which is how the
+ *  canvas reads the task board, and nothing covered `['chat-messages', …]` or
+ *  `['asset-folders', …]` either. Each of those is a surface that would sit on
+ *  stale data until the page was reloaded, and the next key anyone adds joins
+ *  them silently.
+ *
+ *  So: no key. `invalidateQueries()` with no filter marks every query stale and
+ *  refetches the active ones. The cost is a handful of requests on a button the
+ *  user just pressed and is waiting on, which is the cheapest moment in the
+ *  whole product to spend them — and it cannot miss a key, now or later.
+ *
+ *  `data_changed` during a run keeps its targeted mapping: those arrive many
+ *  times per turn, where being precise is worth the maintenance. */
+function refetchEverything(queryClient: QueryClient) {
+  void queryClient.invalidateQueries();
+}
 
 /** A message that says yes and nothing else.
  *
@@ -33,12 +59,7 @@ export function useCampaignProposal(chatId?: string) {
       const next = open[0] ?? current;
       updateRunState(chatId, { proposal: next });
       if (current?.status !== before?.status && current?.status === "applied") {
-        ["section", "creative_state", "task", "asset"].forEach((entity) =>
-          invalidateForDataChange(queryClient, entity, { chatId })
-        );
-        void queryClient.invalidateQueries({ queryKey: ["chat", chatId] });
-        void queryClient.invalidateQueries({ queryKey: ["campaign-task"] });
-        void queryClient.invalidateQueries({ queryKey: ["deliverable-objects"] });
+        refetchEverything(queryClient);
       }
       setError(null);
     } catch (err) {
@@ -69,12 +90,7 @@ export function useCampaignProposal(chatId?: string) {
         updateRunState(currentChat, { proposal: { ...current, ...outcome } });
       }
       if (outcome.status === "applied" || outcome.result?.applied?.length) {
-        void queryClient.invalidateQueries({ queryKey: ["chat", currentChat] });
-        void queryClient.invalidateQueries({ queryKey: ["campaign-task"] });
-        void queryClient.invalidateQueries({ queryKey: ["deliverable-objects"] });
-        ["section", "creative_state", "task", "asset"].forEach((entity) =>
-          invalidateForDataChange(queryClient, entity, { chatId: currentChat })
-        );
+        refetchEverything(queryClient);
       }
       return outcome;
     } catch (err) {
