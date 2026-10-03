@@ -6,11 +6,30 @@
  * cancel it — reconnecting resumes from the last event seen instead of losing
  * the answer.
  */
+import { readRunState, receiveExecution, updateRunState } from "./agentRunState";
 import { API_BASE_URL } from "@/services/config";
 import { backendHeaders } from "@/services/authHeaders";
 import { readErrorMessage } from "@/services/errorDetail";
 
 export type RunConnectionState = "idle" | "connected" | "reconnecting" | "interrupted" | "stopping";
+
+export interface ExecutionSnapshot {
+  run_id: string;
+  request?: StartTurnRequest;
+  state: "working" | "queued" | "waiting" | "retrying" | "stopping" | "stopped" | "failed" | "completed";
+  phase: string;
+  reason: string;
+  meaningful_activity_at: string;
+  state_changed_at: string;
+  active_steps: ProgressStep[];
+  pending_decision?: { kind: string; proposal_id?: string; offer_id?: string; rationale?: string; status?: string } | null;
+  committed_generation?: boolean;
+}
+
+export interface ProposalOutcome {
+  status: string;
+  result?: { applied?: string[]; failed?: string[]; reason?: string };
+}
 
 export type ProgressState = "started" | "done" | "failed";
 export type CampaignState = "creating" | "section_written" | "created" | "updated";
@@ -32,8 +51,9 @@ export interface ProgressStep {
 export interface CampaignProposal {
   proposal_id: string;
   summary: string;
-  change_lines: string[];
   content_hash: string;
+  status?: string;
+  result?: ProposalOutcome["result"];
 }
 
 export interface AssetHint {
@@ -44,6 +64,9 @@ export interface AssetHint {
 
 /** Everything a caller can react to while a turn runs. */
 export interface AgentTurnHandlers {
+  onExecutionStatus?: (snapshot: ExecutionSnapshot) => void;
+  onTier?: (tier: string) => void;
+  onModeDecision?: (status: string) => void;
   onConnectionState?: (state: RunConnectionState) => void;
   onToken?: (delta: string, accumulated: string) => void;
   onThinking?: (delta: string, accumulated: string) => void;
@@ -91,6 +114,8 @@ export interface RunStatus {
   active: boolean;
   run_id?: string;
   last_event_id?: number;
+  execution?: ExecutionSnapshot;
+  recoverable?: boolean;
 }
 
 const TERMINAL = new Set(["complete", "cancelled", "error"]);
@@ -147,6 +172,7 @@ export class OutOfCreditsError extends Error {
 }
 
 export async function startTurn(req: StartTurnRequest): Promise<{ run_id: string }> {
+  updateRunState(req.chatId, { runId: undefined, execution: undefined, modeOffer: undefined, request: req, startVersion: (readRunState(req.chatId).startVersion ?? 0) + 1 });
   const form = new FormData();
   form.append("chat_id", req.chatId);
   form.append("message", req.message);
@@ -175,23 +201,43 @@ export async function startTurn(req: StartTurnRequest): Promise<{ run_id: string
     const message = await readErrorMessage(response, "Could not start the message");
     if (response.status === 409) throw new ChatBusyError(message);
     if (response.status === 402) throw new OutOfCreditsError(message);
+    updateRunState(req.chatId, { execution: {
+      run_id: "submission", state: "failed", phase: "submission", reason: "start_failed",
+      meaningful_activity_at: new Date().toISOString(), state_changed_at: new Date().toISOString(), active_steps: [],
+    } });
     throw new Error(message);
   }
-  return response.json();
+  const accepted = await response.json();
+  updateRunState(req.chatId, { runId: accepted.run_id, execution: undefined, modeOffer: undefined, request: req });
+  return accepted;
 }
 
 /** Whether a run is in progress, and how far its events have got. */
 export async function getRunStatus(chatId: string): Promise<RunStatus> {
+  const before = readRunState(chatId).runId;
+  const beforeVersion = readRunState(chatId).startVersion;
   const response = await fetch(
     url(`/ai/chats/${chatId}/run`),
     { headers: await authHeaders() }
   );
   if (!response.ok) throw new Error(await readErrorMessage(response, "Could not check the run"));
-  return response.json();
+  const status: RunStatus = await response.json();
+  const previous = readRunState(chatId);
+  // A delayed status response must not overwrite a request accepted meanwhile.
+  if (previous.runId === before && previous.startVersion === beforeVersion) {
+    if (previous.runId !== status.run_id) updateRunState(chatId, { execution: undefined, modeOffer: undefined, request: undefined });
+    updateRunState(chatId, { runId: status.run_id });
+    if (status.execution) receiveExecution(chatId, status.execution);
+    const offer = status.execution?.pending_decision;
+    if (status.active && offer?.kind === "mode" && offer.offer_id) {
+      updateRunState(chatId, { modeOffer: { offer_id: offer.offer_id, rationale: offer.rationale ?? "", status: offer.status ?? "pending" } });
+    }
+  }
+  return status;
 }
 
 /** Stop the run in progress. Whatever it already produced is kept. */
-export async function cancelRun(chatId: string): Promise<void> {
+export async function cancelRun(chatId: string): Promise<boolean> {
   const form = new FormData();
   const response = await fetch(url(`/ai/chats/${chatId}/cancel`), {
     method: "POST",
@@ -199,6 +245,11 @@ export async function cancelRun(chatId: string): Promise<void> {
     body: form,
   });
   if (!response.ok) throw new Error(await readErrorMessage(response, "Could not stop the run"));
+  const outcome = await response.json();
+  const previous = readRunState(chatId).execution;
+  if (outcome.cancelled === true && previous) receiveExecution(chatId, { ...previous, state: "stopped", reason: "stopped" });
+  if (outcome.cancelled !== true) await getRunStatus(chatId);
+  return outcome.cancelled === true;
 }
 
 /** Accept the agent's offer to turn this conversation into a campaign. */
@@ -224,13 +275,14 @@ export async function listProposals(chatId: string): Promise<CampaignProposal[]>
   const response = await fetch(url(`/ai/chats/${chatId}/proposals`), {
     headers: await authHeaders(),
   });
-  if (!response.ok) return [];
+  if (!response.ok) throw new Error(await readErrorMessage(response, "Could not check suggestions"));
   const body = await response.json();
   return ((body.proposals ?? []) as Array<Record<string, unknown>>).map((row) => ({
     proposal_id: String(row.id ?? ""),
     summary: String(row.summary ?? ""),
-    change_lines: (row.change_lines as string[]) ?? [],
     content_hash: String(row.content_hash ?? ""),
+    status: String(row.status ?? "pending"),
+    result: row.result as ProposalOutcome["result"],
   }));
 }
 
@@ -246,7 +298,7 @@ export async function decideProposal(
   proposalId: string,
   decision: "approve" | "decline",
   expectedHash?: string
-): Promise<{ status: string }> {
+): Promise<ProposalOutcome> {
   const response = await fetch(
     url(`/ai/chats/${chatId}/proposals/${proposalId}/decision`),
     {
@@ -288,8 +340,9 @@ function parseFrame(raw: string): ParsedFrame {
 export async function followRun(
   chatId: string,
   handlers: AgentTurnHandlers,
-  options: { signal?: AbortSignal; sinceEventId?: number } = {}
+  options: { signal?: AbortSignal; sinceEventId?: number; runId?: string } = {}
 ): Promise<void> {
+  const runId = options.runId ?? readRunState(chatId).runId ?? (await getRunStatus(chatId)).run_id;
   let lastEventId = options.sinceEventId ?? 0;
   let answer = "";
   let thinking = "";
@@ -308,7 +361,7 @@ export async function followRun(
     };
     try {
       const response = await fetch(
-        url(`/ai/chats/${chatId}/stream`),
+        url(`/ai/chats/${chatId}/stream`, runId ? { run_id: runId } : undefined),
         {
           headers: await authHeaders(
             lastEventId ? { "Last-Event-ID": String(lastEventId) } : undefined
@@ -339,6 +392,7 @@ export async function followRun(
         if (options.signal?.aborted) return;
         touch();
         buffer += decoder.decode(value, { stream: true });
+        buffer = buffer.replace(/\r\n/g, "\n");
 
         let split = buffer.indexOf("\n\n");
         while (split !== -1) {
@@ -347,7 +401,6 @@ export async function followRun(
           split = buffer.indexOf("\n\n");
 
           const frame = parseFrame(raw);
-          if (frame.id) lastEventId = Number(frame.id) || lastEventId;
           if (!frame.data) continue;
 
           let payload: { type?: string; data?: Record<string, unknown> };
@@ -357,11 +410,33 @@ export async function followRun(
             continue;
           }
           const type = payload.type ?? frame.event ?? "";
-          if (type) attempts = 0;
-          const data = payload.data ?? {};
+          const data = payload.data;
+          if (!data || typeof data !== "object" || Array.isArray(data)) continue;
+          const known = new Set(["token", "thinking", "progress", "asset", "data_changed", "campaign", "tier", "mode_proposal", "campaign_proposal", "cancelled", "complete", "error", "execution_status", "mode_proposal_decision"]);
+          if (!known.has(type) || !validEvent(type, data)) continue;
+          const seq = Number(frame.id);
+          if (!Number.isSafeInteger(seq) || seq <= lastEventId) continue;
+          if (type === "execution_status" && data.run_id !== runId) continue;
+          lastEventId = seq;
+          attempts = 0;
+          if (readRunState(chatId).runId !== runId) return;
 
           if (TERMINAL.has(type)) handlers.onConnectionState?.("idle");
           switch (type) {
+            case "execution_status": {
+              const snapshot = data as unknown as ExecutionSnapshot;
+              receiveExecution(chatId, snapshot);
+              handlers.onExecutionStatus?.(snapshot);
+              break;
+            }
+            case "tier":
+              updateRunState(chatId, { tier: String(data.display_name ?? data.tier ?? "") });
+              handlers.onTier?.(String(data.tier ?? ""));
+              break;
+            case "mode_proposal_decision":
+              updateRunState(chatId, { modeOffer: undefined });
+              handlers.onModeDecision?.(String(data.status ?? ""));
+              break;
             case "token": {
               const delta = String(data.text ?? "");
               answer += delta;
@@ -394,23 +469,29 @@ export async function followRun(
               );
               break;
             case "mode_proposal":
+              updateRunState(chatId, { modeOffer: { offer_id: String(data.offer_id ?? ""), rationale: String(data.rationale ?? ""), status: "pending" } });
               handlers.onModeProposal?.(String(data.rationale ?? ""));
               break;
-            case "campaign_proposal":
-              handlers.onCampaignProposal?.({
+            case "campaign_proposal": {
+              const proposal: CampaignProposal = {
                 proposal_id: String(data.proposal_id ?? ""),
                 summary: String(data.summary ?? ""),
-                change_lines: (data.change_lines as string[]) ?? [],
-                content_hash: String(data.content_hash ?? ""),
-              });
+                content_hash: String(data.content_hash ?? ""), status: "pending",
+              };
+              updateRunState(chatId, { proposal });
+              handlers.onCampaignProposal?.(proposal);
               break;
+            }
             case "cancelled":
+              updateRunState(chatId, { modeOffer: undefined });
               handlers.onCancelled?.();
               break;
             case "complete":
+              updateRunState(chatId, { modeOffer: undefined });
               handlers.onComplete?.(answer);
               break;
             case "error":
+              updateRunState(chatId, { modeOffer: undefined });
               handlers.onError?.(
                 String(data.user_message ?? "Something went wrong.")
               );
@@ -448,6 +529,49 @@ export async function runTurn(
   handlers: AgentTurnHandlers,
   signal?: AbortSignal
 ): Promise<void> {
-  await startTurn(req);
-  await followRun(req.chatId, handlers, { signal });
+  const accepted = await startTurn(req);
+  await followRun(req.chatId, handlers, { signal, runId: accepted.run_id });
+}
+
+
+export async function declineCampaignMode(chatId: string, offerId: string): Promise<void> {
+  const response = await fetch(url(`/ai/chats/${chatId}/mode-offers/${offerId}/decline`), {
+    method: "POST", headers: await authHeaders(),
+  });
+  if (!response.ok) throw new Error(await readErrorMessage(response, "Could not record your answer"));
+  updateRunState(chatId, { modeOffer: undefined });
+}
+
+export async function getProposal(chatId: string, proposalId: string): Promise<CampaignProposal> {
+  const response = await fetch(url(`/ai/chats/${chatId}/proposals/${proposalId}`), { headers: await authHeaders() });
+  if (!response.ok) throw new Error(await readErrorMessage(response, "Could not check that suggestion"));
+  const row = await response.json();
+  return { ...row, proposal_id: String(row.id) };
+}
+
+
+/** Validate known frames before advancing the cursor or touching UI state. */
+function validEvent(type: string, data: Record<string, unknown>): boolean {
+  const strings = (value: unknown) => Array.isArray(value) && value.every(item => typeof item === "string");
+  const step = (value: unknown) => {
+    if (!value || typeof value !== "object") return false;
+    const item = value as Record<string, unknown>;
+    return typeof item.step_id === "string" && typeof item.label === "string" && ["started", "done", "failed"].includes(String(item.state));
+  };
+  switch (type) {
+    case "token": case "thinking": return typeof data.text === "string";
+    case "progress": return step(data);
+    case "asset": return Array.isArray(data.assets) && data.assets.every(item => item && typeof item.id === "string");
+    case "data_changed": return typeof data.entity === "string" && strings(data.ids);
+    case "campaign": return typeof data.campaign_id === "string" && ["creating", "section_written", "created", "updated"].includes(String(data.state));
+    case "tier": return typeof data.tier === "string" && typeof data.display_name === "string";
+    case "mode_proposal": return typeof data.rationale === "string" && typeof data.offer_id === "string";
+    case "mode_proposal_decision": return typeof data.offer_id === "string" && ["accepted", "declined", "expired"].includes(String(data.status));
+    case "campaign_proposal": return typeof data.proposal_id === "string" && typeof data.summary === "string" && typeof data.content_hash === "string";
+    case "execution_status": return typeof data.run_id === "string" && ["working", "queued", "waiting", "retrying", "stopping", "stopped", "failed", "completed"].includes(String(data.state)) && typeof data.reason === "string" && typeof data.phase === "string" && Number.isFinite(Date.parse(String(data.meaningful_activity_at))) && Number.isFinite(Date.parse(String(data.state_changed_at))) && Array.isArray(data.active_steps) && data.active_steps.every(step);
+    case "error": return typeof data.user_message === "string";
+    case "complete": return typeof data.message_id === "string";
+    case "cancelled": return true;
+    default: return false;
+  }
 }

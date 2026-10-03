@@ -1,3 +1,8 @@
+import { AgentDecision } from "./AgentDecision";
+import { AgentProgress } from "./AgentProgress";
+import { cancelRun } from "@/services/agentRun";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
 import { Sparkles } from "lucide-react";
 import { AgentSteps } from "@/components/app/AgentSteps";
 import type { ProgressStep } from "@/services/agentRun";
@@ -5,6 +10,8 @@ import type { ProgressStep } from "@/services/agentRun";
 interface BriefAnalysisLoadingProps {
   /** Steps the agent has reported so far, in order. */
   steps: ProgressStep[];
+  chatId?: string;
+  onOpenConversation?: () => void;
 }
 
 /**
@@ -15,7 +22,9 @@ interface BriefAnalysisLoadingProps {
  * silently froze the moment those names changed. Named steps cannot drift out
  * of sync with the work, and cannot move backwards.
  */
-export function BriefAnalysisLoading({ steps }: BriefAnalysisLoadingProps) {
+export function BriefAnalysisLoading({ steps, chatId, onOpenConversation }: BriefAnalysisLoadingProps) {
+  const [stopping, setStopping] = useState(false);
+  const [stopError, setStopError] = useState<string | null>(null);
   const current = steps.filter((s) => s.state === "started").at(-1);
   const done = steps.filter((s) => s.state === "done").length;
 
@@ -48,6 +57,21 @@ export function BriefAnalysisLoading({ steps }: BriefAnalysisLoadingProps) {
           </div>
         )}
 
+        {chatId && <div className="mb-4">
+          <AgentProgress chatId={chatId} isStreaming connection={stopping ? "stopping" : "connected"} thinkingText="" steps={[]} />
+          <AgentDecision chatId={chatId} />
+          <div className="flex justify-center gap-2">
+            <Button variant="outline" className="min-h-11" onClick={onOpenConversation}>Open conversation</Button>
+            <Button variant="ghost" className="min-h-11" disabled={stopping} onClick={async () => {
+              if (stopping) return;
+              setStopping(true); setStopError(null);
+              try { await cancelRun(chatId); onOpenConversation?.(); }
+              catch (err) { setStopError(err instanceof Error ? err.message : "Could not stop. Try again."); }
+              finally { setStopping(false); }
+            }}>{stopping ? "Stopping…" : "Stop"}</Button>
+          </div>
+          {stopError && <p role="alert" className="text-xs text-destructive">{stopError}</p>}
+        </div>}
         <p className="text-center text-sm text-muted-foreground">
           {done > 0
             ? `${done} of ${steps.length} steps done. This takes a few moments.`

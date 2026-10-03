@@ -13,6 +13,7 @@ import { useModification } from "@/hooks/useModification";
 import { useAutoMessage } from "@/hooks/useAutoMessage";
 import { resolveStreamAssetHints } from "@/services/api";
 import {
+  ChatBusyError,
   cancelRun,
   followRun,
   getRunStatus,
@@ -23,6 +24,9 @@ import { invalidateForDataChange } from "@/services/dataChanged";
 import { useNavigate } from "react-router-dom";
 import { reportSendFailure } from "@/services/sendFailure";
 import { OutOfCredits } from "@/components/app/billing/OutOfCredits";
+import { AgentDecision } from "@/components/app/AgentDecision";
+import { useAgentRunState } from "@/hooks/useAgentRunState";
+import { useCampaignProposal } from "@/hooks/useCampaignProposal";
 import { AgentProgress } from "@/components/app/AgentProgress";
 import { useAuth } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
@@ -73,6 +77,7 @@ export function AICopilotPanel({
   const [isResizing, setIsResizing] = useState(false);
   const panelRef = useRef<HTMLElement>(null);
   const chatInputRef = useRef<ChatInputHandle>(null);
+  const runState = useAgentRunState(chatId);
   const subscriptionRef = useRef<AbortController | null>(null);
   
   // Refs to track modification state
@@ -131,6 +136,7 @@ export function AICopilotPanel({
   const navigate = useNavigate();
   const [isStreaming, setIsStreaming] = useState(false);
   const [connection, setConnection] = useState<RunConnectionState>("idle");
+  const [rejoinVersion, setRejoinVersion] = useState(0);
   // The copilot starts billable turns like any other surface, so it gets the
   // same control. Without this the picker simply did not render here and every
   // copilot turn ran on the default with no way to choose.
@@ -154,6 +160,10 @@ export function AICopilotPanel({
   };
   const activeSendRef = useRef<{ controller: AbortController; finish: (error?: string) => void } | null>(null);
 
+  // Typing "go ahead" answers the open card. Same hook the card itself uses, so
+  // both see one proposal and the decision goes through the same hash-bound route.
+  const { approveIfAffirmative } = useCampaignProposal(chatId);
+
   const handleSendMessage = useCallback(
     async (
       message: string,
@@ -168,6 +178,11 @@ export function AICopilotPanel({
         });
         return;
       }
+      // A bare "go ahead" while a card is open answers the card. Before this it
+      // was spent as an ordinary turn: it cost credits, changed nothing, and the
+      // card waited until it expired. Only a bare affirmative with no files —
+      // anything carrying further instruction is a real message.
+      if (!files?.length && (await approveIfAffirmative(message))) return;
 
       const ctxToUse = override?.contextOverride ?? context;
 
@@ -371,6 +386,8 @@ export function AICopilotPanel({
         isModifyingActiveRef.current = false;
         setIsModifying(false, null);
         
+        chatInputRef.current?.restoreDraft(message, files, { generationMode: override?.generationMode, generationOptions: override?.generationOptions });
+        if (error instanceof ChatBusyError || error instanceof TypeError) setRejoinVersion(v => v + 1);
         reportSendFailure(error, {
           onOutOfCredits: () => setOutOfCredits(true),
           toast,
@@ -382,7 +399,7 @@ export function AICopilotPanel({
       }
     },
     [chatId, campaignId, context, contextLabel, selectedTaskId, user, setIsModifying, queryClient, toast, mergeStreamAssets,
-     cancelRewind, rewindTargetId]
+     cancelRewind, rewindTargetId, approveIfAffirmative]
   );
 
   // Auto-send: ref to read pending data in onPrefillComplete (avoids stale closure)
@@ -456,6 +473,7 @@ export function AICopilotPanel({
                 assets.map((a) => ({ id: a.id, mime_type: a.mime_type ?? "" }))
               ).catch(() => {});
             },
+            onCampaign: () => { queryClient.invalidateQueries({ queryKey: ["campaign"] }); queryClient.invalidateQueries({ queryKey: ["chat", chatId] }); },
             onDataChanged: (entity) => {
               invalidateForDataChange(queryClient, entity, {
                 chatId,
@@ -474,14 +492,22 @@ export function AICopilotPanel({
               setSteps([]);
               setIsStreaming(false);
             },
-            onCancelled: () => {
+            onCancelled: async () => {
+              await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
+              if (controller.signal.aborted) return;
+              invalidateForDataChange(queryClient, "asset", { chatId, userEmail: user?.email });
+              invalidateForDataChange(queryClient, "chat", { chatId, userEmail: user?.email });
               setUpdateMessage(null);
               setStreamingContent("");
               setThinkingText("");
               setSteps([]);
               setIsStreaming(false);
             },
-            onError: () => {
+            onError: async () => {
+              await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
+              if (controller.signal.aborted) return;
+              invalidateForDataChange(queryClient, "asset", { chatId, userEmail: user?.email });
+              invalidateForDataChange(queryClient, "chat", { chatId, userEmail: user?.email });
               setUpdateMessage(null);
               setStreamingContent("");
               setThinkingText("");
@@ -490,7 +516,7 @@ export function AICopilotPanel({
             },
           },
           // Rebuild partial text and progress from retained run events.
-          { signal: controller.signal, sinceEventId: 0 },
+          { signal: controller.signal, sinceEventId: 0, runId: status.run_id },
         );
       })
       .catch(() => {
@@ -498,7 +524,7 @@ export function AICopilotPanel({
       });
 
     return () => { controller.abort(); subscriptionRef.current?.abort(); };
-  }, [chatId, campaignId, user?.email, queryClient, mergeStreamAssets]);
+  }, [chatId, campaignId, user?.email, queryClient, mergeStreamAssets, rejoinVersion]);
 
   // Stopping is the send button's other job while a run is going, so the
   // handler lives with the send path rather than beside a separate control.
@@ -700,7 +726,12 @@ export function AICopilotPanel({
               <p className="text-xs text-destructive">{error}</p>
             </div>
           )}
-          <AgentProgress thinkingText={thinkingText} steps={steps} connection={connection} onReconnect={() => window.location.reload()} onStop={handleStop} />
+          <AgentProgress chatId={chatId} isStreaming={isStreaming} onReview={() => {
+            const request = runState.request;
+            if (chatInputRef.current?.restoreDraft(request?.message ?? messages.filter(m => m.role === "user").at(-1)?.content ?? "", request?.files, { generationMode: request?.generationMode as ChatSendMeta["generationMode"], generationOptions: request?.generationOptions }) && request?.tier) setTier(request.tier);
+          }} thinkingText={thinkingText} steps={steps} connection={connection} onReconnect={() => window.location.reload()} onStop={handleStop} />
+
+          <AgentDecision chatId={chatId} ready={!isStreaming} onReady={() => { if (!isStreaming) chatInputRef.current?.focus(); }} />
 
           {outOfCredits && (
             <OutOfCredits

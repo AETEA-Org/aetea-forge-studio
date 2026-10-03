@@ -16,6 +16,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useModification } from "@/hooks/useModification";
 import { useToast } from "@/hooks/use-toast";
+import { readRunState } from "@/services/agentRunState";
 import { ChatBusyError, runTurn, followRun, getRunStatus, cancelRun } from "@/services/agentRun";
 import type { AgentTurnHandlers, ProgressStep, RunConnectionState } from "@/services/agentRun";
 import { invalidateForDataChange } from "@/services/dataChanged";
@@ -329,6 +330,7 @@ export default function DeliverableCanvasPage() {
       onAssets: (assets) => {
         if (current()) void mergeStreamAssets(assets.map((a) => ({ id: a.id, mime_type: a.mime_type ?? "" })), controller.signal).catch(() => {});
       },
+      onCampaign: () => { if (current()) { refresh(); void queryClient.invalidateQueries({ queryKey: ["campaign"] }); } },
       onDataChanged: (entity) => {
         if (current()) invalidateForDataChange(queryClient, entity, { chatId, campaignId, taskId, canvasKey, userEmail: user?.email });
       },
@@ -370,7 +372,7 @@ export default function DeliverableCanvasPage() {
       // or completion may have arrived while this client was disconnected.
       // Replay retained events to recover reasoning/checklist and partial text.
       // This follows existing work; it never starts another paid turn.
-      return followRun(chatId, handlersRef.current(controller), { signal: controller.signal });
+      return followRun(chatId, handlersRef.current(controller), { signal: controller.signal, runId: status.run_id });
     }).catch(() => {
       if (!controller.signal.aborted) {
         setIsStreaming(true);
@@ -424,6 +426,7 @@ export default function DeliverableCanvasPage() {
       if (controller.signal.aborted) return;
       clearRun();
       setRunError(error instanceof Error ? error.message : "Could not send the message.");
+      chatInputRef.current?.restoreDraft(message, files, meta);
       reportSendFailure(error, { toast, chatId, userEmail: user?.email });
       // A conflict or lost acknowledgement may mean work was accepted. Check
       // active work only; a confirmed rejected start must retain its own error.
@@ -452,7 +455,14 @@ export default function DeliverableCanvasPage() {
       connection,
       onReconnect: handleReconnect,
       runError,
-      onRetry: () => { chatInputRef.current?.setDraft(lastSentRef.current || messages.filter((m) => m.role === "user").at(-1)?.content || ""); setRunError(null); },
+      onRetry: () => {
+        const request = readRunState(chatId).request;
+        const restored = chatInputRef.current?.restoreDraft(request?.message ?? (lastSentRef.current || messages.filter((m) => m.role === "user").at(-1)?.content || ""), request?.files,
+          request?.activeTaskId === taskId ? { generationMode: request.generationMode as ChatSendMeta["generationMode"], generationOptions: request.generationOptions } : undefined);
+        if (restored && request?.tier) setTier(request.tier);
+        if (restored && request?.activeTaskId === taskId) setSelectedAssetIds(request?.referenceAssetIds ?? []);
+        setRunError(null);
+      },
       onSend: handleSend,
       onStop: handleStop,
       chatInputRef,
@@ -468,6 +478,7 @@ export default function DeliverableCanvasPage() {
     };
   }, [
     isCampaignCanvas,
+    taskId,
     task,
     objects,
     chatId,

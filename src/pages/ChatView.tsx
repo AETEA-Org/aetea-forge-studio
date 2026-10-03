@@ -26,20 +26,21 @@ import type { ChatMessage, ChatRenderableAsset, StreamAssetHint } from "@/types/
 import { AssetsModal } from "@/components/app/AssetsModal";
 import { AgentProgress } from "@/components/app/AgentProgress";
 import { CampaignModeOffer } from "@/components/app/CampaignModeOffer";
-import { CampaignChangeProposal } from "@/components/app/CampaignChangeProposal";
+import { AgentDecision } from "@/components/app/AgentDecision";
+import { useAgentRunState } from "@/hooks/useAgentRunState";
+import { useCampaignProposal } from "@/hooks/useCampaignProposal";
 import { invalidateForDataChange } from "@/services/dataChanged";
 import { reportSendFailure } from "@/services/sendFailure";
 import { OutOfCredits } from "@/components/app/billing/OutOfCredits";
 import {
   acceptCampaignMode,
+  declineCampaignMode,
+  ChatBusyError,
   cancelRun,
-  decideProposal,
   followRun,
   getRunStatus,
-  listProposals,
   runTurn,
   type AgentTurnHandlers,
-  type CampaignProposal,
   type ProgressStep,
 } from "@/services/agentRun";
 
@@ -65,9 +66,10 @@ export default function ChatView() {
   // A campaign change waiting on the user. Unlike the mode offer this has an
   // id on the server, so it survives the run that raised it and comes back on
   // a reload — see the fetch below.
-  const [changeProposal, setChangeProposal] = useState<CampaignProposal | null>(null);
+  const runState = useAgentRunState(chatId);
   const [isStreaming, setIsStreaming] = useState(false);
   const [connection, setConnection] = useState<RunConnectionState>("idle");
+  const [rejoinVersion, setRejoinVersion] = useState(0);
   // Shown where the answer would have been, and cleared as soon as they try
   // again — a stale "out of credits" card after a successful top-up would be
   // worse than not showing one at all.
@@ -116,7 +118,6 @@ export default function ChatView() {
           return next;
         }),
       onModeProposal: (rationale) => setModeProposal(rationale),
-      onCampaignProposal: (proposal) => setChangeProposal(proposal),
       onAssets: (assets) => {
         mergeStreamAssets(
           assets.map((a) => ({ id: a.id, mime_type: a.mime_type ?? "" }))
@@ -151,6 +152,10 @@ export default function ChatView() {
     [chatId, queryClient, toast, mergeStreamAssets, user?.email]
   );
 
+  useEffect(() => {
+    if (!runState.modeOffer || runState.modeOffer.status !== "pending") setModeProposal(null);
+  }, [runState.modeOffer]);
+
   const messages = [...serverMessages, ...optimisticMessages];
   const {
     arm: armRewind,
@@ -160,81 +165,6 @@ export default function ChatView() {
     replacingCount: rewindReplacingCount,
   } = useRewind(messages);
   const chatTitle = chatData?.title ?? "Chat";
-
-  // A change the agent proposed and nobody answered. The card is raised as a
-  // run event, which only the client that was watching ever saw — so a person
-  // who closed the tab would come back to a campaign quietly waiting on a
-  // decision they were never shown. Asked for on open, and again whenever a
-  // run ends, so the card outlives the turn that raised it.
-  useEffect(() => {
-    if (!chatId || !user?.email || isStreaming) return;
-    let cancelled = false;
-    listProposals(chatId)
-      .then((open) => {
-        if (!cancelled) setChangeProposal(open[0] ?? null);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [chatId, user?.email, isStreaming]);
-
-  // Answering the card. The decision is recorded and applied on the server:
-  // approving applies the payload stored when the card was raised, never
-  // anything sent from here.
-  const decideChange = useCallback(
-    async (decision: "approve" | "decline") => {
-      if (!chatId || !changeProposal) return;
-      let outcome: { status: string };
-      try {
-        outcome = await decideProposal(
-          chatId,
-          changeProposal.proposal_id,
-          decision,
-          changeProposal.content_hash
-        );
-      } catch (err) {
-        // Without this the rejection was silent: the card stayed put, nothing
-        // happened, and the person had no idea the click had failed.
-        toast({
-          title: "Could not record that",
-          description: err instanceof Error ? err.message : "Try again in a moment.",
-          variant: "destructive",
-        });
-        return;
-      }
-      setChangeProposal(null);
-
-      // Approving does not always apply. The campaign can move while the card
-      // is open, or the card can go stale, and the server answers 200 with a
-      // status saying so — which the catch above never sees. Clearing the card
-      // and saying nothing would mean they pressed Apply, watched it vanish,
-      // and got no change and no reason: the same silent failure the catch
-      // exists to prevent, one layer down.
-      const stalled: Record<string, string> = {
-        conflict:
-          "The campaign changed while this was waiting, so nothing was applied. " +
-          "Ask AETEA to propose it again.",
-        expired:
-          "That suggestion sat too long to apply. Nothing changed — ask AETEA to propose it again.",
-        superseded: "A newer suggestion replaced that one, so nothing was applied.",
-      };
-      if (stalled[outcome.status]) {
-        toast({ title: "Nothing was changed", description: stalled[outcome.status] });
-        return;
-      }
-
-      if (outcome.status === "applied") {
-        // The campaign tabs are now showing the old version of whatever moved.
-        ["section", "creative_state", "task"].forEach((entity) =>
-          invalidateForDataChange(queryClient, entity, { chatId, userEmail: user?.email })
-        );
-      }
-      // Nothing else to do. If the turn that raised this is still running it is
-      // watching the same row and carries on by itself.
-    },
-    [chatId, changeProposal, queryClient, toast, user?.email]
-  );
 
   // Open the composer where the chat was left: the mode it was in, and the
   // tier it was last sent on.
@@ -274,6 +204,10 @@ export default function ChatView() {
   }, [user?.email, chatId, queryClient, connection, toast]);
 
 
+  // Typing "go ahead" answers the open card. Same hook the card itself uses, so
+  // both see one proposal and the decision goes through the same hash-bound route.
+  const { approveIfAffirmative } = useCampaignProposal(chatId);
+
   const handleSendMessage = useCallback(
     async (message: string, files?: File[], meta?: ChatSendMeta) => {
       if (!user?.email || !chatId) {
@@ -284,6 +218,11 @@ export default function ChatView() {
         });
         return;
       }
+      // A bare "go ahead" while a card is open answers the card. Before this it
+      // was spent as an ordinary turn: it cost credits, changed nothing, and
+      // the card waited until it expired. Only a bare affirmative with no files
+      // attached — anything carrying further instruction is a real message.
+      if (!files?.length && (await approveIfAffirmative(message))) return;
 
       subscriptionRef.current?.abort();
       const controller = new AbortController();
@@ -347,8 +286,8 @@ export default function ChatView() {
               }
               if (state === "created") setShowCampaignLoading(false);
             },
+            onDataChanged: entity => invalidateForDataChange(queryClient, entity, { chatId, userEmail: user?.email }),
             onModeProposal: (rationale) => setModeProposal(rationale),
-            onCampaignProposal: (proposal) => setChangeProposal(proposal),
             onAssets: (assets) => {
               mergeStreamAssets(
                 assets.map((a) => ({ id: a.id, mime_type: a.mime_type ?? "" }))
@@ -434,6 +373,8 @@ export default function ChatView() {
         setSteps([]);
         setIsStreaming(false);
         setOptimisticMessages([]);
+        chatInputRef.current?.restoreDraft(message, files);
+        if (err instanceof ChatBusyError || err instanceof TypeError) setRejoinVersion(v => v + 1);
         reportSendFailure(err, {
           toast,
           chatId,
@@ -448,7 +389,7 @@ export default function ChatView() {
       }
     },
     [chatId, mode, tier, user, queryClient, toast, mergeStreamAssets, chatData?.campaign_id,
-     cancelRewind, rewindTargetId]
+     cancelRewind, rewindTargetId, approveIfAffirmative]
   );
 
   useEffect(() => {
@@ -461,6 +402,7 @@ export default function ChatView() {
     setSteps([]);
     setIsStreaming(false);
     setConnection("idle");
+    setModeProposal(null);
   }, [chatId]);
 
   // Attach to a run already in progress.
@@ -496,8 +438,15 @@ export default function ChatView() {
                 next[at] = step;
                 return next;
               }),
+            onDataChanged: entity => invalidateForDataChange(queryClient, entity, { chatId, userEmail: user?.email }),
+            onCampaign: (_id, state) => {
+              setShowCampaignLoading(state === "creating");
+              if (state === "created") {
+                queryClient.invalidateQueries({ queryKey: ["chat", chatId] });
+                queryClient.invalidateQueries({ queryKey: ["campaign"] });
+              }
+            },
             onModeProposal: (rationale) => setModeProposal(rationale),
-            onCampaignProposal: (proposal) => setChangeProposal(proposal),
             onAssets: (assets) => {
               mergeStreamAssets(
                 assets.map((a) => ({ id: a.id, mime_type: a.mime_type ?? "" }))
@@ -516,7 +465,12 @@ export default function ChatView() {
               setIsStreaming(false);
               setOptimisticMessages([]);
             },
-            onCancelled: () => {
+            onCancelled: async () => {
+              setShowCampaignLoading(false);
+              await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
+              if (controller.signal.aborted) return;
+              invalidateForDataChange(queryClient, "asset", { chatId, userEmail: user?.email });
+              invalidateForDataChange(queryClient, "chat", { chatId, userEmail: user?.email });
               setIsStreaming(false);
               setStreamingContent("");
               setStreamingAssets([]);
@@ -525,7 +479,12 @@ export default function ChatView() {
               setOptimisticMessages([]);
               setSteps([]);
             },
-            onError: (message) => {
+            onError: async (message) => {
+              setShowCampaignLoading(false);
+              await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
+              if (controller.signal.aborted) return;
+              invalidateForDataChange(queryClient, "asset", { chatId, userEmail: user?.email });
+              invalidateForDataChange(queryClient, "chat", { chatId, userEmail: user?.email });
               setStreamingContent("");
               setIsStreaming(false);
               setThinkingText("");
@@ -538,7 +497,7 @@ export default function ChatView() {
             },
           },
           // Rebuild partial text and progress from retained run events.
-          { signal: controller.signal, sinceEventId: 0 }
+          { signal: controller.signal, sinceEventId: 0, runId: status.run_id }
         );
       })
       .catch(() => {
@@ -546,7 +505,7 @@ export default function ChatView() {
       });
 
     return () => { controller.abort(); subscriptionRef.current?.abort(); };
-  }, [chatId, user?.email, queryClient, toast, mergeStreamAssets]);
+  }, [chatId, user?.email, queryClient, toast, mergeStreamAssets, rejoinVersion]);
 
   if (!chatId) {
     return (
@@ -591,12 +550,15 @@ export default function ChatView() {
         {showCampaignLoading && isStreaming && (
           <p role="status" className="shrink-0 px-4 pb-2 text-sm text-muted-foreground">Building your campaign…</p>
         )}
-        <AgentProgress thinkingText={thinkingText} steps={steps} connection={connection} onReconnect={() => window.location.reload()} onStop={handleStop} />
-        {(modeProposal || changeProposal) && (
+        <AgentProgress chatId={chatId} isStreaming={isStreaming} onReview={() => {
+          const request = runState.request;
+          if (chatInputRef.current?.restoreDraft(request?.message ?? serverMessages.filter(m => m.role === "user").at(-1)?.content ?? "", request?.files) && request?.tier) setTier(request.tier);
+        }} thinkingText={thinkingText} steps={steps} connection={connection} onReconnect={() => window.location.reload()} onStop={handleStop} />
+        {mode === "brainstorm" && isStreaming && (runState.modeOffer?.rationale || modeProposal) && (
           <div className="space-y-2 px-4 pb-2">
-            {modeProposal && (
+            {(runState.modeOffer?.rationale || modeProposal) && (
               <CampaignModeOffer
-                rationale={modeProposal}
+                rationale={runState.modeOffer?.rationale ?? modeProposal ?? ""}
                 onAccept={async () => {
                   if (!user?.email || !chatId) return;
                   try {
@@ -619,18 +581,21 @@ export default function ChatView() {
                   // still running and waiting on this; it sees the change and
                   // carries on building the campaign in the same answer.
                 }}
-                onDecline={() => setModeProposal(null)}
-              />
-            )}
-            {changeProposal && (
-              <CampaignChangeProposal
-                proposal={changeProposal}
-                onApprove={() => decideChange("approve")}
-                onDecline={() => decideChange("decline")}
+                onDecline={async () => {
+                  if (!chatId || !runState.modeOffer?.offer_id) return;
+                  try {
+                    await declineCampaignMode(chatId, runState.modeOffer.offer_id);
+                    setModeProposal(null);
+                  } catch (err) {
+                    toast({ title: "Could not record your answer", description: err instanceof Error ? err.message : "Try again.", variant: "destructive" });
+                  }
+                }}
               />
             )}
           </div>
         )}
+
+        <AgentDecision chatId={chatId} ready={!isStreaming} onReady={() => { if (!isStreaming) chatInputRef.current?.focus(); }} />
 
         {outOfCredits && (
           <OutOfCredits

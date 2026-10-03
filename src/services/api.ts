@@ -276,6 +276,10 @@ export async function createCampaignViaChat(
     { chatId, message, mode: 'campaign', files, tier },
     {
       onProgress: (step) => onProgress?.(step),
+      onCancelled: () => onError?.("Stopped. Your saved work is kept in the conversation."),
+      onConnectionState: (state) => {
+        if (state === "interrupted") onError?.("Connection lost. Open the conversation to reconnect to your work.");
+      },
       onCampaign: (_id, state) => {
         if (state === 'creating') onStarted?.();
       },

@@ -147,6 +147,8 @@ export interface ChatInputHandle {
   addFiles: (files: File[]) => void;
   /** Restore an editable draft without sending it. */
   setDraft: (text: string) => void;
+  focus: () => void;
+  restoreDraft: (text: string, attachments?: File[], meta?: ChatSendMeta) => boolean;
 }
 
 const PREFILL_INSTANT_DELAY_MS = 180;
@@ -610,6 +612,16 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   const selectedCharacterIds = generationOptions.character_ids ?? [];
 
   useImperativeHandle(ref, () => ({
+    focus: () => { textareaRef.current?.focus(); },
+    restoreDraft: (text: string, attachments?: File[], meta?: ChatSendMeta) => {
+      requestAnimationFrame(() => textareaRef.current?.focus());
+      if (message.trim()) return false;
+      setMessage(text);
+      if (attachments?.length) setFiles((current) => current.length ? current : attachments);
+      if (meta?.generationMode) setGenerationMode(meta.generationMode);
+      if (meta?.generationOptions) setGenerationOptions(meta.generationOptions);
+      return true;
+    },
     setDraft: (text: string) => {
       setMessage(text);
       requestAnimationFrame(() => {
@@ -629,7 +641,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         setFiles((prev) => [...prev, ...valid]);
       }
     },
-  }), [isStreaming, disabled]);
+  }), [isStreaming, disabled, message]);
 
   // Seed the field the moment a rewind arms, and put the caret at the end so
   // it reads as "carry on from what you said". Keyed on the armed message, not
@@ -885,7 +897,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           value={displayedValue}
           onChange={(e) => !isPrefillActive && setMessage(e.target.value)}
           placeholder={isDragging ? "Drop files here..." : inputPlaceholder}
-          disabled={isStreaming || disabled}
+          disabled={disabled}
           readOnly={isPrefillActive}
           className={cn(
             "min-h-[44px] w-full resize-none border-0 bg-transparent px-1 py-1.5 shadow-none",
@@ -1345,7 +1357,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
                       ((!message.trim() && files.length === 0) || isStreaming || disabled)
                 }
                 size="icon"
-                className="h-8 w-8 shrink-0 rounded-lg"
+                className="h-11 w-11 shrink-0 rounded-lg"
               >
                 {canStop ? (
                   <Square className="h-3 w-3 fill-current" />

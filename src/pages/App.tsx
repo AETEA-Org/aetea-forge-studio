@@ -24,7 +24,7 @@ export default function App() {
   const [isStartingBrainstorm, setIsStartingBrainstorm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const { createProject, isSubmitting, showLoadingScreen, steps, error, reset } = useCreateProject();
+  const { createProject, isSubmitting, showLoadingScreen, steps, error, chatId: buildingChatId, reset } = useCreateProject();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -137,7 +137,7 @@ export default function App() {
 
   // Show loading screen when campaign creation started
   if (showLoadingScreen) {
-    return <BriefAnalysisLoading steps={steps} />;
+    return <BriefAnalysisLoading steps={steps} chatId={buildingChatId ?? undefined} onOpenConversation={() => navigate(`/app/chat/${buildingChatId}`)} />;
   }
 
   // Show form when NOT submitting

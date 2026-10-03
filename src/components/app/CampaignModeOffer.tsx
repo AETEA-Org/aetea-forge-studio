@@ -1,10 +1,11 @@
+import { useRef, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface CampaignModeOfferProps {
   rationale: string;
-  onAccept: () => void;
-  onDecline: () => void;
+  onAccept: () => void | Promise<void>;
+  onDecline: () => void | Promise<void>;
 }
 
 /**
@@ -18,6 +19,13 @@ export function CampaignModeOffer({
   onAccept,
   onDecline,
 }: CampaignModeOfferProps) {
+  const pending = useRef(false);
+  const [busy, setBusy] = useState(false);
+  const act = async (action: () => void | Promise<void>) => {
+    if (pending.current) return;
+    pending.current = true; setBusy(true);
+    try { await action(); } finally { pending.current = false; setBusy(false); }
+  };
   return (
     <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
       <div className="mb-2 flex items-center gap-2">
@@ -26,10 +34,10 @@ export function CampaignModeOffer({
       </div>
       <p className="mb-3 text-sm text-muted-foreground">{rationale}</p>
       <div className="flex gap-2">
-        <Button size="sm" onClick={onAccept}>
+        <Button className="min-h-11" size="sm" disabled={busy} onClick={() => void act(onAccept)}>
           Switch to campaign
         </Button>
-        <Button size="sm" variant="ghost" onClick={onDecline}>
+        <Button className="min-h-11" size="sm" variant="ghost" disabled={busy} onClick={() => void act(onDecline)}>
           Not now
         </Button>
       </div>
