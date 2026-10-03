@@ -18,7 +18,7 @@ export function AgentProgress({ chatId, scope, isStreaming, thinkingText, steps,
   onStop?: () => void;
   onReview?: () => void;
 }) {
-  const { execution, tier } = useAgentRunState(chatId, scope);
+  const { execution } = useAgentRunState(chatId, scope);
   const [expanded, setExpanded] = useState(false);
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
@@ -51,7 +51,14 @@ export function AgentProgress({ chatId, scope, isStreaming, thinkingText, steps,
   // A brief confirmed success is enough; unresolved errors/decisions stay.
   if (!active && !execution && !steps.length && !thinkingText) return null;
   if (state === "completed" && now - Date.parse(execution?.state_changed_at ?? "") > 6000) return null;
-  const activity = steps.length > 0 || !!thinkingText.trim() || !!tier;
+  // Which tier ran is deliberately not here. It is a setting the person
+  // already chose in the composer, so repeating it mid-run tells them nothing
+  // they did not decide — and on the campaign-building screen, where there are
+  // no steps and no reasoning to show, it was the *only* thing behind "Show
+  // activity": a button that promised activity and revealed one line of
+  // internal vocabulary. Spend belongs on the billing screen, which itemises
+  // it properly.
+  const activity = steps.length > 0 || !!thinkingText.trim();
   return (
     <div className="chat-scrollbar nodrag nowheel min-h-0 max-h-[40%] shrink overflow-y-auto px-3 pb-2" aria-label="Run progress">
       <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs">
@@ -65,7 +72,7 @@ export function AgentProgress({ chatId, scope, isStreaming, thinkingText, steps,
         {failed && !isStreaming && <p className="mt-1 text-muted-foreground">Review restores your text. Reattach files after a refresh.</p>}
         {execution?.committed_generation && (connection === "stopping" || state === "stopped") && <p className="mt-1 text-muted-foreground">A video already started may finish. No further clips will be ordered.</p>}
       </div>
-      {expanded && <div className="mt-2 space-y-2">{tier && <p className="text-xs text-muted-foreground">Intelligence: {tier}</p>}<AgentThinking text={thinkingText} /><AgentSteps steps={steps} /></div>}
+      {expanded && <div className="mt-2 space-y-2"><AgentThinking text={thinkingText} /><AgentSteps steps={steps} /></div>}
     </div>
   );
 }
