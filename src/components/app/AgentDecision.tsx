@@ -9,10 +9,9 @@ import { Button } from "@/components/ui/button";
  *  → (3 items)` means nothing to a marketer, and `(3 items) → (3 items)` does
  *  not even say what changed.
  *
- *  So the explanation lives where it belongs: AETEA writes it, in the user's own
- *  language, in the reply they are already reading. The server will not raise a
- *  card unless that reply covers what the change touches — see
- *  `proposals.unexplained`. What is left here is the decision. */
+ *  AETEA supplies a plain-language summary with the proposal. It stays beside
+ *  the decision, including after a reload, so the user can read what they are
+ *  approving even when the tool was called before any reply text streamed. */
 export function AgentDecision({ chatId, scope, onReady, ready = true }: { chatId?: string; scope?: string; onReady?: () => void; ready?: boolean }) {
   const { proposal, error, busy, refresh, decide } = useCampaignProposal(chatId, scope);
   const [dismissed, setDismissed] = useState<string | null>(null);
@@ -60,6 +59,9 @@ export function AgentDecision({ chatId, scope, onReady, ready = true }: { chatId
   return (
     <div className="nodrag nowheel min-w-0 shrink-0 px-3 pb-2">
       <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2">
+        {proposal?.summary && (
+          <p className="w-full break-words text-sm text-muted-foreground">{proposal.summary}</p>
+        )}
         <p className="min-w-0 flex-1 basis-32 text-xs" role="status">
           {pending ? "Your go-ahead is needed" : messages[status] ?? "Review what happened."}
         </p>
