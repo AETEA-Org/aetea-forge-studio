@@ -44,7 +44,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { partitionChatFiles, validateChatFile } from "@/lib/chatFileValidation";
+import { CHAT_FILE_ACCEPT, partitionChatFiles, summarizeFileErrors } from "@/lib/chatFileValidation";
+import { useToast } from "@/hooks/use-toast";
 import { useStyleCards } from "@/hooks/useStyleCards";
 import { useCharacters, useCreateCharacter } from "@/hooks/useCharacters";
 import { listTiers, type TierOption } from "@/services/api";
@@ -585,6 +586,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   },
   ref
 ) {
+  const { toast } = useToast();
   const [message, setMessage] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -633,15 +635,19 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     },
     addFiles: (incoming: File[]) => {
       if (!incoming.length || isStreaming || disabled) return;
-      const valid: File[] = [];
-      incoming.forEach((file) => {
-        if (validateChatFile(file).valid) valid.push(file);
-      });
-      if (valid.length > 0) {
-        setFiles((prev) => [...prev, ...valid]);
+      const { accepted, errors } = partitionChatFiles(incoming);
+      if (errors.length > 0) {
+        toast({
+          title: "Some files were skipped",
+          description: summarizeFileErrors(errors),
+          variant: "destructive",
+        });
+      }
+      if (accepted.length > 0) {
+        setFiles((prev) => [...prev, ...accepted]);
       }
     },
-  }), [isStreaming, disabled, message]);
+  }), [isStreaming, disabled, message, toast]);
 
   // Seed the field the moment a rewind arms, and put the caret at the end so
   // it reads as "carry on from what you said". Keyed on the armed message, not
@@ -753,7 +759,11 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     const { accepted, errors } = partitionChatFiles(Array.from(selectedFiles));
 
     if (errors.length > 0) {
-      console.error("File validation errors:", errors);
+      toast({
+        title: "Some files were skipped",
+        description: summarizeFileErrors(errors),
+        variant: "destructive",
+      });
     }
 
     if (accepted.length > 0) {
@@ -888,7 +898,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           ref={fileInputRef}
           type="file"
           multiple
-          accept=".pdf,.doc,.docx,.ppt,.pptx,image/*"
+          accept={CHAT_FILE_ACCEPT}
           onChange={(e) => handleFileSelect(e.target.files)}
           className="hidden"
         />

@@ -12,6 +12,7 @@ import { TierPicker } from "@/components/app/ChatInput";
 import { OutOfCredits } from "@/components/app/billing/OutOfCredits";
 import { CampaignCostNote } from "@/components/app/billing/CampaignCostNote";
 import { reportSendFailure } from "@/services/sendFailure";
+import { BRIEF_EXTENSIONS, BRIEF_FILE_ACCEPT, BRIEF_TYPE_LABEL, partitionChatFiles, summarizeFileErrors } from "@/lib/chatFileValidation";
 import { cn } from "@/lib/utils";
 
 export default function App() {
@@ -26,11 +27,25 @@ export default function App() {
   
   const { createProject, isSubmitting, showLoadingScreen, steps, error, chatId: buildingChatId, reset } = useCreateProject();
 
+  const takeBriefFiles = (incoming: File[]) => {
+    const { accepted, errors } = partitionChatFiles(incoming, BRIEF_EXTENSIONS);
+    if (errors.length > 0) {
+      toast({
+        title: "Some files were skipped",
+        description: summarizeFileErrors(errors),
+        variant: "destructive",
+      });
+    }
+    if (accepted.length > 0) {
+      setFiles((prev) => [...prev, ...accepted]);
+      if (error) reset();
+    }
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      const newFiles = Array.from(e.target.files);
-      setFiles((prev) => [...prev, ...newFiles]);
-      if (error) reset(); // Clear error when files are uploaded
+      takeBriefFiles(Array.from(e.target.files));
+      e.target.value = "";
     }
   };
 
@@ -60,17 +75,7 @@ export default function App() {
     e.stopPropagation();
     setIsDragging(false);
 
-    const droppedFiles = Array.from(e.dataTransfer.files);
-    // Filter for accepted file types
-    const acceptedFiles = droppedFiles.filter(file => {
-      const extension = file.name.split('.').pop()?.toLowerCase();
-      return ['pdf', 'doc', 'docx', 'ppt', 'pptx'].includes(extension || '');
-    });
-
-    if (acceptedFiles.length > 0) {
-      setFiles((prev) => [...prev, ...acceptedFiles]);
-      if (error) reset(); // Clear error when files are uploaded
-    }
+    takeBriefFiles(Array.from(e.dataTransfer.files));
   };
 
   // This page starts billable work — a brainstorm turn, and the campaign build,
@@ -162,7 +167,7 @@ export default function App() {
               ref={fileInputRef}
               type="file"
               multiple
-              accept=".pdf,.doc,.docx,.ppt,.pptx"
+              accept={BRIEF_FILE_ACCEPT}
               onChange={handleFileChange}
               className="hidden"
             />
@@ -187,7 +192,7 @@ export default function App() {
                 Drop files here or click to upload
               </p>
               <p className="text-xs text-muted-foreground">
-                PDF, Word, or PowerPoint files
+                {BRIEF_TYPE_LABEL}
               </p>
             </div>
           </div>
