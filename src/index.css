@@ -288,3 +288,38 @@
 @media (hover: none), (pointer: coarse) {
   .message-action { width: 36px; height: 36px; }
 }
+
+/* Canvas object action bar (View / Download / Approve): visible on touch and
+ * keyboard focus the same way message actions are — hover alone hid them. */
+.object-action-bar {
+  opacity: 1;
+}
+@media (hover: hover) and (pointer: fine) {
+  .object-action-bar {
+    opacity: 0;
+  }
+  .group:hover .object-action-bar,
+  .group:focus-within .object-action-bar {
+    opacity: 1;
+  }
+}
+
+/* Word / PowerPoint inline preview — drawn from file bytes in the browser. */
+.office-preview-host {
+  background: hsl(var(--muted));
+}
+.office-preview-host .aetea-docx-wrapper {
+  background: transparent;
+  padding: 0;
+}
+.office-preview-host section.aetea-docx {
+  background: white;
+  color: #1a1a1a;
+  box-shadow: 0 1px 3px hsl(0 0% 0% / 0.12);
+  margin: 0 auto 12px;
+}
+.office-preview-card .aetea-docx-wrapper {
+  transform-origin: top left;
+  transform: scale(0.42);
+  width: 238%;
+}

@@ -7,7 +7,6 @@ import {
   FileText,
   GripVertical,
   Loader2,
-  Presentation,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Markdown } from "@/components/ui/markdown";
@@ -25,6 +24,7 @@ import { cn } from "@/lib/utils";
 import type { CampaignTaskStatus, DeliverableObject } from "@/types/api";
 import { useCanvas } from "./canvasContext";
 import { ObjectViewerDialog, objectKind, useTextContent } from "./ObjectViewer";
+import { OfficePreview } from "./OfficePreview";
 
 // Resize handles reveal on hover so resizing is decoupled from selection
 // (selection means "attach as chat reference", not "start resizing").
@@ -295,18 +295,15 @@ function ObjectPreview({ obj }: { obj: DeliverableObject }) {
   if (kind === "text") {
     return <TextPreview url={url} />;
   }
+  if ((kind === "docx" || kind === "pptx") && url) {
+    return <OfficePreview url={url} kind={kind} mode="card" />;
+  }
   if (kind === "document") {
-    const isDeck =
-      (obj.file_name ?? "").toLowerCase().endsWith(".pptx") ||
-      (obj.mime_type ?? "").includes("presentationml");
-    const Icon = isDeck ? Presentation : FileText;
     return (
       <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-3 text-center">
-        <Icon className="h-9 w-9 text-primary" />
+        <FileText className="h-9 w-9 text-primary" />
         <p className="text-sm font-medium break-words">{obj.file_name || label}</p>
-        <p className="text-xs text-muted-foreground">
-          {isDeck ? "Presentation" : "Document"} — open to read
-        </p>
+        <p className="text-xs text-muted-foreground">Document — open to read</p>
       </div>
     );
   }
@@ -372,7 +369,7 @@ function ObjectActionBar({
   onView: () => void;
 }) {
   return (
-    <div className="nodrag absolute top-9 right-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+    <div className="object-action-bar nodrag absolute top-9 right-1 flex items-center gap-1 transition-opacity">
       <IconAction label="View" onClick={onView}>
         <Eye className="h-3.5 w-3.5" />
       </IconAction>
@@ -549,7 +546,7 @@ export const KeyVisualNode = memo(function KeyVisualNode({
       </div>
 
       {hasImage && downloadUrl && (
-        <div className="nodrag absolute top-9 right-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="object-action-bar nodrag absolute top-9 right-1 flex items-center gap-1 transition-opacity">
           <IconAction label="View" onClick={() => setViewerOpen(true)}>
             <Eye className="h-3.5 w-3.5" />
           </IconAction>
