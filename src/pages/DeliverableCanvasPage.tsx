@@ -23,6 +23,7 @@ import { invalidateForDataChange } from "@/services/dataChanged";
 import { reportSendFailure } from "@/services/sendFailure";
 import { useChatMessages } from "@/hooks/useChats";
 import { useRewind } from "@/hooks/useRewind";
+import { useChatTier } from "@/hooks/useChatTier";
 import { useCreativeState } from "@/hooks/useCreativeState";
 import type { ChatInputHandle, ChatSendMeta } from "@/components/app/ChatInput";
 import type {
@@ -91,8 +92,9 @@ export default function DeliverableCanvasPage() {
   const [streamingAssets, setStreamingAssets] = useState<ChatRenderableAsset[]>([]);
   const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
   // The canvas gets the same picker as the chat view: a turn started here costs
-  // exactly what a turn started there costs.
-  const [tier, setTier] = useState<string>("auto");
+  // exactly what a turn started there costs, and runs on the same chosen tier —
+  // held once on the chat record rather than per surface. See `useChatTier`.
+  const { tier, setTier } = useChatTier(chatId);
   const [approvingIds, setApprovingIds] = useState<Set<string>>(new Set());
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [fixturePositions, setFixturePositions] = useState<FixturePositions>(() =>
@@ -491,6 +493,7 @@ export default function DeliverableCanvasPage() {
     objects,
     chatId,
     tier,
+    setTier,
     canvasKey,
     campaignId,
     user,

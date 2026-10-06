@@ -25,6 +25,7 @@ import { useNavigate } from "react-router-dom";
 import { reportSendFailure } from "@/services/sendFailure";
 import { OutOfCredits } from "@/components/app/billing/OutOfCredits";
 import { AgentDecision } from "@/components/app/AgentDecision";
+import { useChatTier } from "@/hooks/useChatTier";
 import { useAgentRunState } from "@/hooks/useAgentRunState";
 import { useCampaignProposal } from "@/hooks/useCampaignProposal";
 import { AgentProgress } from "@/components/app/AgentProgress";
@@ -138,9 +139,9 @@ export function AICopilotPanel({
   const [connection, setConnection] = useState<RunConnectionState>("idle");
   const [rejoinVersion, setRejoinVersion] = useState(0);
   // The copilot starts billable turns like any other surface, so it gets the
-  // same control. Without this the picker simply did not render here and every
-  // copilot turn ran on the default with no way to choose.
-  const [tier, setTier] = useState<string>("auto");
+  // same control — and the same stored value as every other surface, rather than
+  // a second copy that resets to Auto on every mount. See `useChatTier`.
+  const { tier, setTier } = useChatTier(chatId);
   const [outOfCredits, setOutOfCredits] = useState(false);
 
   // Handle message sending. The third argument arrives from two places and they

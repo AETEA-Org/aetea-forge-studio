@@ -457,7 +457,16 @@ export function TierPicker({
   }, []);
 
   if (options.length === 0) return null;
-  const current = options.find((o) => o.code === tier) ?? options[0];
+  // A tier the backend does not offer must not render as the first option. It did,
+  // and that is how a reset to Auto looked exactly like a deliberate choice of Auto
+  // — the picker read "Auto" while the turn ran on whatever Auto picked, and nobody
+  // could see the difference. Fall back so the composer still works, but say so.
+  const matched = options.find((o) => o.code === tier);
+  if (!matched && import.meta.env.DEV) {
+    console.warn(`[TierPicker] unknown tier ${JSON.stringify(tier)}; showing ${options[0]?.code}`);
+  }
+  const current = matched ?? options[0];
+  const unknown = !matched;
 
   return (
     <DropdownMenu>
@@ -475,12 +484,18 @@ export function TierPicker({
               className="h-8 shrink-0 gap-1.5 rounded-lg px-2 text-primary hover:bg-primary/10 hover:text-primary"
             >
               <Sparkles className="h-3.5 w-3.5" />
-              <span className="text-xs font-medium">{current.display_name}</span>
+              <span className="text-xs font-medium">
+                {unknown ? `${current.display_name}?` : current.display_name}
+              </span>
               <ChevronDown className="h-3 w-3 opacity-60" />
             </Button>
           </DropdownMenuTrigger>
         </TooltipTrigger>
-        <TooltipContent side="top">{current.description}</TooltipContent>
+        <TooltipContent side="top">
+          {unknown
+            ? `This chat is set to "${tier}", which is not an available option. Pick one to be sure what the next turn runs on.`
+            : current.description}
+        </TooltipContent>
       </Tooltip>
       <DropdownMenuContent
         align="start"

@@ -28,6 +28,7 @@ import { AgentProgress } from "@/components/app/AgentProgress";
 import { BriefAnalysisLoading } from "@/components/app/BriefAnalysisLoading";
 import { CampaignModeOffer } from "@/components/app/CampaignModeOffer";
 import { AgentDecision } from "@/components/app/AgentDecision";
+import { useChatTier } from "@/hooks/useChatTier";
 import { useAgentRunState } from "@/hooks/useAgentRunState";
 import { useCampaignProposal } from "@/hooks/useCampaignProposal";
 import { invalidateForDataChange } from "@/services/dataChanged";
@@ -55,9 +56,9 @@ export default function ChatView() {
   const subscriptionRef = useRef<AbortController | null>(null);
 
   const [mode, setMode] = useState<ChatMode>("brainstorm");
-  // How much intelligence to apply. "auto" lets AETEA choose per message, which
-  // is where a new chat starts; the backend remembers whatever was last used.
-  const [tier, setTier] = useState<string>("auto");
+  // How much intelligence to apply. Held once, in the chat's own record, so this
+  // view and the copilot panel cannot disagree about it — see `useChatTier`.
+  const { tier, setTier } = useChatTier(chatId);
   const [streamingContent, setStreamingContent] = useState("");
   const [optimisticMessages, setOptimisticMessages] = useState<ChatMessage[]>([]);
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
@@ -167,14 +168,13 @@ export default function ChatView() {
   } = useRewind(messages);
   const chatTitle = chatData?.title ?? "Chat";
 
-  // Open the composer where the chat was left: the mode it was in, and the
-  // tier it was last sent on.
+  // Open the composer in the mode the chat was left in. The tier needs no
+  // equivalent: `useChatTier` reads it from the same record this does.
   useEffect(() => {
-    if (chatData?.tier) setTier(chatData.tier);
     if (chatData?.mode === "campaign" || chatData?.mode === "brainstorm") {
       setMode(chatData.mode);
     }
-  }, [chatData?.mode, chatData?.tier]);
+  }, [chatData?.mode]);
 
   // Stopping is the send button's other job while a run is going.
   const handleStop = useCallback(async () => {
