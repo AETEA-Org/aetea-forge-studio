@@ -1,4 +1,3 @@
-import { AgentDecision } from "./AgentDecision";
 import { AgentProgress } from "./AgentProgress";
 import { cancelRun } from "@/services/agentRun";
 import { Button } from "@/components/ui/button";
@@ -174,15 +173,17 @@ export function BriefAnalysisLoading({
 
         {chatId && <div className="mb-4">
           <AgentProgress chatId={chatId} isStreaming connection={stopping ? "stopping" : "connected"} thinkingText="" steps={[]} />
-          <AgentDecision chatId={chatId} />
           {/* Stop is the only way off this screen, and that is the point.
               There used to be an "Open conversation" button beside it, which
               invited people to leave a build they had just asked for and then
               watch it from somewhere else. Leaving is not needed: the screen
               dismisses itself and routes to the campaign the moment the build
               completes, and every failure path clears it and reports back on
-              the form. Anything needing a decision mid-build is answered right
-              here, by the card above. */}
+              the form. Nothing is asked here any more: a build writes sections
+              that do not exist yet, which is authorship, and authorship never
+              waits. The approval card that used to sit above this was the
+              clearest case of a campaign asking permission to do the thing it
+              had just been told to do. */}
           <div className="flex justify-center">
             <Button variant="ghost" className="min-h-11" disabled={stopping} onClick={async () => {
               if (stopping) return;
