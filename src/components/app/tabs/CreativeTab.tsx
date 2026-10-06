@@ -102,25 +102,23 @@ export function CreativeTab({
     [runs]
   );
 
-  // The API returns every piece of work flat with its parent named, so the tree
-  // is assembled here. A row whose parent is missing is shown as a deliverable
-  // rather than dropped: losing work silently is worse than showing it one
-  // level too high, and that is the only way it could disappear from the tab.
-  const { deliverables, childrenByParent } = useMemo(() => {
-    const byParent = new Map<string, CampaignTask[]>();
-    for (const task of tasks) {
-      if (!task.parent_task_id) continue;
-      const group = byParent.get(task.parent_task_id) ?? [];
-      group.push(task);
-      byParent.set(task.parent_task_id, group);
-    }
+  // Deliverables only: a tangible final asset, one card each.
+  //
+  // Production steps are no longer created as child rows — see
+  // `campaign-creation/SKILL.md`. Campaigns built while they were still being
+  // created keep those rows, and they are filtered out here rather than shown,
+  // because promoting them to the top level is exactly the fragmented list
+  // Studio reported: "QC and export shelf PDF" is a step, not something the
+  // customer was promised. The rows stay in the database; nothing is deleted.
+  //
+  // A row naming a parent that is not in this list is kept. That can only
+  // happen if the parent was removed, and showing an orphan one level too high
+  // beats dropping work silently.
+  const deliverables = useMemo(() => {
     const ids = new Set(tasks.map((task) => task.id));
-    return {
-      deliverables: tasks.filter(
-        (task) => !task.parent_task_id || !ids.has(task.parent_task_id)
-      ),
-      childrenByParent: byParent,
-    };
+    return tasks.filter(
+      (task) => !task.parent_task_id || !ids.has(task.parent_task_id)
+    );
   }, [tasks]);
 
   // Counted from the deliverables rather than from the run list, so the
@@ -810,13 +808,12 @@ export function CreativeTab({
         ) : tasks.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4">No tasks yet.</p>
         ) : (
-          <div className="border-t border-border">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {deliverables.map((task) => (
               <CreativeTaskCard
                 key={task.id}
                 task={task}
                 chatId={chatId}
-                subTasks={childrenByParent.get(task.id)}
                 execution={runByScope.get(task.id)?.execution}
               />
             ))}
