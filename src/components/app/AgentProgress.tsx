@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { AgentThinking } from "./AgentThinking";
 import { AgentSteps } from "./AgentSteps";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { useAgentRunState } from "@/hooks/useAgentRunState";
+import { headlineStep } from "@/lib/buildProgress";
 import type { ProgressStep, RunConnectionState } from "@/services/agentRun";
 
 /** Execution and connection health are distinct. Never guess a percentage. */
@@ -41,7 +43,13 @@ export function AgentProgress({ chatId, scope, isStreaming, thinkingText, steps,
     stopped: "Stopped. Your saved work is kept.", completed: "Finished",
   };
   let label = labels[execution?.reason ?? ""] ?? labels.working;
-  if (state === "working" && execution?.reason === "working") label = execution.active_steps.at(-1)?.label ?? label;
+  // The stage when the turn has stages, otherwise the last step seen — and it
+  // stays after that step finishes. `active_steps` empties between tool calls,
+  // which is most of a turn, so leading with it meant the headline fell back to
+  // "Working on your request…" repeatedly mid-run. See lib/buildProgress.ts.
+  if (state === "working" && execution?.reason === "working") {
+    label = headlineStep(steps)?.label ?? execution.active_steps.at(-1)?.label ?? label;
+  }
   if (!execution && active && !steps.length && !thinkingText) label = "Getting started…";
   if (quiet && state === "working") label = "No new update yet. You can wait or stop this request.";
   if (state === "retrying" && !retryVisible) label = "Working on your request…";
@@ -59,20 +67,50 @@ export function AgentProgress({ chatId, scope, isStreaming, thinkingText, steps,
   // internal vocabulary. Spend belongs on the billing screen, which itemises
   // it properly.
   const activity = steps.length > 0 || !!thinkingText.trim();
+  // One box, one toggle. The status line itself opens it: a "Show activity"
+  // button that revealed two more collapsibles was three borders and two
+  // clicks away from anything worth reading.
+  const Chevron = expanded ? ChevronDown : ChevronRight;
   return (
     <div className="chat-scrollbar nodrag nowheel min-h-0 max-h-[40%] shrink overflow-y-auto px-3 pb-2" aria-label="Run progress">
-      <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs">
-        <div className="flex flex-wrap items-center gap-x-3">
-          <p className="min-w-0 flex-1" role="status" aria-live="polite">{label}</p>
+      <div className="rounded-lg border border-border bg-muted/30 text-xs">
+        <div className="flex flex-wrap items-center gap-x-3 px-3 py-2">
+          {activity ? (
+            <button
+              type="button"
+              onClick={() => setExpanded(!expanded)}
+              aria-expanded={expanded}
+              className="flex min-h-9 min-w-0 flex-1 items-center gap-2 text-left hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+            >
+              <span className="min-w-0 flex-1 truncate" role="status" aria-live="polite">{label}</span>
+              <Chevron className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            </button>
+          ) : (
+            <p className="min-w-0 flex-1" role="status" aria-live="polite">{label}</p>
+          )}
           {connection === "interrupted" && !ended && <button type="button" onClick={onReconnect} className="min-h-11 underline">Reconnect</button>}
           {failed && onReview && <button type="button" onClick={onReview} className="min-h-11 underline">Review request</button>}
           {!ended && (quiet || connection === "interrupted") && <button type="button" onClick={onStop} className="min-h-11 underline">Stop</button>}
-          {activity && <button type="button" onClick={() => setExpanded(!expanded)} aria-expanded={expanded} className="min-h-11 underline">{expanded ? "Hide activity" : "Show activity"}</button>}
         </div>
-        {failed && !isStreaming && <p className="mt-1 text-muted-foreground">Review restores your text. Reattach files after a refresh.</p>}
-        {execution?.committed_generation && (connection === "stopping" || state === "stopped") && <p className="mt-1 text-muted-foreground">A video already started may finish. No further clips will be ordered.</p>}
+        {failed && !isStreaming && <p className="px-3 pb-2 text-muted-foreground">Review restores your text. Reattach files after a refresh.</p>}
+        {execution?.committed_generation && (connection === "stopping" || state === "stopped") && <p className="px-3 pb-2 text-muted-foreground">A video already started may finish. No further clips will be ordered.</p>}
+        {expanded && activity && (
+          <>
+            {steps.length > 0 && (
+              <div className="border-t border-border px-3 py-2">
+                <AgentSteps steps={steps} />
+              </div>
+            )}
+            {/* Unchanged on purpose: the reasoning panel stays exactly as it
+                was, one click in rather than two. */}
+            {!!thinkingText.trim() && (
+              <div className="border-t border-border">
+                <AgentThinking text={thinkingText} />
+              </div>
+            )}
+          </>
+        )}
       </div>
-      {expanded && <div className="mt-2 space-y-2"><AgentThinking text={thinkingText} /><AgentSteps steps={steps} /></div>}
     </div>
   );
 }

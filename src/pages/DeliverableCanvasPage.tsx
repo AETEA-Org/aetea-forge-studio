@@ -413,6 +413,13 @@ export default function DeliverableCanvasPage() {
     }
   }, [user?.email, chatId, branchId, connection, clearRun, queryClient, deliverablesKey, toast]);
 
+  // Held in a ref so the busy toast can send the refused message again once
+  // it has stopped what was running, without handleSend referring to itself.
+  const sendAgainRef = useRef<(() => void) | null>(null);
+  const handleSendRef = useRef<
+    ((message: string, files?: File[], meta?: ChatSendMeta) => Promise<void>) | null
+  >(null);
+
   const handleSend = useCallback(async (message: string, files?: File[], meta?: ChatSendMeta) => {
     if (!user?.email || !chatId || isStreaming) return;
     streamControllerRef.current?.abort();
@@ -435,14 +442,26 @@ export default function DeliverableCanvasPage() {
     } catch (error) {
       if (controller.signal.aborted) return;
       clearRun();
-      setRunError(error instanceof Error ? error.message : "Could not send the message.");
+      // "Busy" is not a failure, and the red banner said it a second time
+      // underneath a toast that was already saying it calmly.
+      const busy = error instanceof ChatBusyError;
+      if (!busy) {
+        setRunError(error instanceof Error ? error.message : "Could not send the message.");
+      }
       chatInputRef.current?.restoreDraft(message, files, meta);
-      reportSendFailure(error, { toast, chatId, scope: runScopeRef.current, userEmail: user?.email });
+      sendAgainRef.current = () => { void handleSendRef.current?.(message, files, meta); };
+      reportSendFailure(error, {
+        toast, chatId, scope: runScopeRef.current, userEmail: user?.email,
+        onResend: true,
+        onStopped: () => sendAgainRef.current?.(),
+      });
       // A conflict or lost acknowledgement may mean work was accepted. Check
       // active work only; a confirmed rejected start must retain its own error.
       if (error instanceof ChatBusyError || error instanceof TypeError) requestRejoin(false);
     }
   }, [user?.email, chatId, isStreaming, clearRun, branchId, rewindTargetId, cancelRewind, taskId, selectedAssetIds, tier, toast, requestRejoin]);
+
+  handleSendRef.current = handleSend;
 
   const canvasContextValue = useMemo<CanvasContextValue | null>(() => {
     if (!chatId || !user?.email) return null;

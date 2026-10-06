@@ -11,13 +11,17 @@ interface AgentThinkingProps {
  *
  * Worth showing — it explains why an answer took a while — but it is not the
  * answer, so it stays out of the way until someone opens it.
+ *
+ * Unchanged in behaviour and wording; it only lost its own border and
+ * background, because it now sits inside the progress panel rather than
+ * beside it, and a bordered box inside a bordered box reads as two things.
  */
 export function AgentThinking({ text }: AgentThinkingProps) {
   const [open, setOpen] = useState(false);
   if (!text.trim()) return null;
 
   return (
-    <div className="rounded-lg border border-border/60 bg-muted/30">
+    <div>
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}

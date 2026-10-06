@@ -61,6 +61,25 @@ export interface BuildProgress {
  * to the backend and not listed here it shows up in the quiet line instead of
  * the headline: wrong, but harmless, and visibly so.
  */
+/**
+ * The one line to lead with, for any turn.
+ *
+ * The stage/tool split below was written for the campaign build, where stages
+ * exist. Most turns have none — "generate a key visual" produces `image` steps
+ * and nothing else — so a headline that only ever shows a stage has nothing to
+ * say on them, and one that shows the running tool goes blank between calls
+ * for the reason set out at the top of this file.
+ *
+ * So: the stage when there is one, otherwise the most recent step **whether or
+ * not it is still running**. That last part is the whole trick. A finished step
+ * left on screen reads as "this is where we got to"; the same line removed the
+ * instant it completes reads as the run dying.
+ */
+export function headlineStep(steps: ProgressStep[]): ProgressStep | undefined {
+  const { stage, activity } = buildProgress(steps);
+  return stage ?? activity ?? steps.at(-1);
+}
+
 export function buildProgress(steps: ProgressStep[]): BuildProgress {
   const stages = steps.filter((step) => isStageStep(step.step_id));
   const stage = stages.at(-1);
