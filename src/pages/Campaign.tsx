@@ -24,16 +24,6 @@ interface CampaignProps {
 /** How long to wait for a target section to render before abandoning the jump. */
 const SECTION_SCROLL_TIMEOUT_MS = 15000;
 
-/** How long to keep correcting the jump while the rest of the tab fills in.
- *
- *  A smooth scroll animates toward the position the target held when it started.
- *  The sections above it are still rendering, so the target slides further down
- *  mid-flight and the jump lands short — on whichever section is above it. That
- *  is the whole of the "KPI button opens Insight" report: `strategy-kpis` is the
- *  last section in the tab, so it has the most still to render above it and misses
- *  by the most. */
-const SECTION_SETTLE_MS = 1200;
-
 export default function Campaign({ outletContext: outletContextProp }: CampaignProps = {}) {
   const { chatId } = useParams<{ chatId: string }>();
   
@@ -81,8 +71,6 @@ export default function Campaign({ outletContext: outletContextProp }: CampaignP
     if (!pendingScroll || pendingScroll.tab !== activeTab) return;
 
     let settled = false;
-    let keepUp: MutationObserver | null = null;
-    let settleTimer: number | undefined;
 
     const scrollIfReady = () => {
       if (settled) return true;
@@ -90,32 +78,11 @@ export default function Campaign({ outletContext: outletContextProp }: CampaignP
       if (!target) return false;
       settled = true;
       target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-      // Correct the jump while the tab is still growing above the target.
-      // `offsetTop` is measured against the offset parent rather than the
-      // viewport, so it is unaffected by scrolling and moves only when content
-      // above the target actually changes height — which means this re-aims
-      // exactly when the miss is being caused and never fights a user who has
-      // started scrolling somewhere else.
-      let lastTop = target.offsetTop;
-      keepUp = new MutationObserver(() => {
-        if (target.offsetTop === lastTop) return;
-        lastTop = target.offsetTop;
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
-      keepUp.observe(document.body, { childList: true, subtree: true });
-      settleTimer = window.setTimeout(() => keepUp?.disconnect(), SECTION_SETTLE_MS);
-
       setPendingScroll(null);
       return true;
     };
 
-    if (scrollIfReady()) {
-      return () => {
-        keepUp?.disconnect();
-        window.clearTimeout(settleTimer);
-      };
-    }
+    if (scrollIfReady()) return;
 
     // A tab only renders its sections once its own query resolves, which can take
     // longer than any fixed poll window — watching the DOM means the jump lands
@@ -132,9 +99,7 @@ export default function Campaign({ outletContext: outletContextProp }: CampaignP
 
     return () => {
       observer.disconnect();
-      keepUp?.disconnect();
       window.clearTimeout(giveUp);
-      window.clearTimeout(settleTimer);
     };
   }, [activeTab, pendingScroll]);
 
