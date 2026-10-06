@@ -153,7 +153,7 @@ export function StrategyTab({ campaignId, isModifying }: StrategyTabProps) {
       </div>
 
       {/* 2. Strategic Doctrine */}
-      <div id="strategy-kpis" className="glass rounded-xl p-6 scroll-mt-24">
+      <div id="strategy-doctrine" className="glass rounded-xl p-6 scroll-mt-24">
         <h2 className="font-semibold mb-4">Strategic Doctrine</h2>
         <ul className="space-y-2">
           {doctrine.map((item, i) => (
@@ -366,7 +366,7 @@ export function StrategyTab({ campaignId, isModifying }: StrategyTabProps) {
       </div>
 
       {/* 6. Key Performance Indicators */}
-      <div className="glass rounded-xl p-6">
+      <div id="strategy-kpis" className="glass rounded-xl p-6 scroll-mt-24">
         <h2 className="font-semibold mb-4">Key Performance Indicators</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
