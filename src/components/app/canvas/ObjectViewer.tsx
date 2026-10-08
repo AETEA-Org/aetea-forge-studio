@@ -221,30 +221,6 @@ export function ObjectViewerDialog({
         <DialogContent className="max-w-4xl">
           <DialogHeader className="pr-8">
             <div className="flex items-center gap-2">
-              {showNav && (
-                <div className="flex items-center gap-0.5 shrink-0">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    disabled={!canPrev}
-                    onClick={goPrev}
-                    aria-label="Previous"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    disabled={!canNext}
-                    onClick={goNext}
-                    aria-label="Next"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
               <DialogTitle className="truncate flex-1">{title}</DialogTitle>
               {isOffice && (
                 <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
@@ -313,14 +289,46 @@ export function ObjectViewerDialog({
             </div>
           </DialogHeader>
 
-          <ObjectViewerBody
-            kind={kind}
-            url={url}
-            title={title}
-            open={open}
-            officeZoom={officeZoom}
-            officeZoomEpoch={officeZoomEpoch}
-          />
+          {/* Beside the picture rather than above it. The pair used to sit in
+              the header next to the filename, which is where a toolbar lives,
+              not where a reader reaches to turn a page. They overlay the edges
+              so the preview keeps the full width, and they are hidden from
+              assistive tech because the filmstrip below already exposes every
+              object as a real button. */}
+          <div className="relative">
+            <ObjectViewerBody
+              kind={kind}
+              url={url}
+              title={title}
+              open={open}
+              officeZoom={officeZoom}
+              officeZoomEpoch={officeZoomEpoch}
+            />
+            {showNav && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute left-1 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full bg-background/80 shadow-sm backdrop-blur hover:bg-background disabled:opacity-0"
+                  disabled={!canPrev}
+                  onClick={goPrev}
+                  aria-label="Previous"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-1 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full bg-background/80 shadow-sm backdrop-blur hover:bg-background disabled:opacity-0"
+                  disabled={!canNext}
+                  onClick={goNext}
+                  aria-label="Next"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </Button>
+              </>
+            )}
+          </div>
 
           {showNav && (
             <div className="flex gap-2 overflow-x-auto pb-1 pt-1">
