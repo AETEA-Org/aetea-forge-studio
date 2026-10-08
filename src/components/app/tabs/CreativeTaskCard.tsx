@@ -39,9 +39,11 @@ function CategoryIcon({ category }: { category: string | null }) {
  * missing. A fade says there is more, and the card opens the canvas for all of
  * it.
  *
- * The controls sit outside the link. A button nested inside an anchor is
- * invalid HTML and hands a screen reader two conflicting actions for one
- * element.
+ * The only control is *Stop*, and it sits outside the link: a button nested
+ * inside an anchor is invalid HTML and hands a screen reader two conflicting
+ * actions for one element. There is no button for opening, because the card is
+ * already a link to the same address and the chip already says where the work
+ * stands — see `controlsFor`.
  */
 export function CreativeTaskCard({ task, chatId, execution }: CreativeTaskCardProps) {
   const state = deliverableState(task.status, execution);
@@ -105,36 +107,26 @@ export function CreativeTaskCard({ task, chatId, execution }: CreativeTaskCardPr
         )}
       </Link>
 
-      {(controlSet.open || controlSet.stop) && (
+      {controlSet.stop && (
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          {controlSet.open && (
-            <Link
-              to={`/app/chat/${chatId}/task/${task.id}`}
-              className="inline-flex min-h-8 items-center rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted"
-            >
-              {controlSet.open}
-            </Link>
-          )}
-          {controlSet.stop && (
-            <button
-              type="button"
-              disabled={stopping}
-              onClick={() => {
-                setStopping(true);
-                setStopError(false);
-                // Scoped to this deliverable, so the rest keep running. The chip
-                // follows from the next poll rather than from an optimistic
-                // guess — saying "Stopped" before the server agrees is how a
-                // stop that failed looks like one that worked.
-                cancelRun(chatId, task.id)
-                  .catch(() => setStopError(true))
-                  .finally(() => setStopping(false));
-              }}
-              className="min-h-8 rounded-md border border-border px-2.5 py-1 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-60"
-            >
-              {stopping ? "Stopping…" : controlSet.stop}
-            </button>
-          )}
+          <button
+            type="button"
+            disabled={stopping}
+            onClick={() => {
+              setStopping(true);
+              setStopError(false);
+              // Scoped to this deliverable, so the rest keep running. The chip
+              // follows from the next poll rather than from an optimistic
+              // guess — saying "Stopped" before the server agrees is how a
+              // stop that failed looks like one that worked.
+              cancelRun(chatId, task.id)
+                .catch(() => setStopError(true))
+                .finally(() => setStopping(false));
+            }}
+            className="min-h-8 rounded-md border border-border px-2.5 py-1 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-60"
+          >
+            {stopping ? "Stopping…" : controlSet.stop}
+          </button>
         </div>
       )}
       {stopError && (

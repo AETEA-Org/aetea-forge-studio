@@ -132,44 +132,33 @@ export function deliverableState(
 }
 
 /**
- * What the person can do about it, and what to call each control.
+ * What the person can do about it, and what to call it.
  *
- * Two at once where two make sense. A deliverable waiting on a decision is the
- * case that forced this: its chip says the person's turn, so offering only
- * *Stop* would answer a request for a go-ahead with the one action that is not
- * a go-ahead. The decision itself lives on the canvas beside the reply that
- * explains it, so the control goes there rather than deciding in one click
- * from a card that shows none of the reasoning.
+ * **Only the controls the card is not already.** There used to be a second
+ * control for opening — *Start*, *Open*, *Review*, *Resume*, *Open to retry*,
+ * *Give go-ahead* — and every one of them was a link to the deliverable's
+ * canvas, which is the address the whole card already links to. Each label also
+ * repeated the chip immediately above it: "Not started / Start", "In review /
+ * Review", "Stopped / Resume". So the card is the way in, the chip says where
+ * the work stands, and neither needs a button to say it a second time.
+ *
+ * *Stop* stays because it is the one control that does something the card
+ * cannot do, and the only one that is not a link.
  */
 export interface DeliverableControls {
   /** Ends the run. Nothing already produced is lost. */
   stop?: string;
-  /** Opens this deliverable's canvas, where the work happens. */
-  open?: string;
 }
 
 export function controlsFor(state: DeliverableState): DeliverableControls {
   switch (state.chip) {
     case "working":
-      return { stop: "Stop" };
     case "needs_go_ahead":
-      return { open: "Give go-ahead", stop: "Stop" };
+      return { stop: "Stop" };
     case "queued":
       // Cancelling something that has not started is a different promise from
       // stopping something mid-flight: nothing has been bought yet.
       return { stop: "Cancel" };
-    case "stopping":
-      return {};
-    case "failed":
-      return { open: "Open to retry" };
-    case "in_review":
-      return { open: "Review" };
-    case "stopped":
-      return { open: "Resume" };
-    case "in_progress":
-      return { open: "Open" };
-    case "not_started":
-      return { open: "Start" };
     default:
       return {};
   }
