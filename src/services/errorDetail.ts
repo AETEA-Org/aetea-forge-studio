@@ -8,6 +8,35 @@
  * objects becomes when a string was wanted.
  */
 
+/**
+ * What a 403 asking for legal acceptance becomes.
+ *
+ * Exported so the toast layer can recognise it without matching on prose. It
+ * is not a failure — the policies changed and need reading — so it must not
+ * arrive wearing the red treatment that real faults get.
+ */
+export const LEGAL_REQUIRED_MESSAGE = "Review the current policies before continuing.";
+
+/**
+ * Whether a fetch rejected because the server could not be reached at all.
+ *
+ * `fetch` throws a `TypeError` when the request never left, which is a
+ * different thing from a request that arrived and failed: nothing happened,
+ * nothing was charged, and the answer is to check the connection rather than
+ * to report a bug. Each browser words it differently — Chrome "Failed to
+ * fetch", Safari "Load failed", Firefox "NetworkError when attempting to fetch
+ * resource" — so the type is the signal and the wording is only a backstop.
+ */
+export function isUnreachable(error: unknown): boolean {
+  if (error instanceof TypeError) return true;
+  const message = error instanceof Error ? error.message.toLowerCase() : "";
+  return (
+    message.includes("failed to fetch") ||
+    message.includes("load failed") ||
+    message.includes("networkerror")
+  );
+}
+
 /** A non-null object. Arrays pass too, which every caller here checks first. */
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -25,7 +54,7 @@ export function detailToMessage(body: unknown): string | undefined {
   const { detail } = body;
   if (isRecord(detail) && detail.code === "LEGAL_ACCEPTANCE_REQUIRED") {
     window.dispatchEvent(new Event("aetea:legal-required"));
-    return "Review the current policies before continuing.";
+    return LEGAL_REQUIRED_MESSAGE;
   }
 
   if (typeof detail === "string") {

@@ -1,5 +1,6 @@
 import { ToastAction } from "@/components/ui/toast";
 import { cancelRun, ChatBusyError, OutOfCreditsError } from "@/services/agentRun";
+import { isUnreachable, LEGAL_REQUIRED_MESSAGE } from "@/services/errorDetail";
 
 type ToastFn = (opts: {
   title: string;
@@ -23,6 +24,16 @@ type ToastFn = (opts: {
  * and a button that goes there. Red-banner treatment would make an ordinary
  * commercial moment look like a fault, and the first thing someone does with a
  * product that looks broken is stop trusting it with their work.
+ *
+ * A request that never reached the server is not a failure of the product
+ * either. Nothing ran and nothing was charged; the laptop slept, or the server
+ * is not up. It was arriving as a red box reading `Failed to fetch`, which is
+ * the browser's own sentence about its own plumbing and tells a marketer
+ * nothing they can act on.
+ *
+ * Nor is being asked to accept the policies. That is a door to walk through,
+ * not a fault, and it already had a readable sentence — under a title that
+ * called it a fault anyway.
  *
  * Anything else keeps the red treatment, because anything else really is wrong.
  */
@@ -106,9 +117,32 @@ export function reportSendFailure(
     return;
   }
 
+  if (isUnreachable(error)) {
+    toast({
+      title: "Can't reach AETEA",
+      description:
+        "Nothing was sent, so nothing was lost. Check your connection and try again.",
+    });
+    return;
+  }
+
+  const message =
+    error instanceof Error ? error.message : "Could not send that message";
+
+  if (message === LEGAL_REQUIRED_MESSAGE) {
+    // `detailToMessage` has already raised `aetea:legal-required`, so the
+    // surface that collects acceptance is on its way up. This only has to stop
+    // calling it a fault while it arrives.
+    toast({
+      title: "Review the policies to continue",
+      description: "The terms or privacy policy changed. Accept them and carry on.",
+    });
+    return;
+  }
+
   toast({
     title: "Something went wrong",
-    description: error instanceof Error ? error.message : "Could not send that message",
+    description: message,
     variant: "destructive",
   });
 }
