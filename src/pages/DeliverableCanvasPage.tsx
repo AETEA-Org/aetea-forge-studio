@@ -41,9 +41,14 @@ import {
 import { CanvasLeftPane } from "@/components/app/canvas/CanvasLeftPane";
 import { CanvasSwitcher } from "@/components/app/canvas/CanvasSwitcher";
 import {
-  autoObjectPosition,
+  CHAT_DEFAULT_SIZE,
+  findFreeSlot,
+  KEY_VISUAL_SIZE,
   loadFixturePositions,
+  OBJECT_DEFAULT_HEIGHT,
+  OBJECT_DEFAULT_WIDTH,
   saveFixturePositions,
+  type Rect,
   type FixturePositions,
   type XY,
 } from "@/components/app/canvas/canvasLayout";
@@ -185,14 +190,40 @@ export default function DeliverableCanvasPage() {
     placedRef.current = new Set();
   }, [canvasKey]);
 
-  // Give unplaced objects a grid slot and persist it so layout survives reloads.
+  // Give unplaced objects a free slot and persist it so layout survives reloads.
+  //
+  // The slot is chosen against what is already on the board rather than counted
+  // off the object's position in the list. Those are not the same once anything
+  // has been moved: a dragged card's coordinates have nothing to do with the
+  // grid, so an index-derived slot could be — and was — straight on top of one.
   useEffect(() => {
     if (!canvasScope || !user?.email) return;
-    objects.forEach((obj, index) => {
+    const size = { width: OBJECT_DEFAULT_WIDTH, height: OBJECT_DEFAULT_HEIGHT };
+    const occupied: Rect[] = [
+      {
+        x: fixturePositions.chat.x,
+        y: fixturePositions.chat.y,
+        width: fixturePositions.chat.width ?? CHAT_DEFAULT_SIZE.width,
+        height: fixturePositions.chat.height ?? CHAT_DEFAULT_SIZE.height,
+      },
+      { ...fixturePositions.keyVisual, ...KEY_VISUAL_SIZE },
+      ...objects
+        .filter((obj) => obj.canvas_x != null && obj.canvas_y != null)
+        .map((obj) => ({
+          x: obj.canvas_x as number,
+          y: obj.canvas_y as number,
+          width: obj.canvas_width ?? OBJECT_DEFAULT_WIDTH,
+          height: obj.canvas_height ?? OBJECT_DEFAULT_HEIGHT,
+        })),
+    ];
+    objects.forEach((obj) => {
       const needsPlacement = obj.canvas_x == null || obj.canvas_y == null;
       if (!needsPlacement || placedRef.current.has(obj.id)) return;
       placedRef.current.add(obj.id);
-      const pos = autoObjectPosition(index);
+      const pos = findFreeSlot(size, occupied);
+      // Claimed before the write returns, so the next object in this same pass
+      // does not pick the slot this one just took.
+      occupied.push({ ...pos, ...size });
       patchDeliverableObjectPosition(canvasScope, obj.id, {
         canvas_x: pos.x,
         canvas_y: pos.y,
@@ -200,7 +231,7 @@ export default function DeliverableCanvasPage() {
         placedRef.current.delete(obj.id);
       });
     });
-  }, [objects, canvasScope, user?.email]);
+  }, [objects, canvasScope, user?.email, fixturePositions]);
 
   const handleBackToCreative = useCallback(() => {
     setActiveTab?.("creative");
