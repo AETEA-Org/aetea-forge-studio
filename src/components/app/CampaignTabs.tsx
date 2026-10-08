@@ -1,12 +1,10 @@
 import { cn } from "@/lib/utils";
-import { 
-  FileText, 
-  Search, 
-  Target, 
+import {
+  FileText,
+  Search,
+  Target,
   FolderOpen,
   Palette,
-  BarChart3, 
-  Settings 
 } from "lucide-react";
 
 export type CampaignTab = 'brief' | 'asset' | 'research' | 'strategy' | 'creative' | 'analytics' | 'settings';
@@ -16,14 +14,21 @@ interface CampaignTabsProps {
   onTabChange: (tab: CampaignTab) => void;
 }
 
-const tabs: { id: CampaignTab; label: string; icon: React.ElementType; comingSoon?: boolean }[] = [
+/**
+ * Only tabs that lead somewhere.
+ *
+ * Analytics and Controls were listed with a "Soon" badge and were still
+ * clickable, so the strip advertised two pages that do not exist and let you
+ * navigate to them. They were also what pushed the strip past the available
+ * width and made it scroll sideways. The `CampaignTab` type still names them,
+ * so adding either back is one line here once it is built.
+ */
+const tabs: { id: CampaignTab; label: string; icon: React.ElementType }[] = [
   { id: 'brief', label: 'Brief', icon: FileText },
   { id: 'asset', label: 'Assets', icon: FolderOpen },
   { id: 'research', label: 'Research', icon: Search },
   { id: 'strategy', label: 'Strategy', icon: Target },
   { id: 'creative', label: 'Creative', icon: Palette },
-  { id: 'analytics', label: 'Analytics', icon: BarChart3, comingSoon: true },
-  { id: 'settings', label: 'Controls', icon: Settings, comingSoon: true },
 ];
 
 export function CampaignTabs({ activeTab, onTabChange }: CampaignTabsProps) {
@@ -43,9 +48,6 @@ export function CampaignTabs({ activeTab, onTabChange }: CampaignTabsProps) {
           >
             <tab.icon className="h-4 w-4" />
             {tab.label}
-            {tab.comingSoon && (
-              <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded">Soon</span>
-            )}
           </button>
         ))}
       </nav>
