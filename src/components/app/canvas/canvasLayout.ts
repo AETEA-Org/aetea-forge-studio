@@ -18,6 +18,9 @@ export const CHAT_DEFAULT_SIZE = { width: 400, height: 520 };
 
 export const KEY_VISUAL_SIZE = { width: 260, height: 260 };
 
+/** The brief card. Here rather than in the canvas so placement can see it. */
+export const DETAIL_SIZE = { width: 340, height: 300 };
+
 const DEFAULT_FIXTURES: FixturePositions = {
   detail: { x: 40, y: 40 },
   chat: { x: 40, y: 380 },
@@ -81,6 +84,38 @@ export function findFreeSlot(size: { width: number; height: number }, occupied: 
     if (!occupied.some((taken) => overlaps(candidate, taken))) return slot;
   }
   return gridSlot(GRID_COLUMNS * GRID_MAX_ROWS - 1);
+}
+
+/** Anything a new card must not be dropped on: the fixtures, and every card
+ *  that already has a position of its own.
+ *
+ *  Shared so the two callers cannot drift. One of them persists the slot and
+ *  the other draws it, and if they disagreed by so much as one rectangle a card
+ *  would be saved in one place and rendered in another. They did disagree once:
+ *  the drawing side counted the brief card and the persisting side did not.
+ */
+export function occupiedRects(
+  fixtures: FixturePositions,
+  objects: { canvas_x?: number | null; canvas_y?: number | null; canvas_width?: number | null; canvas_height?: number | null }[]
+): Rect[] {
+  return [
+    { ...fixtures.detail, ...DETAIL_SIZE },
+    {
+      x: fixtures.chat.x,
+      y: fixtures.chat.y,
+      width: fixtures.chat.width ?? CHAT_DEFAULT_SIZE.width,
+      height: fixtures.chat.height ?? CHAT_DEFAULT_SIZE.height,
+    },
+    { ...fixtures.keyVisual, ...KEY_VISUAL_SIZE },
+    ...objects
+      .filter((obj) => obj.canvas_x != null && obj.canvas_y != null)
+      .map((obj) => ({
+        x: obj.canvas_x as number,
+        y: obj.canvas_y as number,
+        width: obj.canvas_width ?? OBJECT_DEFAULT_WIDTH,
+        height: obj.canvas_height ?? OBJECT_DEFAULT_HEIGHT,
+      })),
+  ];
 }
 
 function fixtureStorageKey(taskId: string): string {

@@ -41,14 +41,12 @@ import {
 import { CanvasLeftPane } from "@/components/app/canvas/CanvasLeftPane";
 import { CanvasSwitcher } from "@/components/app/canvas/CanvasSwitcher";
 import {
-  CHAT_DEFAULT_SIZE,
   findFreeSlot,
-  KEY_VISUAL_SIZE,
   loadFixturePositions,
   OBJECT_DEFAULT_HEIGHT,
   OBJECT_DEFAULT_WIDTH,
+  occupiedRects,
   saveFixturePositions,
-  type Rect,
   type FixturePositions,
   type XY,
 } from "@/components/app/canvas/canvasLayout";
@@ -199,23 +197,7 @@ export default function DeliverableCanvasPage() {
   useEffect(() => {
     if (!canvasScope || !user?.email) return;
     const size = { width: OBJECT_DEFAULT_WIDTH, height: OBJECT_DEFAULT_HEIGHT };
-    const occupied: Rect[] = [
-      {
-        x: fixturePositions.chat.x,
-        y: fixturePositions.chat.y,
-        width: fixturePositions.chat.width ?? CHAT_DEFAULT_SIZE.width,
-        height: fixturePositions.chat.height ?? CHAT_DEFAULT_SIZE.height,
-      },
-      { ...fixturePositions.keyVisual, ...KEY_VISUAL_SIZE },
-      ...objects
-        .filter((obj) => obj.canvas_x != null && obj.canvas_y != null)
-        .map((obj) => ({
-          x: obj.canvas_x as number,
-          y: obj.canvas_y as number,
-          width: obj.canvas_width ?? OBJECT_DEFAULT_WIDTH,
-          height: obj.canvas_height ?? OBJECT_DEFAULT_HEIGHT,
-        })),
-    ];
+    const occupied = occupiedRects(fixturePositions, objects);
     objects.forEach((obj) => {
       const needsPlacement = obj.canvas_x == null || obj.canvas_y == null;
       if (!needsPlacement || placedRef.current.has(obj.id)) return;

@@ -22,12 +22,13 @@ import {
 } from "./nodes";
 import {
   findFreeSlot,
+  occupiedRects,
   CHAT_DEFAULT_SIZE,
   KEY_VISUAL_SIZE,
+  DETAIL_SIZE,
   OBJECT_DEFAULT_HEIGHT,
   OBJECT_DEFAULT_WIDTH,
   type FixturePositions,
-  type Rect,
   type XY,
 } from "./canvasLayout";
 
@@ -38,7 +39,6 @@ const nodeTypes: NodeTypes = {
   keyVisual: KeyVisualNode,
 };
 
-const DETAIL_SIZE = { width: 340, height: 300 };
 
 const OBJECT_ID_PREFIX = "obj:";
 export const KEY_VISUAL_NODE_ID = "keyVisual";
@@ -100,24 +100,10 @@ function buildNodes(
   // be given somewhere free rather than a slot counted off from its position in
   // the list. The fixtures count: the chat is resizable and a wide one reaches
   // into the first column.
-  const occupied: Rect[] = [
-    { ...fixtures.detail, ...DETAIL_SIZE },
-    {
-      x: fixtures.chat.x,
-      y: fixtures.chat.y,
-      width: fixtures.chat.width ?? CHAT_DEFAULT_SIZE.width,
-      height: fixtures.chat.height ?? CHAT_DEFAULT_SIZE.height,
-    },
-    { ...fixtures.keyVisual, ...KEY_VISUAL_SIZE },
-    ...objects
-      .filter((obj) => obj.canvas_x != null && obj.canvas_y != null)
-      .map((obj) => ({
-        x: obj.canvas_x as number,
-        y: obj.canvas_y as number,
-        width: obj.canvas_width ?? OBJECT_DEFAULT_WIDTH,
-        height: obj.canvas_height ?? OBJECT_DEFAULT_HEIGHT,
-      })),
-  ];
+  // Everything already on the board, so a card that has never been placed can
+  // be given somewhere free rather than a slot counted off from its position in
+  // the list. Built by the same helper the persisting side uses.
+  const occupied = occupiedRects(fixtures, objects);
   const objectNodes: Node[] = objects.map((obj) => {
     const size = {
       width: obj.canvas_width ?? OBJECT_DEFAULT_WIDTH,
