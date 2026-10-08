@@ -72,9 +72,14 @@ export function AgentProgress({ chatId, scope, isStreaming, thinkingText, steps,
   // clicks away from anything worth reading.
   const Chevron = expanded ? ChevronDown : ChevronRight;
   return (
-    <div className="chat-scrollbar nodrag nowheel min-h-0 max-h-[40%] shrink overflow-y-auto px-3 pb-2" aria-label="Run progress">
-      <div className="rounded-lg border border-border bg-muted/30 text-xs">
-        <div className="flex flex-wrap items-center gap-x-3 px-3 py-2">
+    // The height cap lives on the card, not on a scroller wrapped around it.
+    // It used to be the other way round, which put the status line inside the
+    // scrolling area: expanding the activity pushed the box past the cap, the
+    // whole thing scrolled, and the line scrolled out of sight — taking the
+    // only control that closes it again with it.
+    <div className="nodrag nowheel flex min-h-0 max-h-[40%] shrink flex-col px-3 pb-2" aria-label="Run progress">
+      <div className="flex min-h-0 flex-col rounded-lg border border-border bg-muted/30 text-xs">
+        <div className="flex shrink-0 flex-wrap items-center gap-x-3 px-3 py-2">
           {activity ? (
             <button
               type="button"
@@ -92,10 +97,13 @@ export function AgentProgress({ chatId, scope, isStreaming, thinkingText, steps,
           {failed && onReview && <button type="button" onClick={onReview} className="min-h-11 underline">Review request</button>}
           {!ended && (quiet || connection === "interrupted") && <button type="button" onClick={onStop} className="min-h-11 underline">Stop</button>}
         </div>
-        {failed && !isStreaming && <p className="px-3 pb-2 text-muted-foreground">Review restores your text. Reattach files after a refresh.</p>}
-        {execution?.committed_generation && (connection === "stopping" || state === "stopped") && <p className="px-3 pb-2 text-muted-foreground">A video already started may finish. No further clips will be ordered.</p>}
+        {failed && !isStreaming && <p className="shrink-0 px-3 pb-2 text-muted-foreground">Review restores your text. Reattach files after a refresh.</p>}
+        {execution?.committed_generation && (connection === "stopping" || state === "stopped") && <p className="shrink-0 px-3 pb-2 text-muted-foreground">A video already started may finish. No further clips will be ordered.</p>}
         {expanded && activity && (
-          <>
+          // Only what was opened scrolls. `nowheel` again because this is the
+          // element the wheel now lands on, and on the task canvas a wheel that
+          // reaches the board zooms it instead of scrolling this.
+          <div className="chat-scrollbar nowheel min-h-0 flex-1 overflow-y-auto">
             {steps.length > 0 && (
               <div className="border-t border-border px-3 py-2">
                 <AgentSteps steps={steps} />
@@ -108,7 +116,7 @@ export function AgentProgress({ chatId, scope, isStreaming, thinkingText, steps,
                 <AgentThinking text={thinkingText} />
               </div>
             )}
-          </>
+          </div>
         )}
       </div>
     </div>
