@@ -538,8 +538,14 @@ export const KeyVisualNode = memo(function KeyVisualNode({
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center p-4 text-center">
+            {/* Two routes, because the card used to name only the first and
+                the second is usually the quicker one: a campaign that already
+                has artwork does not need a new image generated, it needs one
+                of the existing ones chosen. Asking is how that is done — there
+                is no control for it here. */}
             <p className="text-xs text-muted-foreground leading-relaxed">
-              No key visual yet — generate one from the Creative tab
+              No key visual yet — generate one from the Creative tab, or ask
+              AETEA to use an image you already have.
             </p>
           </div>
         )}
