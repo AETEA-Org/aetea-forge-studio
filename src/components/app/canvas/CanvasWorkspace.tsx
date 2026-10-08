@@ -21,12 +21,13 @@ import {
   type KeyVisualNodeData,
 } from "./nodes";
 import {
-  autoObjectPosition,
+  findFreeSlot,
   CHAT_DEFAULT_SIZE,
   KEY_VISUAL_SIZE,
   OBJECT_DEFAULT_HEIGHT,
   OBJECT_DEFAULT_WIDTH,
   type FixturePositions,
+  type Rect,
   type XY,
 } from "./canvasLayout";
 
@@ -95,19 +96,47 @@ function buildNodes(
     selectable: false,
     data: kvData,
   };
-  const objectNodes: Node[] = objects.map((obj, index) => {
-    const position =
-      obj.canvas_x != null && obj.canvas_y != null
-        ? { x: obj.canvas_x, y: obj.canvas_y }
-        : autoObjectPosition(index);
+  // Everything already on the board, so a card that has never been placed can
+  // be given somewhere free rather than a slot counted off from its position in
+  // the list. The fixtures count: the chat is resizable and a wide one reaches
+  // into the first column.
+  const occupied: Rect[] = [
+    { ...fixtures.detail, ...DETAIL_SIZE },
+    {
+      x: fixtures.chat.x,
+      y: fixtures.chat.y,
+      width: fixtures.chat.width ?? CHAT_DEFAULT_SIZE.width,
+      height: fixtures.chat.height ?? CHAT_DEFAULT_SIZE.height,
+    },
+    { ...fixtures.keyVisual, ...KEY_VISUAL_SIZE },
+    ...objects
+      .filter((obj) => obj.canvas_x != null && obj.canvas_y != null)
+      .map((obj) => ({
+        x: obj.canvas_x as number,
+        y: obj.canvas_y as number,
+        width: obj.canvas_width ?? OBJECT_DEFAULT_WIDTH,
+        height: obj.canvas_height ?? OBJECT_DEFAULT_HEIGHT,
+      })),
+  ];
+  const objectNodes: Node[] = objects.map((obj) => {
+    const size = {
+      width: obj.canvas_width ?? OBJECT_DEFAULT_WIDTH,
+      height: obj.canvas_height ?? OBJECT_DEFAULT_HEIGHT,
+    };
+    let position: XY;
+    if (obj.canvas_x != null && obj.canvas_y != null) {
+      position = { x: obj.canvas_x, y: obj.canvas_y };
+    } else {
+      position = findFreeSlot(size, occupied);
+      // Claimed as we go, so two cards arriving together do not both take the
+      // same free slot.
+      occupied.push({ ...position, ...size });
+    }
     return {
       id: `${OBJECT_ID_PREFIX}${obj.id}`,
       type: "deliverableObject",
       position,
-      style: {
-        width: obj.canvas_width ?? OBJECT_DEFAULT_WIDTH,
-        height: obj.canvas_height ?? OBJECT_DEFAULT_HEIGHT,
-      },
+      style: size,
       dragHandle: ".drag-handle",
       data: { object: obj },
     };
