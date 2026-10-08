@@ -287,12 +287,7 @@ export function ResearchTab({ campaignId, isModifying }: ResearchTabProps) {
             const items = research.swot?.[quadrant.key] || [];
             return (
               <div key={quadrant.key} className={`rounded-lg border p-4 ${quadrant.box}`}>
-                <h3 className={`mb-3 flex items-center gap-2 font-medium ${quadrant.accent}`}>
-                  {quadrant.title}
-                  <span className="ml-auto rounded-full border border-border px-2 py-0.5 font-mono text-[10px] font-normal text-muted-foreground">
-                    {items.length}
-                  </span>
-                </h3>
+                <h3 className={`mb-3 font-medium ${quadrant.accent}`}>{quadrant.title}</h3>
                 <ClampBox
                   maxHeight={QUADRANT_MAX_HEIGHT}
                   fadeClassName={quadrant.fade}
