@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { readErrorMessage } from "@/services/errorDetail";
 import type {
   ChatListResponse,
   SectionResponse,
@@ -56,8 +57,7 @@ export async function getProjectSection<T>(
     headers: await getHeaders(),
   });
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || `Failed to fetch ${section}`);
+    throw new Error(await readErrorMessage(response, `Failed to fetch ${section}`));
   }
   return response.json();
 }
@@ -98,8 +98,7 @@ export async function listAllChats(): Promise<ChatListResponse> {
     headers: await getHeaders(),
   });
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Failed to fetch chats');
+    throw new Error(await readErrorMessage(response, 'Failed to fetch chats'));
   }
   return response.json();
 }
@@ -114,8 +113,7 @@ export async function createChat(
     body: JSON.stringify({ mode }),
   });
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Failed to create chat');
+    throw new Error(await readErrorMessage(response, 'Failed to create chat'));
   }
   return response.json();
 }
@@ -132,8 +130,7 @@ export async function getChat(
   );
   
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Failed to fetch chat');
+    throw new Error(await readErrorMessage(response, 'Failed to fetch chat'));
   }
   
   return response.json();
@@ -163,8 +160,7 @@ export async function patchChat(
   );
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Failed to update chat');
+    throw new Error(await readErrorMessage(response, 'Failed to update chat'));
   }
 
   return response.json();
@@ -196,8 +192,7 @@ export async function getCampaignByChatId(
   );
   
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Failed to fetch campaign');
+    throw new Error(await readErrorMessage(response, 'Failed to fetch campaign'));
   }
   
   return response.json();
@@ -229,8 +224,7 @@ export async function getCampaignById(
   );
   
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Failed to fetch campaign');
+    throw new Error(await readErrorMessage(response, 'Failed to fetch campaign'));
   }
   
   return response.json();
@@ -251,8 +245,7 @@ export async function selectCreativeTerritory(
   );
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Failed to select creative territory');
+    throw new Error(await readErrorMessage(response, 'Failed to select creative territory'));
   }
 
   return response.json();
@@ -283,6 +276,10 @@ export async function createCampaignViaChat(
     { chatId, message, mode: 'campaign', files, tier },
     {
       onProgress: (step) => onProgress?.(step),
+      onCancelled: () => onError?.("Stopped. Your saved work is kept in the conversation."),
+      onConnectionState: (state) => {
+        if (state === "interrupted") onError?.("Connection lost. Open the conversation to reconnect to your work.");
+      },
       onCampaign: (_id, state) => {
         if (state === 'creating') onStarted?.();
       },
@@ -302,8 +299,7 @@ export async function deleteChatById(chatId: string): Promise<DeleteChatResponse
   );
   
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Failed to delete chat');
+    throw new Error(await readErrorMessage(response, 'Failed to delete chat'));
   }
   
   return response.json();
@@ -325,8 +321,7 @@ export async function getAssets(
   });
   
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Failed to fetch assets');
+    throw new Error(await readErrorMessage(response, 'Failed to fetch assets'));
   }
   
   return response.json();
@@ -344,8 +339,7 @@ export async function refreshAssetUrls(
   );
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Failed to refresh asset URLs');
+    throw new Error(await readErrorMessage(response, 'Failed to refresh asset URLs'));
   }
 
   return response.json();
@@ -360,10 +354,7 @@ export async function fetchAssetContentBlob(
     { headers: await getHeaders() }
   );
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(
-      (error as { detail?: string }).detail || "Failed to load asset content"
-    );
+    throw new Error(await readErrorMessage(response, "Failed to load asset content"));
   }
   return response.blob();
 }
@@ -379,10 +370,7 @@ export async function renameAsset(
     body: JSON.stringify({ file_name: fileName }),
   });
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(
-      (error as { detail?: string }).detail || "Failed to rename asset"
-    );
+    throw new Error(await readErrorMessage(response, "Failed to rename asset"));
   }
   return response.json();
 }
@@ -399,10 +387,7 @@ export async function deleteAsset(
     }
   );
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(
-      (error as { detail?: string }).detail || "Failed to delete asset"
-    );
+    throw new Error(await readErrorMessage(response, "Failed to delete asset"));
   }
 }
 
@@ -438,10 +423,7 @@ export async function editAsset(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(
-      (error as { detail?: string }).detail || "Failed to save edited image"
-    );
+    throw new Error(await readErrorMessage(response, "Failed to save edited image"));
   }
 
   return response.json();
@@ -459,8 +441,7 @@ export async function getCreativeState(
   );
   
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Failed to fetch creative state');
+    throw new Error(await readErrorMessage(response, 'Failed to fetch creative state'));
   }
   
   return response.json();
@@ -486,8 +467,7 @@ export async function updateCreativeState(
   );
   
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Failed to update creative state');
+    throw new Error(await readErrorMessage(response, 'Failed to update creative state'));
   }
   
   return response.json();
@@ -502,8 +482,7 @@ export async function getCampaignTasks(
     { headers: await getHeaders() }
   );
   if (!response.ok) {
-    const err = await response.json();
-    throw new Error(err.detail || 'Failed to fetch tasks');
+    throw new Error(await readErrorMessage(response, 'Failed to fetch tasks'));
   }
   return response.json();
 }
@@ -517,8 +496,7 @@ export async function getCampaignTask(
     { headers: await getHeaders() }
   );
   if (!response.ok) {
-    const err = await response.json();
-    throw new Error(err.detail || 'Failed to fetch task');
+    throw new Error(await readErrorMessage(response, 'Failed to fetch task'));
   }
   return response.json();
 }
@@ -537,8 +515,7 @@ export async function patchCampaignTask(
     }
   );
   if (!response.ok) {
-    const err = await response.json();
-    throw new Error(err.detail || 'Failed to update task');
+    throw new Error(await readErrorMessage(response, 'Failed to update task'));
   }
   return response.json();
 }
@@ -552,8 +529,7 @@ export async function getCampaignTaskAssets(
     { headers: await getHeaders() }
   );
   if (!response.ok) {
-    const err = await response.json();
-    throw new Error(err.detail || 'Failed to fetch task assets');
+    throw new Error(await readErrorMessage(response, 'Failed to fetch task assets'));
   }
   return response.json();
 }
@@ -571,8 +547,7 @@ export async function getStyleCards(
   );
   
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Failed to fetch style cards');
+    throw new Error(await readErrorMessage(response, 'Failed to fetch style cards'));
   }
   
   return response.json();
@@ -588,8 +563,7 @@ export async function getCharacters(): Promise<CharactersResponse> {
   );
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Failed to fetch characters');
+    throw new Error(await readErrorMessage(response, 'Failed to fetch characters'));
   }
 
   return response.json();
@@ -611,8 +585,7 @@ export async function createCharacter(
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Failed to create character');
+    throw new Error(await readErrorMessage(response, 'Failed to create character'));
   }
 
   return response.json();
@@ -684,8 +657,7 @@ export async function listChats(
   );
   
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Failed to fetch chats');
+    throw new Error(await readErrorMessage(response, 'Failed to fetch chats'));
   }
   
   return response.json();
@@ -704,8 +676,7 @@ export async function getChatMessages(
   );
   
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Failed to fetch messages');
+    throw new Error(await readErrorMessage(response, 'Failed to fetch messages'));
   }
   
   return response.json();
@@ -719,8 +690,7 @@ export async function getCampaignTaskDeliverables(
     { headers: await getHeaders() }
   );
   if (!response.ok) {
-    const err = await response.json();
-    throw new Error(err.detail || 'Failed to fetch deliverable objects');
+    throw new Error(await readErrorMessage(response, 'Failed to fetch deliverable objects'));
   }
   return response.json();
 }
@@ -740,8 +710,7 @@ export async function getChatDeliverables(
     { headers: await getHeaders() }
   );
   if (!response.ok) {
-    const err = await response.json();
-    throw new Error(err.detail || 'Failed to fetch deliverable objects');
+    throw new Error(await readErrorMessage(response, 'Failed to fetch deliverable objects'));
   }
   return response.json();
 }
@@ -781,8 +750,7 @@ export async function patchDeliverableObjectPosition(
     }
   );
   if (!response.ok) {
-    const err = await response.json();
-    throw new Error(err.detail || 'Failed to update deliverable position');
+    throw new Error(await readErrorMessage(response, 'Failed to update deliverable position'));
   }
   return response.json();
 }
@@ -800,8 +768,7 @@ export async function approveDeliverableObject(
     }
   );
   if (!response.ok) {
-    const err = await response.json();
-    throw new Error(err.detail || 'Failed to approve deliverable object');
+    throw new Error(await readErrorMessage(response, 'Failed to approve deliverable object'));
   }
   return response.json();
 }
@@ -815,8 +782,7 @@ export async function getAssetFolders(
     { headers: await getHeaders() }
   );
   if (!response.ok) {
-    const err = await response.json();
-    throw new Error(err.detail || 'Failed to fetch asset folders');
+    throw new Error(await readErrorMessage(response, 'Failed to fetch asset folders'));
   }
   return response.json();
 }
@@ -835,8 +801,7 @@ export async function deleteChat(
   );
   
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Failed to delete chat');
+    throw new Error(await readErrorMessage(response, 'Failed to delete chat'));
   }
   
   return response.json();

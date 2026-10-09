@@ -1,3 +1,4 @@
+import type { RunConnectionState } from "@/services/agentRun";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ChevronLeft, ChevronRight, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,13 +7,14 @@ import { ChatMessages } from "./ChatMessages";
 import { ChatInput, type ChatInputHandle, type ChatSendMeta } from "./ChatInput";
 import { ChatPanelDropZone } from "./ChatPanelDropZone";
 import { useChatMessages } from "@/hooks/useChats";
+import { useRewind } from "@/hooks/useRewind";
 import { useChatContext } from "@/hooks/useChatContext";
 import { useModification } from "@/hooks/useModification";
 import { useAutoMessage } from "@/hooks/useAutoMessage";
 import { resolveStreamAssetHints } from "@/services/api";
 import {
+  ChatBusyError,
   cancelRun,
-  editTurn,
   followRun,
   getRunStatus,
   runTurn,
@@ -22,8 +24,11 @@ import { invalidateForDataChange } from "@/services/dataChanged";
 import { useNavigate } from "react-router-dom";
 import { reportSendFailure } from "@/services/sendFailure";
 import { OutOfCredits } from "@/components/app/billing/OutOfCredits";
-import { AgentThinking } from "@/components/app/AgentThinking";
-import { AgentSteps } from "@/components/app/AgentSteps";
+import { AgentDecision } from "@/components/app/AgentDecision";
+import { useChatTier } from "@/hooks/useChatTier";
+import { useAgentRunState } from "@/hooks/useAgentRunState";
+import { useCampaignProposal } from "@/hooks/useCampaignProposal";
+import { AgentProgress } from "@/components/app/AgentProgress";
 import { useAuth } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -73,11 +78,11 @@ export function AICopilotPanel({
   const [isResizing, setIsResizing] = useState(false);
   const panelRef = useRef<HTMLElement>(null);
   const chatInputRef = useRef<ChatInputHandle>(null);
+  const runState = useAgentRunState(chatId);
+  const subscriptionRef = useRef<AbortController | null>(null);
   
   // Refs to track modification state
   const isModifyingActiveRef = useRef(false);
-  // One re-attach per mounted chat; sending a message drives its own stream.
-  const reattachedRef = useRef(false);
   const updateClearTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { setIsModifying } = useModification();
@@ -105,7 +110,9 @@ export function AICopilotPanel({
 
   const mergeStreamAssets = useCallback(async (hints: StreamAssetHint[]) => {
     if (!user?.email || hints.length === 0) return;
+    const signal = subscriptionRef.current?.signal;
     const resolved = await resolveStreamAssetHints(hints);
+    if (signal?.aborted) return;
     setStreamingAssets((prev) => {
       const m = new Map(prev.map((a) => [a.id, a]));
       resolved.forEach((a) => m.set(a.id, a));
@@ -119,13 +126,22 @@ export function AICopilotPanel({
   // Get messages or empty array, and combine with optimistic messages
   const serverMessages: ChatMessage[] = messagesData?.messages || [];
   const messages = [...serverMessages, ...optimisticMessages];
+  const {
+    arm: armRewind,
+    cancel: cancelRewind,
+    target: rewindTarget,
+    targetId: rewindTargetId,
+    replacingCount: rewindReplacingCount,
+  } = useRewind(messages);
 
   const navigate = useNavigate();
   const [isStreaming, setIsStreaming] = useState(false);
+  const [connection, setConnection] = useState<RunConnectionState>("idle");
+  const [rejoinVersion, setRejoinVersion] = useState(0);
   // The copilot starts billable turns like any other surface, so it gets the
-  // same control. Without this the picker simply did not render here and every
-  // copilot turn ran on the default with no way to choose.
-  const [tier, setTier] = useState<string>("auto");
+  // same control — and the same stored value as every other surface, rather than
+  // a second copy that resets to Auto on every mount. See `useChatTier`.
+  const { tier, setTier } = useChatTier(chatId);
   const [outOfCredits, setOutOfCredits] = useState(false);
 
   // Handle message sending. The third argument arrives from two places and they
@@ -143,6 +159,11 @@ export function AICopilotPanel({
     onComplete?: () => void;
     onError?: (msg: string) => void;
   };
+  const activeSendRef = useRef<{ controller: AbortController; finish: (error?: string) => void } | null>(null);
+
+  // Typing "go ahead" answers the open card. Same hook the card itself uses, so
+  // both see one proposal and the decision goes through the same hash-bound route.
+  const { approveIfAffirmative } = useCampaignProposal(chatId);
 
   const handleSendMessage = useCallback(
     async (
@@ -158,8 +179,26 @@ export function AICopilotPanel({
         });
         return;
       }
+      // A bare "go ahead" while a card is open answers the card. Before this it
+      // was spent as an ordinary turn: it cost credits, changed nothing, and the
+      // card waited until it expired. Only a bare affirmative with no files —
+      // anything carrying further instruction is a real message.
+      if (!files?.length && (await approveIfAffirmative(message))) return;
 
       const ctxToUse = override?.contextOverride ?? context;
+
+      subscriptionRef.current?.abort();
+      const controller = new AbortController();
+      subscriptionRef.current = controller;
+      let finished = false;
+      const finish = (error?: string) => {
+        if (finished) return;
+        finished = true;
+        if (activeSendRef.current?.controller === controller) activeSendRef.current = null;
+        if (error !== undefined) override?.onError?.(error);
+        else override?.onComplete?.();
+      };
+      activeSendRef.current = { controller, finish };
 
       // Add optimistic user message immediately
       const optimisticMessage: ChatMessage = {
@@ -173,6 +212,9 @@ export function AICopilotPanel({
       setStreamingContent("");
       setStreamingAssets([]);
       setUpdateMessage(null);
+      setThinkingText("");
+      setSteps([]);
+      setConnection("idle");
       setIsStreaming(true);
       setError(null);
       
@@ -187,6 +229,11 @@ export function AICopilotPanel({
         filesCount: files?.length || 0,
       });
 
+      // Read before clearing: the turn has to carry it, and the thread should
+      // stop looking rewound the moment it is on its way.
+      const rewindToMessageId = rewindTargetId ?? undefined;
+      cancelRewind();
+
       try {
         await runTurn(
           {
@@ -194,6 +241,7 @@ export function AICopilotPanel({
             message,
             mode: "campaign",
             files,
+            rewindToMessageId,
             // Without this anything produced here is filed against the
             // campaign rather than the piece of work being looked at, and
             // never reaches that task's canvas.
@@ -203,6 +251,7 @@ export function AICopilotPanel({
             generationOptions: override?.generationOptions,
           },
           {
+            onConnectionState: setConnection,
             onToken: (_delta, accumulated) => {
               if (updateClearTimeoutRef.current) {
                 clearTimeout(updateClearTimeoutRef.current);
@@ -258,17 +307,18 @@ export function AICopilotPanel({
               });
             },
             onCancelled: () => {
+              if (updateClearTimeoutRef.current) clearTimeout(updateClearTimeoutRef.current);
               setUpdateMessage(null);
               setStreamingContent("");
-              setSteps([]);
+              setStreamingAssets([]);
               setThinkingText("");
+              setSteps([]);
               setIsStreaming(false);
               setOptimisticMessages([]);
-              if (isModifyingActiveRef.current) {
-                isModifyingActiveRef.current = false;
-                setIsModifying(false, null);
-              }
-              queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
+              setIsModifying(false, null);
+              isModifyingActiveRef.current = false;
+              void queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
+              finish();
             },
             onComplete: async () => {
               if (updateClearTimeoutRef.current) {
@@ -279,6 +329,7 @@ export function AICopilotPanel({
               await queryClient.refetchQueries({
                 queryKey: ["chat-messages", chatId],
               });
+              if (controller.signal.aborted) return;
               setStreamingContent("");
               setStreamingAssets([]);
               setThinkingText("");
@@ -289,7 +340,7 @@ export function AICopilotPanel({
                 setIsModifying(false, null);
                 isModifyingActiveRef.current = false;
               }
-              override?.onComplete?.();
+              finish();
             },
             onError: (errorMsg: string) => {
               if (updateClearTimeoutRef.current) {
@@ -311,11 +362,13 @@ export function AICopilotPanel({
                 description: errorMsg,
                 variant: "destructive",
               });
-              override?.onError?.(errorMsg);
+              finish(errorMsg);
             },
-          }
+          },
+          controller.signal
         );
       } catch (error) {
+        if (controller.signal.aborted) return;
         console.error("❌ Failed to send message:", error);
         const errorMsg = error instanceof Error ? error.message : "Failed to send message";
         if (updateClearTimeoutRef.current) {
@@ -326,11 +379,16 @@ export function AICopilotPanel({
         setStreamingContent("");
         setStreamingAssets([]);
         setIsStreaming(false);
+        setThinkingText("");
+        setSteps([]);
+        setConnection("idle");
         setOptimisticMessages([]);
         setError(errorMsg);
         isModifyingActiveRef.current = false;
         setIsModifying(false, null);
         
+        chatInputRef.current?.restoreDraft(message, files, { generationMode: override?.generationMode, generationOptions: override?.generationOptions });
+        if (error instanceof ChatBusyError || error instanceof TypeError) setRejoinVersion(v => v + 1);
         reportSendFailure(error, {
           onOutOfCredits: () => setOutOfCredits(true),
           toast,
@@ -338,10 +396,11 @@ export function AICopilotPanel({
           userEmail: user?.email,
           onStopped: () => setIsStreaming(false),
         });
-        override?.onError?.(errorMsg);
+        finish(errorMsg);
       }
     },
-    [chatId, campaignId, context, contextLabel, selectedTaskId, user, setIsModifying, queryClient, toast, mergeStreamAssets]
+    [chatId, campaignId, context, contextLabel, selectedTaskId, user, setIsModifying, queryClient, toast, mergeStreamAssets,
+     cancelRewind, rewindTargetId, approveIfAffirmative]
   );
 
   // Auto-send: ref to read pending data in onPrefillComplete (avoids stale closure)
@@ -382,18 +441,19 @@ export function AICopilotPanel({
   // the only copy of this. Refreshing mid-answer therefore left the run going
   // on the server with nothing following it, and the reply never arrived.
   useEffect(() => {
-    if (!chatId || !user?.email || reattachedRef.current) return;
+    if (!chatId || !user?.email) return;
+    subscriptionRef.current?.abort();
     const controller = new AbortController();
-    const email = user.email;
+    subscriptionRef.current = controller;
 
     getRunStatus(chatId)
       .then((status) => {
         if (!status.active || controller.signal.aborted) return;
-        reattachedRef.current = true;
         setIsStreaming(true);
         return followRun(
           chatId,
           {
+            onConnectionState: setConnection,
             onToken: (_delta, accumulated) => {
               setUpdateMessage(null);
               setStreamingContent(accumulated);
@@ -414,6 +474,7 @@ export function AICopilotPanel({
                 assets.map((a) => ({ id: a.id, mime_type: a.mime_type ?? "" }))
               ).catch(() => {});
             },
+            onCampaign: () => { queryClient.invalidateQueries({ queryKey: ["campaign"] }); queryClient.invalidateQueries({ queryKey: ["chat", chatId] }); },
             onDataChanged: (entity) => {
               invalidateForDataChange(queryClient, entity, {
                 chatId,
@@ -426,19 +487,28 @@ export function AICopilotPanel({
               await queryClient.refetchQueries({
                 queryKey: ["chat-messages", chatId],
               });
+              if (controller.signal.aborted) return;
               setStreamingContent("");
               setThinkingText("");
               setSteps([]);
               setIsStreaming(false);
             },
-            onCancelled: () => {
+            onCancelled: async () => {
+              await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
+              if (controller.signal.aborted) return;
+              invalidateForDataChange(queryClient, "asset", { chatId, userEmail: user?.email });
+              invalidateForDataChange(queryClient, "chat", { chatId, userEmail: user?.email });
               setUpdateMessage(null);
               setStreamingContent("");
               setThinkingText("");
               setSteps([]);
               setIsStreaming(false);
             },
-            onError: () => {
+            onError: async () => {
+              await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
+              if (controller.signal.aborted) return;
+              invalidateForDataChange(queryClient, "asset", { chatId, userEmail: user?.email });
+              invalidateForDataChange(queryClient, "chat", { chatId, userEmail: user?.email });
               setUpdateMessage(null);
               setStreamingContent("");
               setThinkingText("");
@@ -446,86 +516,47 @@ export function AICopilotPanel({
               setIsStreaming(false);
             },
           },
-          // Resume from where this client got to, rather than replaying the
-          // whole run from the beginning.
-          { signal: controller.signal, sinceEventId: status.last_event_id },
+          // Rebuild partial text and progress from retained run events.
+          { signal: controller.signal, sinceEventId: 0, runId: status.run_id },
         );
       })
-      .catch(() => undefined);
-
-    return () => controller.abort();
-  }, [chatId, campaignId, user?.email, queryClient, mergeStreamAssets]);
-
-  // Rewriting a message replaces everything after it, then re-answers.
-  const handleEditMessage = useCallback(
-    async (messageId: string, text: string) => {
-      if (!user?.email || !chatId) return;
-      setStreamingContent("");
-      setThinkingText("");
-      setSteps([]);
-      setIsStreaming(true);
-      try {
-        await editTurn(chatId, messageId, {
-          message: text,
-          mode: "campaign",
-        });
-      } catch (err) {
-        setIsStreaming(false);
-        toast({
-          title: "Could not edit that message",
-          description: err instanceof Error ? err.message : "Try again in a moment.",
-          variant: "destructive",
-        });
-        return;
-      }
-      await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
-      const email = user.email;
-      await followRun(chatId, {
-        onToken: (_d, accumulated) => setStreamingContent(accumulated),
-        onThinking: (_d, accumulated) => setThinkingText(accumulated),
-        onProgress: (step) =>
-          setSteps((current) => {
-            const at = current.findIndex((s) => s.step_id === step.step_id);
-            if (at === -1) return [...current, step];
-            const next = [...current];
-            next[at] = step;
-            return next;
-          }),
-        onAssets: (assets) => {
-          mergeStreamAssets(
-            assets.map((a) => ({ id: a.id, mime_type: a.mime_type ?? "" }))
-          ).catch(() => {});
-        },
-        onDataChanged: (entity) =>
-          invalidateForDataChange(queryClient, entity, {
-            chatId, campaignId, userEmail: user?.email,
-          }),
-        onComplete: async () => {
-          await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
-          setStreamingContent("");
-          setThinkingText("");
-          setSteps([]);
-          setIsStreaming(false);
-        },
-        onError: () => setIsStreaming(false),
-        onCancelled: () => setIsStreaming(false),
+      .catch(() => {
+        if (!controller.signal.aborted) { setIsStreaming(true); setConnection("interrupted"); }
       });
-    },
-    [user?.email, chatId, campaignId, queryClient, toast, mergeStreamAssets]
-  );
+
+    return () => { controller.abort(); subscriptionRef.current?.abort(); };
+  }, [chatId, campaignId, user?.email, queryClient, mergeStreamAssets, rejoinVersion]);
 
   // Stopping is the send button's other job while a run is going, so the
   // handler lives with the send path rather than beside a separate control.
   const handleStop = useCallback(async () => {
     if (!user?.email || !chatId) return;
-    await cancelRun(chatId);
+    if (connection === "stopping") return;
+    const controller = subscriptionRef.current;
+    setConnection("stopping");
+    try {
+      await cancelRun(chatId);
+      if (controller?.signal.aborted) return;
+    } catch (error) {
+      if (controller?.signal.aborted) return;
+      setConnection("interrupted");
+      toast({ title: "Could not stop the run", description: error instanceof Error ? error.message : "Try again.", variant: "destructive" });
+      return;
+    }
+    controller?.abort();
+    if (activeSendRef.current?.controller === controller) activeSendRef.current.finish();
+    setConnection("idle");
     setIsStreaming(false);
+    setOptimisticMessages([]);
+    setStreamingAssets([]);
+    isModifyingActiveRef.current = false;
+    setIsModifying(false, null);
     setSteps([]);
     setThinkingText("");
     setStreamingContent("");
     setUpdateMessage(null);
     await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
-  }, [user?.email, chatId, queryClient]);
+  }, [user?.email, chatId, queryClient, connection, toast, setIsModifying]);
 
   const handlePrefillComplete = useCallback(() => {
     const pending = autoMessageRef.current;
@@ -560,6 +591,10 @@ export function AICopilotPanel({
     setUpdateMessage(null);
     setOptimisticMessages([]);
     setError(null);
+    setThinkingText("");
+    setSteps([]);
+    setIsStreaming(false);
+    setConnection("idle");
     setAutoMessage(null);
     isModifyingActiveRef.current = false;
     setIsModifying(false, null);
@@ -678,7 +713,8 @@ export function AICopilotPanel({
         >
           <ChatMessages
             surface="panel"
-            onEditMessage={handleEditMessage}
+            onRewind={armRewind}
+            rewindingFromId={rewindTargetId}
             messages={messages}
             threadAssets={messagesData?.assets ?? []}
             streamingAssets={streamingAssets}
@@ -691,12 +727,12 @@ export function AICopilotPanel({
               <p className="text-xs text-destructive">{error}</p>
             </div>
           )}
-          {(thinkingText || steps.length > 0) && (
-            <div className="space-y-2 px-4 pb-2">
-              <AgentThinking text={thinkingText} />
-              <AgentSteps steps={steps} />
-            </div>
-          )}
+          <AgentProgress chatId={chatId} isStreaming={isStreaming} onReview={() => {
+            const request = runState.request;
+            if (chatInputRef.current?.restoreDraft(request?.message ?? messages.filter(m => m.role === "user").at(-1)?.content ?? "", request?.files, { generationMode: request?.generationMode as ChatSendMeta["generationMode"], generationOptions: request?.generationOptions }) && request?.tier) setTier(request.tier);
+          }} thinkingText={thinkingText} steps={steps} connection={connection} onReconnect={() => window.location.reload()} onStop={handleStop} />
+
+          <AgentDecision chatId={chatId} ready={!isStreaming} onReady={() => { if (!isStreaming) chatInputRef.current?.focus(); }} />
 
           {outOfCredits && (
             <OutOfCredits
@@ -706,7 +742,8 @@ export function AICopilotPanel({
             />
           )}
 
-          <ChatInput
+          <div className="chat-scrollbar shrink-0 min-h-0 max-h-[calc(100%-72px)] overflow-y-auto px-3 pb-3">
+        <ChatInput
             ref={chatInputRef}
             onSend={(message, files, meta) => {
               setOutOfCredits(false);
@@ -720,7 +757,18 @@ export function AICopilotPanel({
             prefillMessage={autoMessage?.text ?? null}
             onPrefillComplete={handlePrefillComplete}
             prefillMode={autoMessage?.prefillMode}
+            rewind={
+              rewindTarget
+                ? {
+                    messageId: rewindTarget.message_id,
+                    text: rewindTarget.content,
+                    replacingCount: rewindReplacingCount,
+                    onCancel: cancelRewind,
+                  }
+                : null
+            }
           />
+        </div>
         </ChatPanelDropZone>
         </div>
     </aside>

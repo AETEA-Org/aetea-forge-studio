@@ -15,12 +15,14 @@ import { useCreativeState, useUpdateCreativeState } from "@/hooks/useCreativeSta
 import { useCampaignStrategy } from "@/hooks/useCampaignSection";
 import { useStyleCards } from "@/hooks/useStyleCards";
 import { useCampaignTasks } from "@/hooks/useCampaignTasks";
+import { useActiveRuns } from "@/hooks/useActiveRuns";
+import { deliverableState } from "@/lib/deliverableState";
 import { useAuth } from "@/hooks/useAuth";
 import { useModification } from "@/hooks/useModification";
 import { useAutoMessage } from "@/hooks/useAutoMessage";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { StyleCard } from "@/types/api";
+import type { CampaignTask, StyleCard } from "@/types/api";
 import { CreativeTruthCard } from "./CreativeTruthCard";
 import { CreativeToneCard } from "./CreativeToneCard";
 import { VisualDirectionCard } from "./VisualDirectionCard";
@@ -89,8 +91,50 @@ export function CreativeTab({
   const selectedTerritory = getSelectedCreativeTerritory(strategy?.creative_foundation);
 
   // Fetch campaign tasks (for Tasks section below Key Visual)
-  const { data: tasksData, isLoading: tasksLoading } = useCampaignTasks(campaignId);
-  const tasks = tasksData?.tasks ?? [];
+  const { data: tasksData, isLoading: tasksLoading, isError: tasksError, refetch: refetchTasks } = useCampaignTasks(campaignId);
+  const tasks = useMemo(() => tasksData?.tasks ?? [], [tasksData]);
+
+  // What each deliverable is doing right now (#111). One call for all of them
+  // — see `useActiveRuns` for why this is polled rather than streamed.
+  const { runs, limit } = useActiveRuns(chatId);
+  const runByScope = useMemo(
+    () => new Map(runs.map((run) => [run.scope, run])),
+    [runs]
+  );
+
+  // Deliverables only: a tangible final asset, one card each.
+  //
+  // Production steps are no longer created as child rows — see
+  // `campaign-creation/SKILL.md`. Campaigns built while they were still being
+  // created keep those rows, and they are filtered out here rather than shown,
+  // because promoting them to the top level is exactly the fragmented list
+  // Studio reported: "QC and export shelf PDF" is a step, not something the
+  // customer was promised. The rows stay in the database; nothing is deleted.
+  //
+  // A row naming a parent that is not in this list is kept. That can only
+  // happen if the parent was removed, and showing an orphan one level too high
+  // beats dropping work silently.
+  const deliverables = useMemo(() => {
+    const ids = new Set(tasks.map((task) => task.id));
+    return tasks.filter(
+      (task) => !task.parent_task_id || !ids.has(task.parent_task_id)
+    );
+  }, [tasks]);
+
+  // Counted from the deliverables rather than from the run list, so the
+  // conversation's own turn is never reported as a deliverable in flight.
+  const activity = useMemo(() => {
+    let running = 0;
+    let queued = 0;
+    for (const task of deliverables) {
+      const { chip } = deliverableState(task.status, runByScope.get(task.id)?.execution);
+      if (chip === "queued") queued += 1;
+      else if (chip === "working" || chip === "stopping" || chip === "needs_go_ahead") {
+        running += 1;
+      }
+    }
+    return { running, queued };
+  }, [deliverables, runByScope]);
 
   // Fetch fresh download URL for key visual (works in img; view_url has CORS issues for embedding).
   const keyVisualAssetId = creativeState?.key_visual_asset_id ?? null;
@@ -734,17 +778,44 @@ export function CreativeTab({
 
       {/* Deliverables - list of campaign tasks; each opens the canvas workspace */}
       <section className="mt-8 pt-6 border-t border-border">
-        <h3 className="text-lg font-semibold mb-4">Deliverables</h3>
+        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+          <h3 className="text-lg font-semibold">Deliverables</h3>
+          {/* How much is in flight, and whether the ceiling is the reason
+              something is waiting. `role="status"` so it is announced when it
+              changes rather than only on a deliberate read. */}
+          {activity.running + activity.queued > 0 && (
+            <p role="status" className="text-xs text-muted-foreground">
+              {/* The ceiling only appears once it is known. Before the first
+                  poll `limit` is 0, and falling back to the running count
+                  renders "1 of 1 running" — which reads as "no slots left"
+                  when it means "still loading". */}
+              {limit ? `${activity.running} of ${limit} running` : `${activity.running} running`}
+              {activity.queued > 0 && ` · ${activity.queued} waiting for a slot`}
+            </p>
+          )}
+        </div>
         {tasksLoading ? (
           <div className="flex justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
+        ) : tasksError ? (
+          <div className="py-4 text-sm text-muted-foreground" role="alert">
+            <p>Couldn’t load deliverables.</p>
+            <Button variant="outline" size="sm" className="mt-3" onClick={() => void refetchTasks()}>
+              Try again
+            </Button>
+          </div>
         ) : tasks.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4">No tasks yet.</p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {tasks.map((task) => (
-              <CreativeTaskCard key={task.id} task={task} chatId={chatId} />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {deliverables.map((task) => (
+              <CreativeTaskCard
+                key={task.id}
+                task={task}
+                chatId={chatId}
+                execution={runByScope.get(task.id)?.execution}
+              />
             ))}
           </div>
         )}

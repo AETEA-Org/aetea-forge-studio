@@ -50,7 +50,7 @@ import {
 import { AssetPreviewDialog } from "@/components/app/assets/AssetPreviewDialog";
 import { cn } from "@/lib/utils";
 import type { Asset, AssetFolder } from "@/types/api";
-import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
 
 interface AssetsTabProps {
   chatId: string;
@@ -286,6 +286,7 @@ function FolderTreeNode({
 
 export function AssetsTab({ chatId, isModifying }: AssetsTabProps) {
   const { user } = useAuth();
+  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [previewAssetId, setPreviewAssetId] = useState<string | null>(null);
   const [refreshingUrls, setRefreshingUrls] = useState<Set<string>>(new Set());
@@ -397,13 +398,17 @@ export function AssetsTab({ chatId, isModifying }: AssetsTabProps) {
       try {
         await renameAsset(asset.id, nextName);
         await invalidateAssetQueries();
-        toast.success("File renamed");
+        toast({ title: "File renamed", variant: "success" });
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Failed to rename");
+        toast({
+          title: "Couldn't rename that file",
+          description: err instanceof Error ? err.message : undefined,
+          variant: "destructive",
+        });
         throw err;
       }
     },
-    [invalidateAssetQueries]
+    [invalidateAssetQueries, toast]
   );
 
   const handleConfirmDelete = useCallback(async () => {
@@ -413,13 +418,17 @@ export function AssetsTab({ chatId, isModifying }: AssetsTabProps) {
       await deleteAsset(pendingDelete.id);
       setPendingDelete(null);
       await invalidateAssetQueries();
-      toast.success("File deleted");
+      toast({ title: "File deleted", variant: "success" });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to delete");
+      toast({
+        title: "Couldn't delete that file",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "destructive",
+      });
     } finally {
       setDeleting(false);
     }
-  }, [invalidateAssetQueries, pendingDelete, user?.email]);
+  }, [invalidateAssetQueries, pendingDelete, toast, user?.email]);
 
   if (foldersLoading || assetsLoading) {
     return (

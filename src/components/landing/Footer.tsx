@@ -107,6 +107,11 @@ export function Footer() {
             © {new Date().getFullYear()} AETEA
           </p>
         </div>
+        <nav aria-label="Legal" className="flex flex-wrap justify-center gap-5 mt-8 text-xs text-muted-foreground">
+          <Link className="hover:text-foreground underline" to="/privacy">Privacy Policy</Link>
+          <Link className="hover:text-foreground underline" to="/terms">Terms & Conditions</Link>
+          <a className="hover:text-foreground underline" href="mailto:support@aetea.studio">Contact</a>
+        </nav>
       </div>
     </footer>
   );
