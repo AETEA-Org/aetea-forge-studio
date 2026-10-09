@@ -23,7 +23,7 @@ export default function Policy({ kind }: { kind: LegalDocument["kind"] }) {
         <p className="uppercase tracking-widest text-xs text-primary mb-3">AETEA · Legal</p>
         <h1 className="text-3xl sm:text-4xl font-display font-bold mb-4">{document.title}</h1>
         <p className="text-sm text-muted-foreground mb-5">Version {document.version} · Effective {document.effective_date}</p>
-        <p className="text-xs text-muted-foreground border border-border rounded-lg p-4 mb-10">Interim product policy. Contact <a href="mailto:support@aetea.studio" className="underline">support@aetea.studio</a> with questions.</p>
+        <p className="text-xs text-muted-foreground border border-border rounded-lg p-4 mb-10">Contact <a href="mailto:support@aetea.studio" className="underline">support@aetea.studio</a> with questions.</p>
         <PolicyContent document={document} />
       </>}
     </main><Footer />
