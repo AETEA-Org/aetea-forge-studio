@@ -1,10 +1,11 @@
 import { useCallback } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   getBalance,
   getPlan,
   getUsage,
   openPortal,
+  refreshBilling,
   startCheckout,
   type BillingPeriodChoice,
   type ExpectedCost,
@@ -52,12 +53,14 @@ export function useUsage(limit = 50, enabled: boolean = true) {
   });
 }
 
-/** Refetch everything billing-related. Call after a purchase or a run. */
+/**
+ * Refetch everything billing-related. Call after a purchase or a run.
+ *
+ * A thin wrapper over `refreshBilling`, which is where the key lives — the
+ * run's stream reader needs the same refresh and cannot call a hook.
+ */
 export function useRefreshBilling() {
-  const queryClient = useQueryClient();
-  return useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ["billing"] });
-  }, [queryClient]);
+  return useCallback(() => refreshBilling(), []);
 }
 
 /**

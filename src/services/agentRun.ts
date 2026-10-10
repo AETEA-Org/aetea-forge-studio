@@ -15,7 +15,7 @@ import {
 import { API_BASE_URL } from "@/services/config";
 import { backendHeaders } from "@/services/authHeaders";
 import { readErrorMessage } from "@/services/errorDetail";
-import { queryClient } from "@/services/queryClient";
+import { refreshBilling } from "@/services/billing";
 
 export type RunConnectionState = "idle" | "connected" | "reconnecting" | "interrupted" | "stopping";
 
@@ -148,25 +148,6 @@ export interface RunStatus {
 }
 
 const TERMINAL = new Set(["complete", "cancelled", "error"]);
-
-/**
- * Refetch the balance, because the turn that just ended spent credits.
- *
- * The backend charges as each provider call is priced and settles the rest
- * within about a tenth of a second of the `complete` event, so by the time
- * this runs the ledger is already right. What was wrong was only ever the
- * screen: the pill polls once a minute and nothing told it a run had finished,
- * so a job that cost several hundred credits left the figure unchanged for up
- * to sixty seconds — which reads as a number that is not connected to
- * anything rather than as a number that is late.
- *
- * Done here, at the one place every turn's stream ends, rather than in each
- * surface's `onComplete`. There are ten of those across the panel, the chat
- * and the canvas, and the eleventh would have been forgotten.
- */
-function refreshBalance(): void {
-  queryClient.invalidateQueries({ queryKey: ["billing"] });
-}
 
 function url(path: string, params?: Record<string, string>): string {
   const built = new URL(path, API_BASE_URL);
@@ -323,6 +304,10 @@ export async function cancelRun(chatId: string, scope?: string): Promise<boolean
   const previous = readRunState(chatId, key).execution;
   if (outcome.cancelled === true && previous) receiveExecution(chatId, { ...previous, state: "stopped", reason: "stopped" }, key);
   if (outcome.cancelled !== true) await getRunStatus(chatId, scope);
+  // Here, and not only on the `cancelled` event, because every caller aborts
+  // the stream as soon as this resolves — so that event is normally never
+  // read. A stopped turn is charged for the work it already did.
+  refreshBilling();
   return outcome.cancelled === true;
 }
 
@@ -492,6 +477,9 @@ export async function followRun(
           "That run is no longer available. Reload the conversation to see " +
           "where it got to."
         );
+        // The likeliest reason is the one the comment above gives first: it
+        // finished, which means it was charged.
+        refreshBilling();
         return;
       }
       if (!response.ok) throw new Error(`Stream returned ${response.status}`);
@@ -536,7 +524,14 @@ export async function followRun(
           attempts = 0;
           if (readRunState(chatId, options.scope).runId !== runId) return;
 
-          if (TERMINAL.has(type)) handlers.onConnectionState?.("idle");
+          if (TERMINAL.has(type)) {
+            handlers.onConnectionState?.("idle");
+            // The turn is over and has been charged for what it ran — on
+            // success, on failure and on a stop alike. Before the handlers
+            // rather than after: a surface whose own handler throws would
+            // otherwise skip this on its way into the catch below.
+            refreshBilling();
+          }
           switch (type) {
             case "execution_status": {
               const snapshot = data as unknown as ExecutionSnapshot;
@@ -614,12 +609,7 @@ export async function followRun(
             default:
               break;
           }
-          if (TERMINAL.has(type)) {
-            // Every terminal kind, not just `complete`: a stopped or failed
-            // turn is still charged for what it ran.
-            refreshBalance();
-            return;
-          }
+          if (TERMINAL.has(type)) return;
         }
       }
 
@@ -636,6 +626,10 @@ export async function followRun(
     if (attempts >= 4) {
       if (handlers.onConnectionState) handlers.onConnectionState("interrupted");
       else handlers.onError?.("Lost connection to the response. Refresh to catch up.");
+      // We stopped watching; the run did not stop working. Whatever it has
+      // spent so far is already charged, so read the balance again rather
+      // than leave the last figure we happened to see.
+      refreshBilling();
       return;
     }
     handlers.onConnectionState?.("reconnecting");
