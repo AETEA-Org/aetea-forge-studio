@@ -5,6 +5,7 @@ import { CreditsPill } from "@/components/app/billing/CreditsPill";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { SidebarChatList } from "./SidebarChatList";
+import { settingsNavigation } from "@/components/app/settingsNavigation";
 
 interface SidebarProps {
   collapsed: boolean;
@@ -69,7 +70,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       <div className="p-3 pt-0">
         <Button
           variant="ghost"
-          onClick={() => navigate("/app/settings")}
+          onClick={() => navigate(...settingsNavigation(location))}
           className={cn(
             "w-full justify-start gap-2 text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent",
             collapsed && "justify-center px-2",

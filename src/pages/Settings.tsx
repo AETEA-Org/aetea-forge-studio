@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { User, Palette, CreditCard, Receipt, Plug, Bell, LogOut, Loader2 } from "lucide-react";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { ArrowLeft, User, Palette, CreditCard, Receipt, Plug, Bell, LogOut, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { BillingPane } from "@/components/app/billing/BillingPane";
 import { UsagePane } from "@/components/app/billing/UsagePane";
+import { settingsReturn } from "@/components/app/settingsNavigation";
 
 type SettingsTab = "profile" | "theme" | "billing" | "usage" | "integrations" | "notifications";
 
@@ -43,6 +44,7 @@ export default function Settings() {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
@@ -76,6 +78,19 @@ export default function Settings() {
   return (
     <div className="min-h-full p-8">
       <div className="max-w-4xl mx-auto">
+        {/* Back to whatever this was opened from, which is not always
+            somewhere the sidebar can reach: a deliverable canvas is not in
+            the chat list, so without this the only way back is the browser's
+            own back button. */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate(settingsReturn(location))}
+          className="-ml-2 mb-3 text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4 mr-1.5" />
+          Back
+        </Button>
         <h1 className="font-display text-2xl font-bold mb-8">Settings</h1>
 
         <div className="flex gap-8">
