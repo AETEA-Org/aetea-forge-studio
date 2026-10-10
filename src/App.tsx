@@ -1,8 +1,9 @@
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import { queryClient } from "@/services/queryClient";
 import { ProtectedRoute } from "@/components/app/ProtectedRoute";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AppLayout } from "@/layouts/AppLayout";
@@ -20,8 +21,6 @@ import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import Policy from "./pages/Policy";
 import { AgreementBoundary } from "@/components/legal/AgreementBoundary";
-
-const queryClient = new QueryClient();
 
 const App = () => (
   <ErrorBoundary>

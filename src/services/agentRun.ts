@@ -15,6 +15,7 @@ import {
 import { API_BASE_URL } from "@/services/config";
 import { backendHeaders } from "@/services/authHeaders";
 import { readErrorMessage } from "@/services/errorDetail";
+import { queryClient } from "@/services/queryClient";
 
 export type RunConnectionState = "idle" | "connected" | "reconnecting" | "interrupted" | "stopping";
 
@@ -147,6 +148,25 @@ export interface RunStatus {
 }
 
 const TERMINAL = new Set(["complete", "cancelled", "error"]);
+
+/**
+ * Refetch the balance, because the turn that just ended spent credits.
+ *
+ * The backend charges as each provider call is priced and settles the rest
+ * within about a tenth of a second of the `complete` event, so by the time
+ * this runs the ledger is already right. What was wrong was only ever the
+ * screen: the pill polls once a minute and nothing told it a run had finished,
+ * so a job that cost several hundred credits left the figure unchanged for up
+ * to sixty seconds — which reads as a number that is not connected to
+ * anything rather than as a number that is late.
+ *
+ * Done here, at the one place every turn's stream ends, rather than in each
+ * surface's `onComplete`. There are ten of those across the panel, the chat
+ * and the canvas, and the eleventh would have been forgotten.
+ */
+function refreshBalance(): void {
+  queryClient.invalidateQueries({ queryKey: ["billing"] });
+}
 
 function url(path: string, params?: Record<string, string>): string {
   const built = new URL(path, API_BASE_URL);
@@ -594,7 +614,12 @@ export async function followRun(
             default:
               break;
           }
-          if (TERMINAL.has(type)) return;
+          if (TERMINAL.has(type)) {
+            // Every terminal kind, not just `complete`: a stopped or failed
+            // turn is still charged for what it ran.
+            refreshBalance();
+            return;
+          }
         }
       }
 
