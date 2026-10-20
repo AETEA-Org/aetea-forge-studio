@@ -8,7 +8,7 @@ import type { CampaignTaskStatus } from "@/types/api";
  * independent: `tasks.status` is the durable record of where the work stands,
  * and a run's `ExecutionSnapshot.state` is whether a job is executing right
  * now. Conflating them is how "not started" and "in review" go missing from a
- * design — see `08-glossary-and-domain.md` → *Two kinds of status*.
+ * design — see `product/glossary.md` → *Two kinds of status*.
  *
  * **A live run wins over task status**, because it is the more immediate truth:
  * a task left at `in_progress` whose run died reads *Stopped*, not *Working*.
