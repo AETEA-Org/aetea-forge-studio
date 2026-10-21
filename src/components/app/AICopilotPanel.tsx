@@ -103,6 +103,8 @@ export function AICopilotPanel({
     files?: File[];
     contextOverride?: string;
     prefillMode?: "instant" | "typewriter";
+    generationMode?: AutoSendOptions["generationMode"];
+    generationOptions?: AutoSendOptions["generationOptions"];
     callbacks?: Pick<AutoSendOptions, "onEvent" | "onComplete" | "onError">;
     resolve: () => void;
     reject: (err: unknown) => void;
@@ -421,6 +423,8 @@ export function AICopilotPanel({
           files: options?.files,
           contextOverride: options?.context,
           prefillMode: options?.prefillMode ?? "instant",
+          generationMode: options?.generationMode,
+          generationOptions: options?.generationOptions,
           callbacks: {
             onEvent: options?.onEvent,
             onComplete: options?.onComplete,
@@ -561,10 +565,17 @@ export function AICopilotPanel({
   const handlePrefillComplete = useCallback(() => {
     const pending = autoMessageRef.current;
     if (!pending) return;
-    const { text, files, contextOverride, callbacks, resolve, reject } = pending;
+    const {
+      text, files, contextOverride, generationMode, generationOptions,
+      callbacks, resolve, reject,
+    } = pending;
     setAutoMessage(null);
     handleSendMessage(text, files, {
       contextOverride,
+      // `handleSendMessage` already forwards both to `runTurn`; on this path
+      // they were always undefined because nothing upstream could set them.
+      generationMode,
+      generationOptions,
       onEvent: callbacks?.onEvent,
       onComplete: () => {
         callbacks?.onComplete?.();
