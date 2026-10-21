@@ -302,10 +302,14 @@ export function CreativeTab({
       const normalizedDetails = keyVisualDetails.trim();
       const filesToSend = [...referenceImages];
       const imageNames = filesToSend.map((file) => file.name).join(", ");
+      // The card itself travels as `style_card_id` below, which is what gets
+      // its picture attached to the generation. This line is only so the user
+      // can see which card went; with no readable name it is omitted rather
+      // than printing an identifier at her.
       const selectedStyle = styleCards.find((s) => s.id === selectedStyleId);
       const styleLine = selectedStyle?.name
-        ? `selected style is named ${selectedStyle.name}`
-        : `selected style is named ${selectedStyleId}`;
+        ? `style card: ${selectedStyle.name}`
+        : "";
 
       const messageParts = [
         "Generate a key visual using the selected style and following details:",
@@ -330,6 +334,12 @@ export function CreativeTab({
       await triggerAutoSend(message, {
         files: filesToSend.length > 0 ? filesToSend : undefined,
         context: 'tab:creative',
+        // The pick travels as data. A sentence naming the card conditions
+        // nothing - the image model applies a style card only when the card's
+        // own image is attached to the request, which happens downstream from
+        // this id and cannot happen from its name.
+        generationMode: 'image',
+        generationOptions: { style_card_id: selectedStyleId },
         onComplete: () => {
           setIsModifying(false, null);
           setIsGenerating(false);
