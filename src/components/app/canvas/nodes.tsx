@@ -7,7 +7,6 @@ import {
   FileText,
   GripVertical,
   Loader2,
-  Presentation,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Markdown } from "@/components/ui/markdown";
@@ -19,12 +18,13 @@ import {
 import { ChatMessages } from "@/components/app/ChatMessages";
 import { ChatInput } from "@/components/app/ChatInput";
 import { ChatPanelDropZone } from "@/components/app/ChatPanelDropZone";
-import { AgentThinking } from "@/components/app/AgentThinking";
-import { AgentSteps } from "@/components/app/AgentSteps";
+import { AgentDecision } from "@/components/app/AgentDecision";
+import { AgentProgress } from "@/components/app/AgentProgress";
 import { cn } from "@/lib/utils";
 import type { CampaignTaskStatus, DeliverableObject } from "@/types/api";
 import { useCanvas } from "./canvasContext";
 import { ObjectViewerDialog, objectKind, useTextContent } from "./ObjectViewer";
+import { OfficePreview } from "./OfficePreview";
 
 // Resize handles reveal on hover so resizing is decoupled from selection
 // (selection means "attach as chat reference", not "start resizing").
@@ -127,6 +127,8 @@ export const DetailCardNode = memo(function DetailCardNode() {
 /** The canvas's chat window (not a DB row). */
 export const ChatWindowNode = memo(function ChatWindowNode() {
   const {
+    chatId,
+    task,
     messages,
     threadAssets,
     streamingAssets,
@@ -135,20 +137,31 @@ export const ChatWindowNode = memo(function ChatWindowNode() {
     updateMessage,
     thinkingText,
     steps,
+    connection,
+    onReconnect,
+    runError,
+    onRetry,
     onSend,
+    onStop,
     chatInputRef,
     referenceCount,
     tier,
     onTierChange,
+    onRewind,
+    rewindingFromId,
+    rewindReplacingCount,
+    onCancelRewind,
   } = useCanvas();
 
+  const rewindTarget = messages.find((m) => m.message_id === rewindingFromId);
+
   return (
-    <div className="group relative h-full w-full flex flex-col rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+    <div className="group relative h-full w-full flex flex-col rounded-xl border border-border bg-card shadow-sm">
       <NodeResizer
         minWidth={320}
         minHeight={300}
         lineClassName={RESIZE_LINE}
-        handleClassName={RESIZE_HANDLE}
+        handleClassName="canvas-chat-resize-handle !bg-primary !border-background transition-opacity"
         handleStyle={RESIZE_HANDLE_STYLE}
         autoScale={false}
       />
@@ -162,19 +175,13 @@ export const ChatWindowNode = memo(function ChatWindowNode() {
           />
         }
       />
-      <div className="nodrag nowheel flex-1 min-h-0 flex flex-col">
+      <div className="nodrag nowheel flex-1 min-h-0 flex flex-col overflow-hidden rounded-b-xl">
         <ChatPanelDropZone
           className="flex-1 min-h-0"
           disabled={isStreaming}
           onFilesDropped={(files) => chatInputRef.current?.addFiles(files)}
         >
-          {(thinkingText || steps.length > 0) && (
-            <div className="px-2 pt-2 space-y-2">
-              <AgentThinking text={thinkingText} />
-              <AgentSteps steps={steps} />
-            </div>
-          )}
-          <div className="flex-1 min-h-0">
+          <div className="flex flex-col flex-1 min-h-[72px] overflow-hidden">
             <ChatMessages
               messages={messages}
               threadAssets={threadAssets}
@@ -184,23 +191,47 @@ export const ChatWindowNode = memo(function ChatWindowNode() {
               updateMessage={updateMessage}
               showEmptyState={false}
               surface="canvas"
+              onRewind={onRewind}
+              rewindingFromId={rewindingFromId}
               // On the canvas a published file becomes its own card, so showing
               // it in the bubble as well would say the same thing twice.
               suppressInlineAssets
             />
           </div>
-          <div className="px-2 pb-2">
+          {runError && !isStreaming && <div role="alert" className="chat-scrollbar min-h-0 max-h-[20%] shrink overflow-y-auto px-3 pb-2 text-xs text-destructive">
+            <p>{runError}</p>
+            <p>Try again restores text. Reattach files if needed.</p>
+            <button type="button" onClick={onRetry} className="min-h-8 rounded underline focus-visible:outline focus-visible:outline-2">Try again</button>
+          </div>}
+          <AgentProgress chatId={chatId} scope={task?.id} isStreaming={isStreaming} onReview={onRetry} thinkingText={thinkingText} steps={steps} connection={connection} onReconnect={onReconnect} onStop={onStop} />
+          <AgentDecision chatId={chatId} scope={task?.id} ready={!isStreaming} onReady={() => { if (!isStreaming) chatInputRef.current?.focus(); }} />
+          <div className="chat-scrollbar shrink-0 min-h-0 max-h-[calc(100%-72px)] overflow-y-auto px-3 pb-3">
             <ChatInput
               ref={chatInputRef}
               onSend={onSend}
               isStreaming={isStreaming}
+              onStop={onStop}
               inputPlaceholder="Describe what to generate or refine..."
               textareaMaxHeight={140}
-              variant="floating"
               enableGenerationModes
               frameAssets={threadAssets}
               tier={tier}
               onTierChange={onTierChange}
+              rewind={
+                rewindingFromId
+                  ? {
+                      messageId: rewindingFromId,
+                      text: rewindTarget?.content ?? "",
+                      replacingCount: rewindReplacingCount,
+                      // Said here and not on the other surfaces because this is
+                      // the one where the cards are on screen: rewinding past
+                      // the turn that made them leaves them sitting there, and
+                      // that is deliberate — they cost credits.
+                      note: "Files already made stay on the canvas.",
+                      onCancel: onCancelRewind,
+                    }
+                  : null
+              }
             />
           </div>
         </ChatPanelDropZone>
@@ -264,18 +295,15 @@ function ObjectPreview({ obj }: { obj: DeliverableObject }) {
   if (kind === "text") {
     return <TextPreview url={url} />;
   }
+  if ((kind === "docx" || kind === "pptx") && url) {
+    return <OfficePreview url={url} kind={kind} mode="card" />;
+  }
   if (kind === "document") {
-    const isDeck =
-      (obj.file_name ?? "").toLowerCase().endsWith(".pptx") ||
-      (obj.mime_type ?? "").includes("presentationml");
-    const Icon = isDeck ? Presentation : FileText;
     return (
       <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-3 text-center">
-        <Icon className="h-9 w-9 text-primary" />
+        <FileText className="h-9 w-9 text-primary" />
         <p className="text-sm font-medium break-words">{obj.file_name || label}</p>
-        <p className="text-xs text-muted-foreground">
-          {isDeck ? "Presentation" : "Document"} — open to read
-        </p>
+        <p className="text-xs text-muted-foreground">Document — open to read</p>
       </div>
     );
   }
@@ -341,7 +369,7 @@ function ObjectActionBar({
   onView: () => void;
 }) {
   return (
-    <div className="nodrag absolute top-9 right-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+    <div className="object-action-bar nodrag absolute top-9 right-1 flex items-center gap-1 transition-opacity">
       <IconAction label="View" onClick={onView}>
         <Eye className="h-3.5 w-3.5" />
       </IconAction>
@@ -510,15 +538,21 @@ export const KeyVisualNode = memo(function KeyVisualNode({
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center p-4 text-center">
+            {/* Two routes, because the card used to name only the first and
+                the second is usually the quicker one: a campaign that already
+                has artwork does not need a new image generated, it needs one
+                of the existing ones chosen. Asking is how that is done — there
+                is no control for it here. */}
             <p className="text-xs text-muted-foreground leading-relaxed">
-              No key visual yet — generate one from the Creative tab
+              No key visual yet — generate one from the Creative tab, or ask
+              AETEA to use an image you already have.
             </p>
           </div>
         )}
       </div>
 
       {hasImage && downloadUrl && (
-        <div className="nodrag absolute top-9 right-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="object-action-bar nodrag absolute top-9 right-1 flex items-center gap-1 transition-opacity">
           <IconAction label="View" onClick={() => setViewerOpen(true)}>
             <Eye className="h-3.5 w-3.5" />
           </IconAction>

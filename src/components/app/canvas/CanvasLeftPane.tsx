@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   BarChart3,
@@ -13,8 +14,11 @@ import {
   Search,
   Settings,
   Target,
+  UserCog,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { CreditsPill } from "@/components/app/billing/CreditsPill";
+import { settingsNavigation } from "@/components/app/settingsNavigation";
 import { getAssetFolders, getAssets } from "@/services/api";
 import {
   buildAssetsByFolder,
@@ -216,6 +220,8 @@ export function CanvasLeftPane({
   const [openTab, setOpenTab] = useState<TabId | null>(null);
   const [assetsOpen, setAssetsOpen] = useState(true);
   const activeRow = TAB_ROWS.find((t) => t.id === openTab);
+  const navigate = useNavigate();
+  const location = useLocation();
 
   return (
     <aside className="flex h-full w-64 shrink-0 flex-col border-r border-border bg-card/40">
@@ -268,6 +274,26 @@ export function CanvasLeftPane({
             </div>
           )}
         </div>
+      </div>
+
+      {/* The same footer the app sidebar has, because this pane replaces it.
+          A canvas is somewhere people stay for a long time, and until now it
+          was the one screen where the balance, the settings and the way to
+          sign out were all out of reach without leaving the work first. */}
+      <div className="border-t border-border p-2">
+        <div className="mb-1.5 px-1">
+          <CreditsPill />
+        </div>
+        <button
+          type="button"
+          onClick={() => navigate(...settingsNavigation(location))}
+          className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+        >
+          {/* Not the gear: that one is already "Controls" three rows up, and
+              it means the campaign's settings rather than the account's. */}
+          <UserCog className="h-4 w-4 shrink-0" />
+          <span className="truncate">Settings</span>
+        </button>
       </div>
 
       <Dialog open={openTab !== null} onOpenChange={(open) => !open && setOpenTab(null)}>

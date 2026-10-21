@@ -16,7 +16,7 @@
  * the page promised a figure below what the system charged. A typo now produces a
  * visibly wrong page rather than quiet margin loss.
  *
- * Provider costs are from `aetea-docs/09-billing-and-credits.md`, verified
+ * Provider costs are from `aetea-docs/engineering/billing-and-credits.md`, verified
  * 2026-09-26/27. That document is the source; this is a consumer of it.
  *
  * ## What belongs on this page
@@ -75,7 +75,7 @@ export type PricingFaqItem = {
 
 /**
  * USD of provider cost carried by one credit. The single constant the whole
- * model rests on — see `aetea-docs/09-billing-and-credits.md`.
+ * model rests on — see `aetea-docs/engineering/billing-and-credits.md`.
  */
 const CREDIT_COST_ALLOWANCE = 0.0045;
 

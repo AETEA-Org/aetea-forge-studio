@@ -10,7 +10,7 @@
  * recalled — Kling bills for the job once it starts, so "are you sure" has to
  * come before the request, not after.
  *
- * Rates come from `aetea-docs/09-billing-and-credits.md` and are derived, not
+ * Rates come from `aetea-docs/engineering/billing-and-credits.md` and are derived, not
  * typed — see `creditsFor`.
  */
 import { creditsFor } from "@/components/landing/pricing/pricingData";

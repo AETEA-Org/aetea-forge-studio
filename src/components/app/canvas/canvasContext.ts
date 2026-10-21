@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react";
 import type { ChatInputHandle, ChatSendMeta } from "@/components/app/ChatInput";
-import type { ProgressStep } from "@/services/agentRun";
+import type { ProgressStep, RunConnectionState } from "@/services/agentRun";
 import type {
   Asset,
   CampaignTask,
@@ -36,8 +36,28 @@ export interface CanvasContextValue {
   thinkingText: string;
   /** Named steps, so a long turn shows a checklist rather than one line. */
   steps: ProgressStep[];
+  connection: RunConnectionState;
+  onReconnect: () => void;
+  runError: string | null;
+  onRetry: () => void;
   onSend: (message: string, files?: File[], meta?: ChatSendMeta) => void;
+  /** Stop the run in progress. Without this the composer's send button stays a
+   *  spinner for the whole turn, which is what the canvas did until now — the
+   *  one surface where a long render could not be called off. */
+  onStop: () => void;
   chatInputRef: React.RefObject<ChatInputHandle>;
+  /** Rewind to one of your own messages: it comes back to the composer and
+   *  everything after it is replaced when you send. The canvas can do this
+   *  because the composer is where the task, the branch, the selected cards and
+   *  the generation settings already live — the endpoint the old in-bubble
+   *  editor used carried none of them. */
+  onRewind: (message: ChatMessage) => void;
+  /** The message the composer is rewinding to, if any. */
+  rewindingFromId: string | null;
+  /** How many messages sending would replace, counting that one. */
+  rewindReplacingCount: number;
+  /** Take the rewind back. Nothing was deleted, so nothing is restored. */
+  onCancelRewind: () => void;
   /** How much intelligence to apply, and how to change it. Same picker as the
    *  chat view, because a canvas turn costs exactly what a chat turn costs. */
   tier: string;

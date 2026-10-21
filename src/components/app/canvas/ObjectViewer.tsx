@@ -24,8 +24,20 @@ import { cn } from "@/lib/utils";
 import type { DeliverableObject } from "@/types/api";
 import { useCanvas } from "./canvasContext";
 import { ImageEditorDialog } from "./imageEditor/ImageEditorDialog";
+import {
+  OfficePreview,
+  type OfficeZoom,
+} from "./OfficePreview";
 
-export type ObjectKind = "image" | "video" | "pdf" | "text" | "document" | "other";
+export type ObjectKind =
+  | "image"
+  | "video"
+  | "pdf"
+  | "text"
+  | "docx"
+  | "pptx"
+  | "document"
+  | "other";
 
 /** Classify an object so preview + viewer render the right thing. */
 export function objectKind(obj: DeliverableObject): ObjectKind {
@@ -46,16 +58,20 @@ export function objectKind(obj: DeliverableObject): ObjectKind {
   ) {
     return "text";
   }
-  // Word and PowerPoint. No browser renders these inline, so they are shown as
-  // a card the user opens in the application that owns them.
+  // Modern Office files get an in-browser drawing. Older .doc/.ppt stay
+  // as "document" and keep the download-only message.
+  if (mime.includes("wordprocessingml") || name.endsWith(".docx")) {
+    return "docx";
+  }
+  if (mime.includes("presentationml") || name.endsWith(".pptx")) {
+    return "pptx";
+  }
   if (
     type === "document" ||
-    mime.includes("wordprocessingml") ||
-    mime.includes("presentationml") ||
     mime === "application/msword" ||
     mime === "application/vnd.ms-powerpoint" ||
-    name.endsWith(".docx") ||
-    name.endsWith(".pptx")
+    name.endsWith(".doc") ||
+    name.endsWith(".ppt")
   ) {
     return "document";
   }
@@ -129,11 +145,29 @@ export function ObjectViewerDialog({
   const [editorTarget, setEditorTarget] = useState<DeliverableObject | null>(
     null
   );
+  const [officeZoom, setOfficeZoom] = useState<OfficeZoom>("fit");
+  // Bumps on every zoom click, including a click on the zoom already shown,
+  // so PowerPoint can reapply that zoom if an older apply finished last.
+  const [officeZoomEpoch, setOfficeZoomEpoch] = useState(0);
+
+  const selectOfficeZoom = useCallback((value: OfficeZoom) => {
+    setOfficeZoom(value);
+    setOfficeZoomEpoch((n) => n + 1);
+  }, []);
 
   // Reset index when the dialog opens on a different object.
   useEffect(() => {
-    if (open) setCurrentIndex(initialIndex);
+    if (open) {
+      setCurrentIndex(initialIndex);
+      setOfficeZoom("fit");
+      setOfficeZoomEpoch((n) => n + 1);
+    }
   }, [open, initialIndex]);
+
+  useEffect(() => {
+    setOfficeZoom("fit");
+    setOfficeZoomEpoch((n) => n + 1);
+  }, [currentIndex]);
 
   const object = objects[currentIndex] ?? objects[0];
   const canPrev = currentIndex > 0;
@@ -168,6 +202,7 @@ export function ObjectViewerDialog({
   const url = object.view_url || object.download_url || "";
   const title = object.title?.trim() || object.file_name || object.object_type;
   const canEdit = kind === "image" && Boolean(object.asset_id && url);
+  const isOffice = kind === "docx" || kind === "pptx";
 
   const openEditor = () => {
     setEditorTarget(object);
@@ -186,31 +221,35 @@ export function ObjectViewerDialog({
         <DialogContent className="max-w-4xl">
           <DialogHeader className="pr-8">
             <div className="flex items-center gap-2">
-              {showNav && (
+              <DialogTitle className="truncate flex-1">{title}</DialogTitle>
+              {isOffice && (
+                <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
+                  Preview
+                </span>
+              )}
+              {isOffice && (
                 <div className="flex items-center gap-0.5 shrink-0">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    disabled={!canPrev}
-                    onClick={goPrev}
-                    aria-label="Previous"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    disabled={!canNext}
-                    onClick={goNext}
-                    aria-label="Next"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
+                  {(
+                    [
+                      ["fit", "Fit"],
+                      ["100", "100%"],
+                      ["150", "150%"],
+                    ] as const
+                  ).map(([value, label]) => (
+                    <Button
+                      key={value}
+                      type="button"
+                      variant={officeZoom === value ? "default" : "outline"}
+                      size="sm"
+                      className="h-8 px-2 text-xs"
+                      aria-pressed={officeZoom === value}
+                      onClick={() => selectOfficeZoom(value)}
+                    >
+                      {label}
+                    </Button>
+                  ))}
                 </div>
               )}
-              <DialogTitle className="truncate flex-1">{title}</DialogTitle>
               {canEdit && (
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -244,13 +283,52 @@ export function ObjectViewerDialog({
                       </a>
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Download</TooltipContent>
+                  <TooltipContent>Download original</TooltipContent>
                 </Tooltip>
               )}
             </div>
           </DialogHeader>
 
-          <ObjectViewerBody kind={kind} url={url} title={title} open={open} />
+          {/* Beside the picture rather than above it. The pair used to sit in
+              the header next to the filename, which is where a toolbar lives,
+              not where a reader reaches to turn a page. They overlay the edges
+              so the preview keeps the full width, and they are hidden from
+              assistive tech because the filmstrip below already exposes every
+              object as a real button. */}
+          <div className="relative">
+            <ObjectViewerBody
+              kind={kind}
+              url={url}
+              title={title}
+              open={open}
+              officeZoom={officeZoom}
+              officeZoomEpoch={officeZoomEpoch}
+            />
+            {showNav && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute left-1 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full bg-background/80 shadow-sm backdrop-blur hover:bg-background disabled:opacity-0"
+                  disabled={!canPrev}
+                  onClick={goPrev}
+                  aria-label="Previous"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-1 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full bg-background/80 shadow-sm backdrop-blur hover:bg-background disabled:opacity-0"
+                  disabled={!canNext}
+                  onClick={goNext}
+                  aria-label="Next"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </Button>
+              </>
+            )}
+          </div>
 
           {showNav && (
             <div className="flex gap-2 overflow-x-auto pb-1 pt-1">
@@ -324,11 +402,15 @@ function ObjectViewerBody({
   url,
   title,
   open,
+  officeZoom,
+  officeZoomEpoch,
 }: {
   kind: ObjectKind;
   url: string;
   title: string;
   open: boolean;
+  officeZoom: OfficeZoom;
+  officeZoomEpoch: number;
 }) {
   const textState = useTextContent(url, open && kind === "text");
 
@@ -370,9 +452,19 @@ function ObjectViewerBody({
           )}
         </div>
       )}
-      {/* Word and PowerPoint cannot render in a browser, so they get the same
-          honest message as anything else without an inline preview. Without
-          "document" here the dialog opens empty. */}
+      {(kind === "docx" || kind === "pptx") && url && (
+        <div className="h-[70vh] rounded-md border border-border overflow-hidden">
+          <OfficePreview
+            url={url}
+            kind={kind}
+            mode="reader"
+            zoom={officeZoom}
+            zoomEpoch={officeZoomEpoch}
+            enabled={open}
+          />
+        </div>
+      )}
+      {/* Older Office formats and unknown types keep the honest fallback. */}
       {(kind === "document" || kind === "other") && (
         <p className="text-sm text-muted-foreground py-6">
           No inline preview for this file type. Use Download to open it.

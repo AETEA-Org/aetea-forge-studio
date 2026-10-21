@@ -13,6 +13,31 @@
  */
 import { API_BASE_URL } from "@/services/config";
 import { backendHeaders } from "@/services/authHeaders";
+import { queryClient } from "@/services/queryClient";
+
+/** Every query key under which a billing figure is cached. */
+const BILLING_KEY = ["billing"];
+
+/**
+ * Forget the cached billing figures, so the next look is a fresh read.
+ *
+ * Call this whenever something has just moved the ledger — a purchase, or a
+ * turn that spent credits. The balance in the app chrome is otherwise a
+ * sixty-second poll, which is long enough after a job costing several hundred
+ * credits to read as a figure connected to nothing rather than a figure that
+ * is late.
+ *
+ * The key is the whole `billing` prefix, so the balance, the plan and the
+ * usage history cannot disagree with each other. Only queries something is
+ * currently showing are refetched now; the rest are marked stale and read
+ * again when their screen is next opened.
+ *
+ * Deliberately not a hook: the one place that knows a turn has ended is the
+ * run's stream reader, which is not a component.
+ */
+export function refreshBilling(): void {
+  queryClient.invalidateQueries({ queryKey: BILLING_KEY });
+}
 
 function buildUrl(path: string): string {
   return new URL(path, API_BASE_URL).toString();
