@@ -302,19 +302,29 @@ export function CreativeTab({
       const normalizedDetails = keyVisualDetails.trim();
       const filesToSend = [...referenceImages];
       const imageNames = filesToSend.map((file) => file.name).join(", ");
+      // The card itself travels as `style_card_id` below, which is what gets
+      // its picture attached to the generation. This line is only so the user
+      // can see which card went; with no readable name it is omitted rather
+      // than printing an identifier at her.
       const selectedStyle = styleCards.find((s) => s.id === selectedStyleId);
       const styleLine = selectedStyle?.name
-        ? `selected style is named ${selectedStyle.name}`
-        : `selected style is named ${selectedStyleId}`;
+        ? `style card: ${selectedStyle.name}`
+        : "";
 
+      // Say what this is. One request for one key visual was publishing four
+      // objects - a landscape image, a portrait crop, a review PDF and a
+      // PowerPoint master - because the message asked for a key visual and
+      // never said what it was not asking for, and the agent had been reading
+      // the campaign skill all session, where a deliverable is a package.
+      //
+      // The KV route is not restated here: `handleKvRouteClick` has already
+      // written it into the details box, so it was going out twice.
       const messageParts = [
-        "Generate a key visual using the selected style and following details:",
+        "Generate one key visual image for this campaign, using the selected style and the following details.",
+        "This asks for that one image, not a deliverable package: no review document, no deck and no extra crops unless I ask for them.",
         selectedTerritory ? `selected creative territory: ${selectedTerritory.title}` : "",
         selectedTerritory ? `territory concept: ${selectedTerritory.concept}` : "",
         creativeDirectionSummary ? `selected creative direction:\n${creativeDirectionSummary}` : "",
-        selectedKvRoute
-          ? `selected KV route: ${selectedKvRoute.label}\n${selectedKvRoute.description}\nHeadline: ${selectedKvRoute.headline}`
-          : "",
         normalizedDetails,
         styleLine,
         imageNames ? `reference images ${imageNames}` : "",
@@ -330,6 +340,12 @@ export function CreativeTab({
       await triggerAutoSend(message, {
         files: filesToSend.length > 0 ? filesToSend : undefined,
         context: 'tab:creative',
+        // The pick travels as data. A sentence naming the card conditions
+        // nothing - the image model applies a style card only when the card's
+        // own image is attached to the request, which happens downstream from
+        // this id and cannot happen from its name.
+        generationMode: 'image',
+        generationOptions: { style_card_id: selectedStyleId },
         onComplete: () => {
           setIsModifying(false, null);
           setIsGenerating(false);
@@ -360,7 +376,6 @@ export function CreativeTab({
     keyVisualDetails,
     selectedTerritory,
     creativeDirectionSummary,
-    selectedKvRoute,
     referenceImages,
     user,
     isGenerating,
