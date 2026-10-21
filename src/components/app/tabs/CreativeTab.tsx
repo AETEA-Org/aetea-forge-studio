@@ -311,14 +311,20 @@ export function CreativeTab({
         ? `style card: ${selectedStyle.name}`
         : "";
 
+      // Say what this is. One request for one key visual was publishing four
+      // objects - a landscape image, a portrait crop, a review PDF and a
+      // PowerPoint master - because the message asked for a key visual and
+      // never said what it was not asking for, and the agent had been reading
+      // the campaign skill all session, where a deliverable is a package.
+      //
+      // The KV route is not restated here: `handleKvRouteClick` has already
+      // written it into the details box, so it was going out twice.
       const messageParts = [
-        "Generate a key visual using the selected style and following details:",
+        "Generate one key visual image for this campaign, using the selected style and the following details.",
+        "This asks for that one image, not a deliverable package: no review document, no deck and no extra crops unless I ask for them.",
         selectedTerritory ? `selected creative territory: ${selectedTerritory.title}` : "",
         selectedTerritory ? `territory concept: ${selectedTerritory.concept}` : "",
         creativeDirectionSummary ? `selected creative direction:\n${creativeDirectionSummary}` : "",
-        selectedKvRoute
-          ? `selected KV route: ${selectedKvRoute.label}\n${selectedKvRoute.description}\nHeadline: ${selectedKvRoute.headline}`
-          : "",
         normalizedDetails,
         styleLine,
         imageNames ? `reference images ${imageNames}` : "",
@@ -370,7 +376,6 @@ export function CreativeTab({
     keyVisualDetails,
     selectedTerritory,
     creativeDirectionSummary,
-    selectedKvRoute,
     referenceImages,
     user,
     isGenerating,
