@@ -640,6 +640,11 @@ export function CreativeTab({
           disabled={!selectedStyleId || isGenerating}
           onClick={() => setIsKeyVisualDialogOpen(true)}
           isGenerating={isGenerating}
+          disabledReason={
+            selectedStyleId
+              ? undefined
+              : "Pick a style card in Visual Direction first"
+          }
         />
       </section>
 
