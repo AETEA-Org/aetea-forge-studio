@@ -340,6 +340,12 @@ function IconAction({
 }) {
   return (
     <Tooltip>
+      {/* The icon is the only visible content, so `label` has to name the
+          button itself — without it a screen reader announces just "button".
+          Radix also wires the trigger's aria-describedby to a visually hidden
+          copy of the tooltip text, which is this same `label`, so it would be
+          read out a second time as a description; dropping that description
+          keeps the announcement to one. The visible tooltip is untouched. */}
       <TooltipTrigger asChild>
         <Button
           size="icon"
@@ -347,6 +353,8 @@ function IconAction({
           className={cn("h-7 w-7 shadow-sm", className)}
           disabled={disabled}
           onClick={onClick}
+          aria-label={label}
+          aria-describedby={undefined}
         >
           {children}
         </Button>
