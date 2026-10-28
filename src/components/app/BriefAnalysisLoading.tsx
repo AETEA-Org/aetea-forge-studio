@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { AgentSteps } from "@/components/app/AgentSteps";
 import { stepIcon } from "@/components/app/stepIcons";
-import { buildProgress } from "@/lib/buildProgress";
+import { buildProgress, furthestDeclaredStage } from "@/lib/buildProgress";
 import { cn } from "@/lib/utils";
 import type { ProgressStep } from "@/services/agentRun";
 
@@ -31,17 +31,19 @@ interface BriefAnalysisLoadingProps {
  * headline flickered, so it did nothing to contradict it. Stages arrive once
  * each and in order, which is what makes them countable.
  *
- * It still counts what arrived rather than predicting a total, so it grows as
- * the build does and can never run backwards. Decoration — the label beside it
- * carries the meaning, and this is hidden from screen readers.
+ * `total` is the backend's own declared one when it sent it, and otherwise the
+ * number of stages that have arrived so far — which grows as the build does,
+ * and was the only thing available before the build declared its length.
+ * Decoration either way: the label beside it carries the meaning, and this is
+ * hidden from screen readers.
  */
-function StepDots({ steps, at }: { steps: ProgressStep[]; at: number }) {
-  if (steps.length < 2) return null;
+function StepDots({ total, at }: { total: number; at: number }) {
+  if (total < 2) return null;
   return (
     <div aria-hidden className="mb-5 flex items-center justify-center gap-1.5">
-      {steps.map((step, index) => (
+      {Array.from({ length: total }, (_, index) => (
         <span
-          key={step.step_id}
+          key={index}
           className={cn(
             "h-1.5 w-1.5 rounded-full transition-all motion-reduce:transition-none",
             index < at && "bg-primary/50",
@@ -80,6 +82,19 @@ export function BriefAnalysisLoading({
   // build was going round in circles.
   const { stage, stages, stageIndex, activity } = buildProgress(steps);
   const done = stages.filter((s) => s.state === "done").length;
+  // The build declares its own length now — six stages, fixed before any of
+  // them starts — so the denominator here no longer has to be a count of what
+  // happens to have arrived. Every comment below about a total that grows
+  // describes the fallback, which is what a backend without the declaration
+  // still gives us.
+  //
+  // Taken from the furthest stage that declared a position, so neither the
+  // dots nor the counter move backwards when a build fills in an earlier part
+  // of the campaign later, and an unnumbered stage holds them where they are
+  // rather than collapsing them. See `furthestDeclaredStage`.
+  const reached = furthestDeclaredStage(steps);
+  const total = Math.max(reached?.of ?? stages.length, stages.length);
+  const at = reached ? reached.index - 1 : stageIndex;
   const StepIcon = stepIcon(stage?.step_id ?? "");
   const inline = variant === "inline";
 
@@ -105,14 +120,16 @@ export function BriefAnalysisLoading({
             {activity?.label ?? "Building your campaign"}
           </p>
         </div>
-        {/* The banner keeps a denominator where the full screen drops one.
-            The growing total is the same mild untruth in both, but here it is
-            the only indication of movement — there is no room for dots — and
-            "2" on its own says nothing. A slightly soft total beats no signal.
+        {/* The banner keeps a denominator where the full screen drops one, and
+            it is the declared one when the backend sent it — so the figure
+            that used to creep upwards as stages arrived now stands still.
+            Without a declared total it falls back to the count so far, which
+            is a mild untruth but still the only indication of movement here:
+            there is no room for dots, and "2" on its own says nothing.
             It is aria-hidden either way; the two lines carry the meaning. */}
-        {stages.length > 1 && (
+        {total > 1 && (
           <span aria-hidden className="shrink-0 text-xs text-muted-foreground">
-            {done}/{stages.length}
+            {done}/{total}
           </span>
         )}
       </div>
@@ -157,7 +174,7 @@ export function BriefAnalysisLoading({
           {activity?.label ?? ""}
         </p>
 
-        <StepDots steps={stages} at={stageIndex} />
+        <StepDots total={total} at={at} />
 
         {stages.length > 0 ? (
           <div className="mb-6">
