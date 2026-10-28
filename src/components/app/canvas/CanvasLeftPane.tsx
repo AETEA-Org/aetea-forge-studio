@@ -12,12 +12,14 @@ import {
   PanelLeftClose,
   Palette,
   Search,
+  MessageCircleQuestion,
   Settings,
   Target,
   UserCog,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { CreditsPill } from "@/components/app/billing/CreditsPill";
+import { useSupport } from "@/components/support/SupportContext";
 import { settingsNavigation } from "@/components/app/settingsNavigation";
 import { getAssetFolders, getAssets } from "@/services/api";
 import {
@@ -221,6 +223,7 @@ export function CanvasLeftPane({
   const [assetsOpen, setAssetsOpen] = useState(true);
   const activeRow = TAB_ROWS.find((t) => t.id === openTab);
   const navigate = useNavigate();
+  const { open: openSupport } = useSupport();
   const location = useLocation();
 
   return (
@@ -293,6 +296,19 @@ export function CanvasLeftPane({
               it means the campaign's settings rather than the account's. */}
           <UserCog className="h-4 w-4 shrink-0" />
           <span className="truncate">Settings</span>
+        </button>
+        {/* AppLayout hides the main Sidebar while a task is open, so the
+            Support row that lives in its footer is not reachable here. This
+            pane is the canvas's whole chrome; without this the one screen a
+            customer is most likely to be stuck on is the one with no way to
+            say so. */}
+        <button
+          type="button"
+          onClick={openSupport}
+          className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+        >
+          <MessageCircleQuestion className="h-4 w-4 shrink-0" />
+          <span className="truncate">Support</span>
         </button>
       </div>
 
