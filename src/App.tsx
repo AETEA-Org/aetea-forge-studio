@@ -13,6 +13,8 @@ import Landing from "./pages/Landing";
 import Pricing from "./pages/Pricing";
 import Advisory from "./pages/Advisory";
 import Auth from "./pages/Auth";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import AppPage from "./pages/App";
 import { CampaignShell } from "./layouts/CampaignShell";
 import ChatOrCampaign from "./pages/ChatOrCampaign";
@@ -35,6 +37,8 @@ const App = () => (
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/advisory" element={<Advisory />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/auth/forgot" element={<ForgotPassword />} />
+              <Route path="/auth/reset" element={<ResetPassword />} />
               <Route path="/privacy" element={<Policy kind="privacy" />} />
               <Route path="/terms" element={<Policy kind="terms" />} />
               

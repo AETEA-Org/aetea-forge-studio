@@ -147,9 +147,13 @@ export default function Auth() {
             });
           }
         } else {
+          // There is no confirmation link any more: mailer_autoconfirm is on, so
+          // the account is usable immediately and what arrives is a welcome
+          // email. Promising a link people would wait for is worse than saying
+          // nothing.
           toast({
-            title: "Check your email",
-            description: "We've sent you a confirmation link to complete your registration.",
+            title: "Welcome to AETEA",
+            description: "Your account is ready. We've sent you an email to get started.",
           });
         }
       }
@@ -238,7 +242,14 @@ export default function Auth() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <div className="flex items-baseline justify-between">
+                <Label htmlFor="password">Password</Label>
+                {isLogin && (
+                  <Link to="/auth/forgot" className="text-xs text-muted-foreground hover:text-foreground transition-colors underline">
+                    Forgot password?
+                  </Link>
+                )}
+              </div>
               <Input
                 id="password"
                 type="password"
