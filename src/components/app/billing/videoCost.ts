@@ -10,24 +10,24 @@
  * recalled — Kling bills for the job once it starts, so "are you sure" has to
  * come before the request, not after.
  *
- * Rates come from `aetea-docs/engineering/billing-and-credits.md` and are derived, not
- * typed — see `creditsFor`.
+ * **The figures are the published prices, read from one place.** Until
+ * 2026-10-28 this file derived them from provider cost with `creditsFor()`,
+ * which was right while the meter did the same. The meter now charges the
+ * published figure instead, so deriving here quoted a different number from the
+ * one the customer was billed — and in the two bands that are the default it
+ * quoted *less*: 43 a second against 45 for 720p with sound, 54 against 60 for
+ * 1080p with sound. Under-quoting a charge that cannot be recalled is the one
+ * direction this file must never be wrong in, which its own note below says.
+ *
+ * So the bands come from `PUBLISHED_VIDEO_CREDITS_PER_SECOND` in
+ * `pricingData.ts`, which is the same table the pricing page shows and the only
+ * place in this app a published credit figure is written. It is checked against
+ * the 70% margin floor where it is defined.
  */
-import { creditsFor } from "@/components/landing/pricing/pricingData";
-
-/** Provider cost per second of finished video. */
-const COST_PER_SECOND: Record<string, number> = {
-  "720p": 0.084,
-  "1080p": 0.112,
-  "4k": 0.42,
-};
-
-/** Adding sound moves 720p and 1080p up a band. 4K is already the top rate. */
-const WITH_AUDIO_COST_PER_SECOND: Record<string, number> = {
-  "720p": 0.112,
-  "1080p": 0.14,
-  "4k": 0.42,
-};
+import {
+  PUBLISHED_VIDEO_CREDITS_PER_SECOND,
+  type PublishedVideoResolution,
+} from "@/components/landing/pricing/pricingData";
 
 export const DEFAULT_VIDEO_RESOLUTION = "720p";
 export const DEFAULT_VIDEO_SECONDS = 5;
@@ -43,9 +43,13 @@ export function videoCreditsFor(options: {
   // reads `audio === false` and `kling_omni.py` has `audio: bool = True`. A
   // caller that forgets this flag then over-quotes rather than under-quotes,
   // and on a charge that cannot be recalled that is the only safe direction to
-  // be wrong in.
+  // be wrong in. 4K is the same price either way, so the flag cannot hurt there.
   const withAudio = options.withAudio !== false;
-  const table = withAudio ? WITH_AUDIO_COST_PER_SECOND : COST_PER_SECOND;
-  const perSecond = table[resolution] ?? table[DEFAULT_VIDEO_RESOLUTION];
-  return creditsFor(perSecond) * seconds;
+  const band =
+    PUBLISHED_VIDEO_CREDITS_PER_SECOND[resolution as PublishedVideoResolution] ??
+    PUBLISHED_VIDEO_CREDITS_PER_SECOND[
+      DEFAULT_VIDEO_RESOLUTION as PublishedVideoResolution
+    ];
+  const perSecond = withAudio ? band.audio : band.silent;
+  return perSecond * seconds;
 }

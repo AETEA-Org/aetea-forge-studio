@@ -134,9 +134,17 @@ const PUBLISHED = {
  *
  * Deliberately a throw, and deliberately unconditional. The only way to reach
  * it is to type a credit figure that loses money against the provider cost
- * beside it, and a pricing page promising that number is worse than a pricing
- * page that does not render. Measured on **raw** provider cost per credit,
- * which is what the ceiling is defined on.
+ * beside it, and a product that quotes that number is worse than one that does
+ * not render. Measured on **raw** provider cost per credit, which is what the
+ * ceiling is defined on.
+ *
+ * **Know the blast radius before changing a constant above.** This runs at
+ * module import, and the module is imported by `videoCost.ts`, which is
+ * imported by `ChatInput.tsx` — so a failing check takes down the whole app,
+ * not only the marketing page. That is the intended trade and not an oversight:
+ * every one of those paths quotes or charges a credit price, and the failure it
+ * catches is one that loses money silently on every render. It fires at the
+ * dev server and in `vite preview`, so it is seen long before a deploy.
  */
 function assertPricesClearMargin(): void {
   for (const [name, { cost, credits }] of Object.entries(PUBLISHED)) {
@@ -273,6 +281,26 @@ export const PRICING_PLANS: PricingPlan[] = [
       "Ten campaign builds, around 80 images, and a minute of finished video.",
   },
 ];
+
+/**
+ * The published credits per second of video, by resolution and audio.
+ *
+ * Exported because the in-app render quote (`src/components/app/billing/
+ * videoCost.ts`) needs exactly these figures, and a second copy of them is a
+ * second thing to get wrong — which is what it was until 2026-10-28, when it
+ * derived its own from provider cost and quoted 43 a second where the meter
+ * charged 45. One table, checked by `assertPricesClearMargin` above.
+ *
+ * 4K carries the same figure with and without sound because Kling charges the
+ * same $0.42 a second for both; that is checked, not a copy error.
+ */
+export const PUBLISHED_VIDEO_CREDITS_PER_SECOND = {
+  "720p": { silent: PUBLISHED.video720.credits, audio: PUBLISHED.video720Audio.credits },
+  "1080p": { silent: PUBLISHED.video1080.credits, audio: PUBLISHED.video1080Audio.credits },
+  "4k": { silent: PUBLISHED.video4k.credits, audio: PUBLISHED.video4k.credits },
+} as const;
+
+export type PublishedVideoResolution = keyof typeof PUBLISHED_VIDEO_CREDITS_PER_SECOND;
 
 export function getPlanPrice(
   plan: PricingPlan,
