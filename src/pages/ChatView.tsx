@@ -357,9 +357,12 @@ export default function ChatView() {
               // client never learned the campaign existed. It showed an error
               // over an empty chat while the finished campaign sat in the
               // sidebar, reachable only by clicking it.
+              //
+              // The diagnosis was right and the two keys named here were three
+              // short: no ['assets'], no ['asset-urls'], no ['campaign']. That
+              // list is now kept in one place for every ending on every
+              // surface, where the stream ends — see `invalidateForRunEnd`.
               await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
-              if (controller.signal.aborted) return;
-              queryClient.invalidateQueries({ queryKey: ["chat", chatId, user?.email] });
             },
           },
           controller.signal
@@ -470,8 +473,6 @@ export default function ChatView() {
               setShowCampaignLoading(false);
               await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
               if (controller.signal.aborted) return;
-              invalidateForDataChange(queryClient, "asset", { chatId, userEmail: user?.email });
-              invalidateForDataChange(queryClient, "chat", { chatId, userEmail: user?.email });
               setIsStreaming(false);
               setStreamingContent("");
               setStreamingAssets([]);
@@ -484,8 +485,6 @@ export default function ChatView() {
               setShowCampaignLoading(false);
               await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
               if (controller.signal.aborted) return;
-              invalidateForDataChange(queryClient, "asset", { chatId, userEmail: user?.email });
-              invalidateForDataChange(queryClient, "chat", { chatId, userEmail: user?.email });
               setStreamingContent("");
               setIsStreaming(false);
               setThinkingText("");

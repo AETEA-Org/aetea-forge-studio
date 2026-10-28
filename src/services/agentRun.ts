@@ -16,6 +16,8 @@ import { API_BASE_URL } from "@/services/config";
 import { backendHeaders } from "@/services/authHeaders";
 import { readErrorMessage } from "@/services/errorDetail";
 import { refreshBilling } from "@/services/billing";
+import { invalidateForRunEnd } from "@/services/dataChanged";
+import { queryClient } from "@/services/queryClient";
 
 export type RunConnectionState = "idle" | "connected" | "reconnecting" | "interrupted" | "stopping";
 
@@ -642,7 +644,16 @@ export async function followRun(
             default:
               break;
           }
-          if (TERMINAL.has(type)) return;
+          if (TERMINAL.has(type)) {
+            // Complete, cancelled or failed: the turn is over and whatever it
+            // saved is on the server and not yet on the screen. Done here, not
+            // in each surface's handler, because this is the one line every
+            // stream on every surface passes through — a surface that forgets
+            // it is how a failed turn came to show an error over a board
+            // missing the posts it had just produced.
+            invalidateForRunEnd(queryClient);
+            return;
+          }
         }
       }
 
@@ -663,6 +674,9 @@ export async function followRun(
       // spent so far is already charged, so read the balance again rather
       // than leave the last figure we happened to see.
       refreshBilling();
+      // And whatever it finished before we lost it is saved and unseen. This
+      // path never reaches `onError`, so nothing used to repaint here at all.
+      invalidateForRunEnd(queryClient);
       return;
     }
     handlers.onConnectionState?.("reconnecting");

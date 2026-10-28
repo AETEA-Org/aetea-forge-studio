@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { readRunState } from "@/services/agentRunState";
 import { ChatBusyError, runTurn, followRun, getRunStatus, cancelRun } from "@/services/agentRun";
 import type { AgentTurnHandlers, ProgressStep, RunConnectionState } from "@/services/agentRun";
-import { invalidateForDataChange } from "@/services/dataChanged";
+import { invalidateForDataChange, invalidateForRunEnd } from "@/services/dataChanged";
 import { reportSendFailure } from "@/services/sendFailure";
 import { useChatMessages } from "@/hooks/useChats";
 import { useRewind } from "@/hooks/useRewind";
@@ -315,6 +315,8 @@ export default function DeliverableCanvasPage() {
   // only to this chat/canvas. A campaign query loading must not abort it.
   const makeHandlers = (controller: AbortController): AgentTurnHandlers => {
     const current = () => !controller.signal.aborted;
+    // Mid-run, and targeted on purpose: a campaign event arrives several times
+    // during a build.
     const refresh = () => {
       void queryClient.refetchQueries({ queryKey: ["chat-messages", chatId, branchId] });
       void queryClient.invalidateQueries({ queryKey: deliverablesKey });
@@ -323,8 +325,17 @@ export default function DeliverableCanvasPage() {
     };
     const finish = () => {
       if (!current()) return;
-      clearRun();
+      // The four families above were this page's own guess at what a turn can
+      // change, and `['assets']` was not among them — which is exactly why a
+      // failed turn showed an error over a board missing the posts it had just
+      // saved. At the end of a turn, repaint everything.
+      //
+      // Both before `clearRun()`, which empties `streamingAssets`
+      // synchronously: the refetch is async so the board still blanks for a
+      // frame, but the gap starts closing earlier rather than later.
       refresh();
+      invalidateForRunEnd(queryClient);
+      clearRun();
     };
     return {
       onConnectionState: (state) => { if (current()) setConnection(state); },
@@ -381,8 +392,14 @@ export default function DeliverableCanvasPage() {
     getRunStatus(chatId, taskId).then((status) => {
       if (controller.signal.aborted) return;
       if (!status.active && !replayFinished) {
-        clearRun();
+        // The run ended while this client was not watching — the laptop slept
+        // and the supervisor finished it. Nothing here goes through
+        // `followRun`, so this is the one ending that has to repaint on its
+        // own, and it is the one that most needs to: the person is coming back
+        // specifically to find out what survived.
+        invalidateForRunEnd(queryClient);
         void queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
+        clearRun();
         return;
       }
       setIsStreaming(true);
