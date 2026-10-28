@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { PolicyReview } from "./PolicyReview";
 import { acceptLegal, LegalAcceptance, LegalDocument, legalDocuments, legalStatus, LegalStatus } from "@/services/legal";
 import { openPortal } from "@/services/billing";
+import { SupportLink } from "@/components/support/SupportLink";
 
 export function AgreementBoundary({ children }: { children: ReactNode }) {
   const { user, loading, signOut } = useAuth();
@@ -81,7 +82,7 @@ export function AgreementBoundary({ children }: { children: ReactNode }) {
         finally { setOpeningBilling(false); }
       }}>{openingBilling ? "Opening billing…" : "Manage billing / cancel subscription"}</Button>
       {billingError && <p role="status" className="text-xs text-muted-foreground">{billingError}</p>}
-      <div className="flex justify-between text-xs text-muted-foreground"><button type="button" onClick={() => void signOut()} className="underline">Sign out</button><a className="underline" href="mailto:support@aetea.studio">Contact support / privacy requests</a></div>
+      <div className="flex justify-between text-xs text-muted-foreground"><button type="button" onClick={() => void signOut()} className="underline">Sign out</button><SupportLink>Contact support / privacy requests</SupportLink></div>
       <p className="text-xs leading-5 text-muted-foreground">If you choose not to agree, you can sign out or contact us about your account, data access or deletion. You can always read the <a href="/terms" className="underline">Terms</a> and <a href="/privacy" className="underline">Privacy Policy</a>.</p>
     </div>
   </main>;

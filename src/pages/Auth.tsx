@@ -13,6 +13,7 @@ import { PolicyDialog, PolicyReview } from "@/components/legal/PolicyReview";
 import { GoogleSignIn } from "@/components/legal/GoogleSignIn";
 import { LegalAcceptance, LegalDocument, legalDocuments } from "@/services/legal";
 import { RegistrationError } from "@/services/registration";
+import { SupportLink } from "@/components/support/SupportLink";
 
 const emailSchema = z.string().email("Please enter a valid email address");
 const passwordSchema = z.string().min(6, "Password must be at least 6 characters");
@@ -302,7 +303,7 @@ export default function Auth() {
 
           <p className="text-center text-xs text-muted-foreground/50 mt-8">
             <button type="button" className="underline disabled:opacity-50" disabled={!documents.length} onClick={() => setOpenPolicy("terms")}>Terms & Conditions</button> · <button type="button" className="underline disabled:opacity-50" disabled={!documents.length} onClick={() => setOpenPolicy("privacy")}>Privacy Policy</button>
-            <span className="block mt-2">Questions? <a href="mailto:support@aetea.studio" className="underline">Contact support</a></span>
+            <span className="block mt-2">Questions? <SupportLink>Contact support</SupportLink></span>
           </p>
           {isLogin && openPolicy && documents.find((doc) => doc.kind === openPolicy) && <PolicyDialog document={documents.find((doc) => doc.kind === openPolicy)!} onClose={() => setOpenPolicy(null)} onReview={() => setOpenPolicy(null)} />}
           {isLogin && policyError && <p role="alert" className="text-xs text-muted-foreground text-center mt-3">{policyError} <button type="button" className="underline" onClick={() => void loadPolicies()}>Retry policies</button></p>}

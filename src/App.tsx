@@ -15,6 +15,9 @@ import Advisory from "./pages/Advisory";
 import Auth from "./pages/Auth";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import { SupportProvider } from "./components/support/SupportContext";
+import { SupportDialog } from "./components/support/SupportDialog";
+import { SupportLauncher } from "./components/support/SupportLauncher";
 import AppPage from "./pages/App";
 import { CampaignShell } from "./layouts/CampaignShell";
 import ChatOrCampaign from "./pages/ChatOrCampaign";
@@ -31,6 +34,7 @@ const App = () => (
         <TooltipProvider>
           <Toaster />
           <BrowserRouter>
+            <SupportProvider>
             <AgreementBoundary>
             <Routes>
               <Route path="/" element={<Landing />} />
@@ -66,6 +70,10 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
             </AgreementBoundary>
+            {/* One panel for every surface; the bubble shows on public pages only. */}
+            <SupportDialog />
+            <SupportLauncher />
+            </SupportProvider>
           </BrowserRouter>
           <Analytics />
           <SpeedInsights />

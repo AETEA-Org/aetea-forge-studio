@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
+import { SupportLink } from "@/components/support/SupportLink";
 
 const emailSchema = z.string().email("Please enter a valid email address");
 
@@ -103,7 +104,7 @@ export default function ForgotPassword() {
           )}
 
           <p className="text-center text-xs text-muted-foreground/50 mt-8">
-            Questions? <a href="mailto:support@aetea.studio" className="underline">Contact support</a>
+            Questions? <SupportLink>Contact support</SupportLink>
           </p>
         </div>
       </div>

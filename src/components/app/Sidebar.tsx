@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Plus, Settings, FolderOpen, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Settings, FolderOpen, ChevronLeft, ChevronRight, MessageCircleQuestion } from "lucide-react";
 import { CreditsPill } from "@/components/app/billing/CreditsPill";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useSupport } from "@/components/support/SupportContext";
 import { SidebarChatList } from "./SidebarChatList";
 import { settingsNavigation } from "@/components/app/settingsNavigation";
 
@@ -13,6 +14,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
+  const { open: openSupport } = useSupport();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -79,6 +81,21 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         >
           <Settings className="h-4 w-4" />
           {!collapsed && <span>Settings</span>}
+        </Button>
+
+        {/* Support lives here rather than in a floating bubble: every chat
+            surface already owns its bottom-right corner. */}
+        <Button
+          variant="ghost"
+          onClick={openSupport}
+          className={cn(
+            "w-full justify-start gap-2 text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent",
+            collapsed && "justify-center px-2"
+          )}
+          title={collapsed ? "Contact support" : undefined}
+        >
+          <MessageCircleQuestion className="h-4 w-4" />
+          {!collapsed && <span>Support</span>}
         </Button>
       </div>
     </aside>
