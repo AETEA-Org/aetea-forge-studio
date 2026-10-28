@@ -3,7 +3,7 @@ import { AgentThinking } from "./AgentThinking";
 import { AgentSteps } from "./AgentSteps";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useAgentRunState } from "@/hooks/useAgentRunState";
-import { headlineStep } from "@/lib/buildProgress";
+import { furthestDeclaredStage, headlineStep } from "@/lib/buildProgress";
 import { FALLBACK_PATIENCE_SECONDS } from "@/services/agentRun";
 import type { ProgressStep, RunConnectionState } from "@/services/agentRun";
 
@@ -69,6 +69,22 @@ export function AgentProgress({ chatId, scope, isStreaming, thinkingText, steps,
   const patienceMs = (execution?.patience_seconds ?? FALLBACK_PATIENCE_SECONDS) * 1000;
   const boundedUntil = execution?.bounded_until ? Date.parse(execution.bounded_until) : null;
   const waiting = !!execution && !ended && boundedUntil !== null && now < boundedUntil;
+  const ownWork = !!execution && OWN_WORK_REASONS.has(execution.reason);
+  // Only a wait that is the step's own work gets the reassurance, and this is
+  // not the same question as whether to be patient. Every phase sets
+  // `bounded_until` — the two approval waits, a retry, a video poll, a queued
+  // slot — so saying "this step takes a few minutes, nothing has gone wrong"
+  // on `waiting` alone told someone sitting behind an approval card that the
+  // thing waiting on *them* was work in progress, which both lies and talks
+  // them out of the one action that unblocks it. On a `retry`, whose deadline
+  // is seconds, the duration was wrong too.
+  //
+  // Patience itself is still owed to all of them: a declared wait of any kind
+  // is the server saying this silence is expected, so `quiet` stays false and
+  // the Stop invitation stays away. What those waits get instead of a
+  // reassurance is their own reason's label, which already says what is being
+  // waited for and, for an approval, what to do about it.
+  const reassure = waiting && ownWork;
   const quiet = !!execution && !ended && !waiting
     && now - Date.parse(execution.meaningful_activity_at) >= patienceMs;
   const patienceMinutes = Math.max(1, Math.round(patienceMs / 60_000));
@@ -88,7 +104,7 @@ export function AgentProgress({ chatId, scope, isStreaming, thinkingText, steps,
   // stays after that step finishes. `active_steps` empties between tool calls,
   // which is most of a turn, so leading with it meant the headline fell back to
   // "Working on your request…" repeatedly mid-run. See lib/buildProgress.ts.
-  if (!ended && execution && OWN_WORK_REASONS.has(execution.reason)) {
+  if (!ended && ownWork) {
     label = headlineStep(steps)?.label ?? execution.active_steps.at(-1)?.label ?? label;
   }
   if (!execution && active && !steps.length && !thinkingText) label = "Getting started…";
@@ -129,10 +145,13 @@ export function AgentProgress({ chatId, scope, isStreaming, thinkingText, steps,
   // a Stop button at two minutes. Pressing it costs them the work and the
   // credits already spent on it.
   const canAbandon = !ended && (quiet || connection === "interrupted");
-  // `of` without `index` never reaches here: the backend sends them together
-  // or not at all, and a step nobody numbered shows no stage line.
-  const stage = headlineStep(steps);
-  const stageLine = !ended && stage?.index && stage?.of ? `Stage ${stage.index} of ${stage.of}` : null;
+  // The furthest stage that declared a position, not the one running now, so
+  // the number cannot count down when a build fills in an earlier part of the
+  // campaign later — see `furthestDeclaredStage`. `of` without `index` never
+  // reaches here: the backend sends them together or not at all, and a step
+  // nobody numbered shows no stage line rather than an invented one.
+  const reached = furthestDeclaredStage(steps);
+  const stageLine = !ended && reached ? `Stage ${reached.index} of ${reached.of}` : null;
   return (
     // The height cap lives on the card, not on a scroller wrapped around it.
     // It used to be the other way round, which put the status line inside the
@@ -160,7 +179,7 @@ export function AgentProgress({ chatId, scope, isStreaming, thinkingText, steps,
           {canAbandon && <button type="button" onClick={onStop} className="min-h-11 underline">Stop</button>}
         </div>
         {stageLine && <p className="shrink-0 px-3 pb-2 text-muted-foreground">{stageLine}</p>}
-        {waiting && <p className="shrink-0 px-3 pb-2 text-muted-foreground">This step takes a few minutes. Nothing has gone wrong.</p>}
+        {reassure && <p className="shrink-0 px-3 pb-2 text-muted-foreground">This step takes a few minutes. Nothing has gone wrong.</p>}
         {failed && !isStreaming && <p className="shrink-0 px-3 pb-2 text-muted-foreground">Review restores your text. Reattach files after a refresh.</p>}
         {execution?.committed_generation && (connection === "stopping" || state === "stopped") && <p className="shrink-0 px-3 pb-2 text-muted-foreground">A video already started may finish. No further clips will be ordered.</p>}
         {expanded && activity && (
