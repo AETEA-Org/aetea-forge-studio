@@ -3,6 +3,7 @@ import { Check, ArrowUpRight } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { documentKey, LegalAcceptance, LegalDocument } from "@/services/legal";
+import { SupportLink } from "@/components/support/SupportLink";
 
 export function PolicyContent({ document }: { document: LegalDocument }) {
   return <article className="space-y-8 text-sm leading-7">
@@ -36,7 +37,7 @@ export function PolicyDialog({ document, onClose, onReview }: {
       <div ref={body} tabIndex={0} aria-label={`${document.title} document`} className="overflow-y-auto min-h-0 flex-1 p-6 focus-visible:outline focus-visible:outline-primary"
         onScroll={(event) => { const el = event.currentTarget; if (el.scrollHeight - el.scrollTop - el.clientHeight <= 8) setAtEnd(true); }}>
         <PolicyContent document={document} />
-        <p className="mt-8 border-t border-border pt-5 text-sm text-muted-foreground">End of document. Questions? Contact support@aetea.studio.</p>
+        <p className="mt-8 border-t border-border pt-5 text-sm text-muted-foreground">End of document. Questions? <SupportLink>Contact support</SupportLink>.</p>
       </div>
       <div className="border-t border-border p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-3">
         <p aria-live="polite" className="text-xs text-muted-foreground flex-1">{atEnd ? "Confirm your review when you are ready." : "Scroll to the end to enable review confirmation."}</p>
