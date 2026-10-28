@@ -190,9 +190,13 @@ export function SupportForm({ onDone }: { onDone: () => void }) {
         {isSending ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Sending…</> : "Send support request"}
       </Button>
 
+      {/* Name what is actually sent. The server attaches the page, the IP and
+          the browser for every caller, signed in or not — the old wording
+          mentioned the page only when signed in and left out the rest. */}
       <p className="text-[11px] leading-relaxed text-muted-foreground">
-        We use your email only to reply to this request
-        {user ? ", and we include the page you are on so we can see where this happened" : ""}.
+        We use your email only to reply to this request. We also send the page you
+        are on, your browser and your IP address, so we can see where this happened
+        {user ? ", along with your account" : ""}.
       </p>
     </form>
   );
