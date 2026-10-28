@@ -325,16 +325,19 @@ export default function DeliverableCanvasPage() {
     };
     const finish = () => {
       if (!current()) return;
-      // The four families above were this page's own guess at what a turn can
-      // change, and `['assets']` was not among them — which is exactly why a
-      // failed turn showed an error over a board missing the posts it had just
-      // saved. At the end of a turn, repaint everything.
+      // No run-end repaint here. The four families above were this page's own
+      // guess at what a turn can change, and `['assets']` was not among them —
+      // which is exactly why a failed turn showed an error over a board
+      // missing the posts it had just saved. That is fixed where the stream
+      // ends, once per ending, for every surface. Repeating it here would run
+      // a second cache-wide invalidation while the first round of refetches
+      // was still landing, so the second is not reliably deduplicated: the
+      // same screen fetched twice for one ending.
       //
-      // Both before `clearRun()`, which empties `streamingAssets`
-      // synchronously: the refetch is async so the board still blanks for a
-      // frame, but the gap starts closing earlier rather than later.
+      // Before `clearRun()`, which empties `streamingAssets` synchronously:
+      // the refetch is async so the board still blanks for a frame, but the
+      // gap starts closing earlier rather than later.
       refresh();
-      invalidateForRunEnd(queryClient);
       clearRun();
     };
     return {
