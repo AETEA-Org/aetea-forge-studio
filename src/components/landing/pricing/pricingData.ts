@@ -324,23 +324,42 @@ export function getPlanPrice(
 
 /**
  * Every chargeable action, in the order and the wording of the customer
- * pricing document. The first two are ranges because a brainstorm and a
- * campaign build vary with the size of the job; the rest are firm, because a
- * finished image or a second of video costs the same every time.
+ * pricing document — except for the two text rows, which carry no figure.
  *
- * Resolution and audio each have their own row since 2026-10-28. A single
- * figure for "video" was wrong in both directions at once: it under-charged 4K
- * by five times and over-charged silent 720p.
+ * **Brainstorm and Campaign Build deliberately publish no number**, on Abdur's
+ * instruction of 2026-10-28: *"if you mention anywhere in our sort of pricing
+ * pages that brainstorm costs this much or campaign costs this much, remove it.
+ * No need to tell them, because we can't guarantee."*
+ *
+ * The code already agreed with him. Text work is charged from measured tokens,
+ * not from a flat figure, so a range is a prediction rather than a price — and
+ * the observed top end of a campaign build is about 1,880 credits against the
+ * 1,800 the document prints. A published ceiling the system can exceed is worse
+ * than no ceiling: it reads as a promise and breaks quietly.
+ *
+ * **So this table differs from the supplied customer document in exactly these
+ * two rows, on purpose.** The developer document's acceptance check 1 says
+ * "Displayed plan and action prices exactly match the customer section", and
+ * for the other fifteen figures it does. Anyone reconciling the two will find
+ * this mismatch; it is an override, not a defect, and the numbers must not be
+ * put back. The customer document itself still lists both ranges, which is the
+ * operator's to change there.
+ *
+ * The rest are firm, because a finished image or a second of video costs the
+ * same every time and the meter charges exactly these figures. Resolution and
+ * audio each have their own row since 2026-10-28: a single figure for "video"
+ * was wrong in both directions at once, under-charging 4K by five times and
+ * over-charging silent 720p.
  */
 export const CREDIT_ACTIONS: PricingTableRow[] = [
   {
     action: "Brainstorm",
-    cost: "100–500",
+    cost: "By the work it takes",
     meaning: "Thinking an idea, a challenge or a brief through with AETEA.",
   },
   {
     action: "Campaign Build",
-    cost: "700–1,800",
+    cost: "By the work it takes",
     meaning:
       "Brief dissection, research, strategy, creative foundations and a deliverables plan. Any images or video you choose to generate are charged separately.",
   },
