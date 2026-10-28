@@ -27,6 +27,21 @@ export interface ExecutionSnapshot {
   reason: string;
   meaningful_activity_at: string;
   state_changed_at: string;
+  /**
+   * The earliest moment a declared wait could lapse, or absent when nothing
+   * is waiting. While it is still in the future the server is *expecting* this
+   * silence, so the screen must not call the run stalled or offer to abandon
+   * it. Absent from a backend that predates it, which reads as "no declared
+   * wait" — exactly how this client behaved before.
+   */
+  bounded_until?: string | null;
+  /**
+   * The server's own silence budget for this run, in seconds, constant for its
+   * whole life. The browser used to carry its own figure — 120 s against the
+   * server's 900 — and told people a healthy run was dead seven and a half
+   * times too early.
+   */
+  patience_seconds?: number;
   active_steps: ProgressStep[];
   pending_decision?: { kind: string; proposal_id?: string; offer_id?: string; rationale?: string; status?: string } | null;
   committed_generation?: boolean;
@@ -44,7 +59,25 @@ export interface ProgressStep {
   step_id: string;
   label: string;
   state: ProgressState;
+  /**
+   * Where this step sits in a sequence whose length was declared before it
+   * started — "stage 4 of 6". Both or neither; absent for the great majority
+   * of steps, whose length nobody knows, and a missing pair means no stage
+   * line rather than a guessed one.
+   */
+  index?: number;
+  of?: number;
 }
+
+/**
+ * The server's patience when it has not said what it is, in seconds.
+ *
+ * It mirrors `RUN_STALL_SECONDS` and exists only for the window in which this
+ * client is deployed against a backend that does not send `patience_seconds`.
+ * The backend ships first precisely so that window is empty; this is here so
+ * that if it is not, the screen is too patient rather than not patient enough.
+ */
+export const FALLBACK_PATIENCE_SECONDS = 900;
 
 /**
  * A campaign change waiting on the user.
