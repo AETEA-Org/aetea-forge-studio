@@ -554,6 +554,14 @@ export default function ChatView() {
           updateMessage={updateMessage}
         />
 
+        {/* The cards between the conversation and the composer: run progress,
+            the campaign-mode offer, a decision, an out-of-credits notice. They
+            are the only children here that can grow without limit, and the root
+            is now overflow-hidden — so on a short viewport with several of them
+            open they would push the composer out of a box that no longer
+            scrolls, leaving no way to send. They give way instead: this scrolls,
+            the composer does not. */}
+        <div className="min-h-0 shrink overflow-y-auto chat-scrollbar">
         {showCampaignLoading && isStreaming && (
           <BriefAnalysisLoading steps={steps} variant="inline" />
         )}
@@ -611,6 +619,8 @@ export default function ChatView() {
             onTopUp={() => navigate("/app/settings?tab=billing")}
           />
         )}
+
+        </div>
 
         <div className="chat-scrollbar shrink-0 min-h-0 max-h-[calc(100%-72px)] overflow-y-auto px-3 pb-3">
         <ChatInput

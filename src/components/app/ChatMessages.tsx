@@ -89,8 +89,13 @@ export function ChatMessages({
     setShowJumpToBottom(false);
   }, []);
 
-  // A taller viewport normally clamps scrollTop near the end of the history.
-  // Leave only the trailing space needed to keep the same text at the top.
+  // The single writer of `scrollTop` for everything that is not a gesture:
+  // every content change, every resize. It does one of two jobs depending on
+  // where the reader is — stay at the end, or hold the position they chose.
+  // Both live here because two mechanisms writing `scrollTop` is what made
+  // following a streaming reply impossible before: the old code pinned the old
+  // offset on every token, so anything scrolling to the bottom from outside
+  // was immediately undone.
   const preserveReadingPosition = useCallback(() => {
     const el = scrollRef.current;
     const content = contentRef.current;
@@ -104,8 +109,11 @@ export function ChatMessages({
       scrollToBottom();
       return;
     }
-    // Reflow at a wider width, loaded fonts, or shortened history must not
-    // leave the conversation scrolled into empty space.
+    // Holding the position they chose. A taller viewport normally clamps
+    // scrollTop near the end of the history, so leave only the trailing space
+    // needed to keep the same text at the top — and a reflow at a wider width,
+    // loaded fonts or shortened history must not leave the conversation
+    // scrolled into empty space.
     if (contentHeight < contentHeightRef.current) {
       readingTopRef.current = Math.min(readingTopRef.current, Math.max(0, contentHeight - el.clientHeight));
     }
@@ -172,9 +180,16 @@ export function ChatMessages({
     const chatSwitched = firstMessageId !== null && firstMessageId !== prevFirstMessageIdRef.current;
 
     const isInitialLoad = prevMessageCount === 0 && currentMessageCount > 0 && !isStreaming && !updateMessage;
+    // An optimistic `temp-` row is the only thing that means *you* just sent
+    // something. Testing `role === "user"` instead caught the end of a turn as
+    // well: stopping clears the optimistic message and refetches, and a normal
+    // finish refetches before clearing it, so in both cases the list grows and
+    // briefly ends with a user message that nobody sent — which would have
+    // yanked a reader who had scrolled up back to the bottom at exactly the
+    // moment they were reading. Same convention as the rewind affordance below.
     const sentOwnMessage =
       currentMessageCount > prevMessageCount &&
-      messages[currentMessageCount - 1].role === "user";
+      messages[currentMessageCount - 1].message_id.startsWith("temp-");
 
     if (isInitialLoad || chatSwitched || sentOwnMessage) {
       scrollToBottom();
