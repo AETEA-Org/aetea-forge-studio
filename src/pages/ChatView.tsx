@@ -516,7 +516,14 @@ export default function ChatView() {
   }
 
   return (
-    <div className="flex flex-col h-full min-h-0">
+    // The layout's <main> is a scroller, which is what pages like Settings
+    // need. This view is the other kind: it is exactly as tall as its slot and
+    // does its scrolling inside the message pane, so nothing here may spill
+    // out. Without this, the optional cards above the composer (run progress,
+    // the campaign-mode offer, an out-of-credits notice) pushed the column
+    // past the viewport and handed the surplus to <main>, which then scrolled
+    // the header and composer off the top of the page.
+    <div className="flex flex-col h-full min-h-0 overflow-hidden">
       {/* Header with Assets button */}
       <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-border">
         <h1 className="text-lg font-semibold truncate">{chatTitle}</h1>

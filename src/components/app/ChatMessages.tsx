@@ -62,6 +62,9 @@ export function ChatMessages({
   const contentRef = useRef<HTMLDivElement>(null);
   const trailingSpaceRef = useRef<HTMLDivElement>(null);
   const readingTopRef = useRef(0);
+  /** Whether the end of the conversation is what is being read, and so whether
+   *  a reply that grows should keep itself on screen. */
+  const followBottomRef = useRef(true);
   const viewportHeightRef = useRef(0);
   const contentHeightRef = useRef(0);
   const prevMessageCountRef = useRef<number>(0);
@@ -75,6 +78,17 @@ export function ChatMessages({
     setShowJumpToBottom(hasOverflow && !isNearBottom(el));
   }, []);
 
+  const scrollToBottom = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    if (trailingSpaceRef.current) trailingSpaceRef.current.style.height = "0px";
+    el.scrollTop = el.scrollHeight;
+    readingTopRef.current = el.scrollTop;
+    viewportHeightRef.current = el.clientHeight;
+    followBottomRef.current = true;
+    setShowJumpToBottom(false);
+  }, []);
+
   // A taller viewport normally clamps scrollTop near the end of the history.
   // Leave only the trailing space needed to keep the same text at the top.
   const preserveReadingPosition = useCallback(() => {
@@ -83,6 +97,13 @@ export function ChatMessages({
     const trailing = trailingSpaceRef.current;
     if (!el || !content || !trailing) return;
     const contentHeight = content.offsetHeight;
+    // Reading the end of the conversation: there is no position to preserve,
+    // and a reply still being written has to bring the view down with it.
+    if (followBottomRef.current) {
+      contentHeightRef.current = contentHeight;
+      scrollToBottom();
+      return;
+    }
     // Reflow at a wider width, loaded fonts, or shortened history must not
     // leave the conversation scrolled into empty space.
     if (contentHeight < contentHeightRef.current) {
@@ -93,7 +114,7 @@ export function ChatMessages({
     el.scrollTop = readingTopRef.current;
     viewportHeightRef.current = el.clientHeight;
     updateJumpVisibility();
-  }, [updateJumpVisibility]);
+  }, [scrollToBottom, updateJumpVisibility]);
 
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;
@@ -101,7 +122,11 @@ export function ChatMessages({
     // Ignore native clamping caused by a resize, before ResizeObserver restores it.
     if (el.clientHeight === viewportHeightRef.current) {
       readingTopRef.current = el.scrollTop;
-      preserveReadingPosition();
+      // Scrolling up is how you stop a streaming reply dragging the view down;
+      // coming back to the end is how you start it again. Pinning the position
+      // would fight the gesture, so only one of the two ever runs.
+      followBottomRef.current = isNearBottom(el);
+      if (!followBottomRef.current) preserveReadingPosition();
     }
     updateJumpVisibility();
   }, [preserveReadingPosition, updateJumpVisibility]);
@@ -129,17 +154,14 @@ export function ChatMessages({
     return out;
   };
 
-  const scrollToBottom = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    if (trailingSpaceRef.current) trailingSpaceRef.current.style.height = "0px";
-    el.scrollTop = el.scrollHeight;
-    readingTopRef.current = el.scrollTop;
-    viewportHeightRef.current = el.clientHeight;
-    setShowJumpToBottom(false);
-  }, []);
-
-  /** Only auto-scroll on first history paint or when switching chats — not while streaming. */
+  /**
+   * Jump to the end on first history paint, when switching chats, and when you
+   * send — sending is itself a return to the end of the conversation.
+   *
+   * Following a reply while it streams is `preserveReadingPosition`'s job: it
+   * sticks to the end only while you are already there, so scrolling up to
+   * re-read something is not undone by the next token.
+   */
   useEffect(() => {
     if (!scrollRef.current) return;
 
@@ -150,22 +172,20 @@ export function ChatMessages({
     const chatSwitched = firstMessageId !== null && firstMessageId !== prevFirstMessageIdRef.current;
 
     const isInitialLoad = prevMessageCount === 0 && currentMessageCount > 0 && !isStreaming && !updateMessage;
+    const sentOwnMessage =
+      currentMessageCount > prevMessageCount &&
+      messages[currentMessageCount - 1].role === "user";
 
-    const shouldAutoScroll = isInitialLoad || chatSwitched;
-
-    if (shouldAutoScroll) {
-      if (trailingSpaceRef.current) trailingSpaceRef.current.style.height = "0px";
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-      readingTopRef.current = scrollRef.current.scrollTop;
-      viewportHeightRef.current = scrollRef.current.clientHeight;
-      setShowJumpToBottom(false);
+    if (isInitialLoad || chatSwitched || sentOwnMessage) {
+      scrollToBottom();
     }
 
     prevMessageCountRef.current = currentMessageCount;
     prevFirstMessageIdRef.current = firstMessageId;
-  }, [messages, isStreaming, updateMessage]);
+  }, [messages, isStreaming, updateMessage, scrollToBottom]);
 
-  /** Re-evaluate jump button when content grows (e.g. streaming) without a scroll event. */
+  /** Content grew (e.g. streaming) with no scroll event: hold the reading
+   *  position, or stay at the end if that is where the reader is. */
   useLayoutEffect(() => {
     preserveReadingPosition();
   }, [
@@ -195,8 +215,11 @@ export function ChatMessages({
 
   return (
     <div className="relative flex-1 min-h-[72px] flex flex-col">
+      {/* overscroll-contain: a wheel that runs out of history stays in this
+          pane instead of being handed to the page behind it, which used to
+          drag the whole chat — header and composer included — up the screen. */}
       <div
-        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden chat-scrollbar"
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain chat-scrollbar"
         ref={scrollRef}
         onScroll={handleScroll}
       >
