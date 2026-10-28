@@ -80,6 +80,39 @@ export function headlineStep(steps: ProgressStep[]): ProgressStep | undefined {
   return stage ?? activity ?? steps.at(-1);
 }
 
+/**
+ * How far through a declared sequence the run has got, as the furthest stage
+ * that declared a position — never the one running right now.
+ *
+ * **The difference matters and it is not hypothetical.** `index` is a fixed
+ * position in the campaign's canonical order, assigned by a table on the
+ * backend, but the agent chooses what to write and when: the whole point of
+ * the campaign tools is that nothing pushes a build through a fixed pipeline.
+ * So a build that sets the creative direction and then goes back to fill in
+ * the brief emits stage 5 and then stage 2, and a line reading the current
+ * step would count down — which is the "finish line moving" complaint this
+ * screen's own comments were written about, in its sharpest form.
+ *
+ * Taking the furthest fixes that by construction: `steps` only ever grows and
+ * a step's index never changes, so the maximum can only rise. It also means a
+ * stage nobody numbered — a section added to the backend and not to its table
+ * — holds the line where it was instead of making it vanish and come back.
+ *
+ * The denominator comes from the same step, so the pair is always one the
+ * backend actually sent rather than two halves of different declarations.
+ */
+export function furthestDeclaredStage(
+  steps: ProgressStep[]
+): { index: number; of: number } | undefined {
+  let best: { index: number; of: number } | undefined;
+  for (const step of steps) {
+    const { index, of } = step;
+    if (typeof index !== "number" || typeof of !== "number") continue;
+    if (!best || index > best.index) best = { index, of };
+  }
+  return best;
+}
+
 export function buildProgress(steps: ProgressStep[]): BuildProgress {
   const stages = steps.filter((step) => isStageStep(step.step_id));
   const stage = stages.at(-1);

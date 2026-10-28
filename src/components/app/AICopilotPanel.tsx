@@ -357,6 +357,13 @@ export function AICopilotPanel({
               setIsStreaming(false);
               setOptimisticMessages([]);
               setError(errorMsg);
+              // Its two siblings above both refetch the thread before clearing
+              // the screen, and this one did not: a failed turn in this panel
+              // wiped whatever it had already written and then re-read nothing,
+              // so the reply that *was* saved stayed invisible until a reload.
+              // The rest of what the turn produced is repainted once, for every
+              // surface, where the stream ends — see `invalidateForRunEnd`.
+              void queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
               isModifyingActiveRef.current = false;
               setIsModifying(false, null);
               toast({
@@ -500,8 +507,6 @@ export function AICopilotPanel({
             onCancelled: async () => {
               await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
               if (controller.signal.aborted) return;
-              invalidateForDataChange(queryClient, "asset", { chatId, userEmail: user?.email });
-              invalidateForDataChange(queryClient, "chat", { chatId, userEmail: user?.email });
               setUpdateMessage(null);
               setStreamingContent("");
               setThinkingText("");
@@ -511,8 +516,6 @@ export function AICopilotPanel({
             onError: async () => {
               await queryClient.refetchQueries({ queryKey: ["chat-messages", chatId] });
               if (controller.signal.aborted) return;
-              invalidateForDataChange(queryClient, "asset", { chatId, userEmail: user?.email });
-              invalidateForDataChange(queryClient, "chat", { chatId, userEmail: user?.email });
               setUpdateMessage(null);
               setStreamingContent("");
               setThinkingText("");
