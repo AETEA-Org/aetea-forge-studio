@@ -158,7 +158,23 @@ export function AgentProgress({ chatId, scope, isStreaming, thinkingText, steps,
     // scrolling area: expanding the activity pushed the box past the cap, the
     // whole thing scrolled, and the line scrolled out of sight — taking the
     // only control that closes it again with it.
-    <div className="nodrag nowheel flex min-h-0 max-h-[40%] shrink flex-col px-3 pb-2" aria-label="Run progress">
+    //
+    // The cap is a fraction of the **viewport**, not of the parent, and that is
+    // the whole of the second bug. It used to be `max-h-[40%]`, which means 40%
+    // of whatever box happens to be above it. When ChatView gained a scrolling
+    // wrapper around its cards, that box stopped being the chat panel and
+    // became a container sized to this card itself — so the cap turned into 40%
+    // of the card's own wanted height. Measured on a 620px viewport: the panel
+    // got 123px with 246px of activity crushed into a 61px scroller, while 185px
+    // of the wrapper around it sat empty. "Too squeezed to read" was exactly
+    // right. Against the viewport it is 248px with a 186px scroller, and no
+    // wrapper anyone adds later can quietly shrink it again.
+    //
+    // `shrink` is still what protects a small container — a canvas chat node can
+    // be dragged down to 180px, and flex shrinks this below the cap rather than
+    // pushing the composer out. Checked at 180, 300 and 520px with real
+    // siblings; the composer stays inside at every size.
+    <div className="nodrag nowheel flex min-h-0 max-h-[40dvh] shrink flex-col px-3 pb-2" aria-label="Run progress">
       <div className="flex min-h-0 flex-col rounded-lg border border-border bg-muted/30 text-xs">
         <div className="flex shrink-0 flex-wrap items-center gap-x-3 px-3 py-2">
           {activity ? (
