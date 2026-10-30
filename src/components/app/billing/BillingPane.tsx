@@ -44,7 +44,20 @@ export function BillingPane() {
   const grant = grantFor(plan.data?.plan_id);
   const accent = accentFor(plan.data?.plan_id);
   const expiryDate = formatDate(balance.data?.next_expiry_at);
-  const renewsOn = formatDate(plan.data?.current_period_end);
+  const periodEnd = plan.data?.current_period_end;
+  const periodEndOn = formatDate(periodEnd);
+
+  // `current_period_end` is the end of the paid period, not a promise to renew.
+  // A cancelled subscription keeps sending one, so the pane told the owner
+  // "Renews 29 October" on 30 October, for a plan cancelled a month earlier and
+  // a balance of zero. The date was never wrong; only the verb was. Anything
+  // other than "canceled" — including `past_due`, where Stripe is still
+  // retrying the card, and a status we do not recognise — is still running, so
+  // it keeps the wording we would have shown anyway rather than a guess.
+  const cancelled = plan.data?.status === "canceled";
+  const periodEndPassed =
+    !!periodEnd && new Date(periodEnd).getTime() <= Date.now();
+  const periodVerb = !cancelled ? "Renews" : periodEndPassed ? "Ended" : "Ends";
   const planName =
     PRICING_PLANS.find((candidate) => candidate.id === plan.data?.plan_id)?.name ??
     null;
@@ -162,9 +175,9 @@ export function BillingPane() {
                   {planName}
                   {plan.data?.billing_period === "annual" ? " · Annual" : " · Monthly"}
                 </span>
-                {renewsOn && (
+                {periodEndOn && (
                   <span className="text-xs text-muted-foreground">
-                    Renews {renewsOn}
+                    {periodVerb} {periodEndOn}
                   </span>
                 )}
               </span>
