@@ -41,9 +41,6 @@ export function BillingPane() {
 
   const credits = balance.data?.credits ?? 0;
   const expiring = balance.data?.expiring_next ?? 0;
-  const expired = balance.data?.expired_credits ?? 0;
-  const expiredOn = formatDate(balance.data?.expired_at);
-  const grant = grantFor(plan.data?.plan_id);
   const accent = accentFor(plan.data?.plan_id);
   const expiryDate = formatDate(balance.data?.next_expiry_at);
   const periodEnd = plan.data?.current_period_end;
@@ -71,9 +68,20 @@ export function BillingPane() {
   // "your plan ended" without "because you cancelled on 30 September" leaves a
   // zero balance looking like a fault. Omitted when we never recorded it.
   const cancelledOn = cancelled ? formatDate(plan.data?.canceled_at) : null;
-  // Credits lost with the plan. Said as one sentence when they went on the day
-  // it ended, because that is the connection the customer is trying to make.
-  const expiredWithPlan = cancelled && !!expiredOn && expiredOn === periodEndOn;
+
+  // **Over, not current.** A plan whose period has run out is not the plan
+  // someone is on, and showing it as one was the rest of the complaint: the
+  // pane still led with "Spire · Monthly", the plan dialog still badged Spire
+  // CURRENT with its button disabled to "Your plan", and the balance still
+  // claimed 19,900 credits were granted every month to an account that is
+  // granted nothing. Changing the verb to "Ended" left all three standing.
+  const planEnded = cancelled && periodEndPassed;
+
+  // Only a plan that will actually grant again says what it grants. A
+  // cancelled plan makes no further grants even while it runs out its last
+  // paid period, so this is gated on the cancellation rather than on the end
+  // date. It doubles as the balance bar's scale, which is why it is read once.
+  const grant = cancelled ? null : grantFor(plan.data?.plan_id);
   const planName =
     PRICING_PLANS.find((candidate) => candidate.id === plan.data?.plan_id)?.name ??
     null;
@@ -166,13 +174,6 @@ export function BillingPane() {
               <span className="text-amber-500">
                 {formatCredits(expiring)} expire on {expiryDate}
               </span>
-            ) : expired > 0 && expiredOn ? (
-              <span>
-                {formatCredits(expired)} credits expired{" "}
-                {expiredWithPlan
-                  ? `when your plan ended on ${expiredOn}`
-                  : `on ${expiredOn}`}
-              </span>
             ) : (
               <span>Bought credits stay valid for three months</span>
             )}
@@ -183,6 +184,34 @@ export function BillingPane() {
           {/* -------------------------------------------------------------- */}
           {plan.isLoading ? (
             <Skeleton className="mt-5 h-12 w-full rounded-lg" />
+          ) : planEnded ? (
+            // What happened, and the way back — not a plan panel for a plan
+            // that is over. "Payment & invoices" stays, because past invoices
+            // are exactly what someone wants after a plan ends.
+            <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-border/60 pt-4">
+              <span className="min-w-0 flex-1 text-sm text-muted-foreground">
+                Your {planName ?? "previous"} plan ended on {periodEndOn}
+                {cancelledOn && <>, because you cancelled on {cancelledOn}</>}.
+              </span>
+              <span className="flex flex-wrap gap-2">
+                <Button size="sm" onClick={() => setPlansOpen(true)}>
+                  See plans
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={openPortal}
+                  disabled={portal.isPending}
+                >
+                  {portal.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                  )}
+                  Payment &amp; invoices
+                </Button>
+              </span>
+            </div>
           ) : planName ? (
             <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-border/60 pt-4">
               <span
@@ -196,7 +225,15 @@ export function BillingPane() {
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-semibold">
                   {planName}
-                  {plan.data?.billing_period === "annual" ? " · Annual" : " · Monthly"}
+                  {/* A one-time purchase has no billing period, and this used
+                      to read it as monthly because anything that was not
+                      "annual" fell through to it — so an £8 Start pack was
+                      labelled "Start · Monthly". Named only when there is one. */}
+                  {plan.data?.billing_period === "annual"
+                    ? " · Annual"
+                    : plan.data?.billing_period === "monthly"
+                      ? " · Monthly"
+                      : ""}
                 </span>
                 {periodEndOn && (
                   <span className="text-xs text-muted-foreground">
@@ -241,7 +278,10 @@ export function BillingPane() {
       <PlansDialog
         open={plansOpen}
         onOpenChange={setPlansOpen}
-        currentPlanId={plan.data?.plan_id}
+        // Null once it is over, so the dialog stops badging a finished plan
+        // CURRENT and greying its button to "Your plan" — which left someone
+        // with no plan unable to choose the one they had just lost.
+        currentPlanId={planEnded ? null : plan.data?.plan_id}
       />
     </div>
   );
