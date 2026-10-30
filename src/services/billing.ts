@@ -84,6 +84,18 @@ export interface PlanSummary {
   billing_period: string | null;
   status: string | null;
   current_period_end: string | null;
+  /**
+   * When the customer asked to cancel — not when access stops. A plan
+   * cancelled on 30 September can keep running to 29 October. Null means not
+   * cancelled, or cancelled before we started recording it.
+   */
+  canceled_at: string | null;
+  /**
+   * True when this plan will not renew. `status` stays "active" for the whole
+   * month between a cancellation and the period ending, so this is the only
+   * field that can be trusted to choose between "Renews" and "Ends".
+   */
+  cancel_at_period_end: boolean;
   expected_costs: ExpectedCost[];
 }
 
@@ -92,6 +104,12 @@ export interface BalanceSummary {
   /** How many of those credits expire next, and when. */
   expiring_next: number;
   next_expiry_at: string | null;
+  /**
+   * The credits most recently lost, and the day they went. Here so a balance
+   * of zero can explain itself rather than looking like a fault.
+   */
+  expired_credits: number;
+  expired_at: string | null;
 }
 
 /** One thing the customer asked for, not one provider call. */

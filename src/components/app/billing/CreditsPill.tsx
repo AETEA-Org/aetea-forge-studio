@@ -44,6 +44,10 @@ export function CreditsPill({ className }: { className?: string }) {
   const empty = credits <= 0;
   const low = !empty && credits < LOW_CREDITS;
   const expiryDate = formatDate(data.next_expiry_at);
+  // Why the balance is zero, without making them open settings for it. An
+  // empty pill with no explanation reads as a fault in the product.
+  const expiredOn = formatDate(data.expired_at);
+  const expired = data.expired_credits ?? 0;
 
   const pill = (
     <button
@@ -71,7 +75,13 @@ export function CreditsPill({ className }: { className?: string }) {
         <TooltipTrigger asChild>{pill}</TooltipTrigger>
         <TooltipContent side="bottom">
           {empty ? (
-            <span>You're out of credits. Add more to carry on.</span>
+            <span>
+              You're out of credits.
+              {expired > 0 && expiredOn && (
+                <> {formatCredits(expired)} expired on {expiredOn}.</>
+              )}{" "}
+              Add more to carry on.
+            </span>
           ) : (
             <span>
               {formatCredits(credits)} credits

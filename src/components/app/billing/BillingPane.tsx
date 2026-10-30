@@ -41,6 +41,8 @@ export function BillingPane() {
 
   const credits = balance.data?.credits ?? 0;
   const expiring = balance.data?.expiring_next ?? 0;
+  const expired = balance.data?.expired_credits ?? 0;
+  const expiredOn = formatDate(balance.data?.expired_at);
   const grant = grantFor(plan.data?.plan_id);
   const accent = accentFor(plan.data?.plan_id);
   const expiryDate = formatDate(balance.data?.next_expiry_at);
@@ -54,10 +56,24 @@ export function BillingPane() {
   // other than "canceled" — including `past_due`, where Stripe is still
   // retrying the card, and a status we do not recognise — is still running, so
   // it keeps the wording we would have shown anyway rather than a guess.
-  const cancelled = plan.data?.status === "canceled";
+  //
+  // `cancel_at_period_end` is what actually answers "will this renew". For the
+  // month between a cancellation and the period ending, Stripe keeps the status
+  // at "active", so status alone would still promise a renewal for the state a
+  // customer spends most of that month in. `canceled_at` is deliberately not
+  // used for the verb — it says when they asked, not whether it still stands.
+  const cancelled =
+    plan.data?.status === "canceled" || plan.data?.cancel_at_period_end === true;
   const periodEndPassed =
     !!periodEnd && new Date(periodEnd).getTime() <= Date.now();
   const periodVerb = !cancelled ? "Renews" : periodEndPassed ? "Ended" : "Ends";
+  // The reason, which is the half of the complaint the verb does not answer:
+  // "your plan ended" without "because you cancelled on 30 September" leaves a
+  // zero balance looking like a fault. Omitted when we never recorded it.
+  const cancelledOn = cancelled ? formatDate(plan.data?.canceled_at) : null;
+  // Credits lost with the plan. Said as one sentence when they went on the day
+  // it ended, because that is the connection the customer is trying to make.
+  const expiredWithPlan = cancelled && !!expiredOn && expiredOn === periodEndOn;
   const planName =
     PRICING_PLANS.find((candidate) => candidate.id === plan.data?.plan_id)?.name ??
     null;
@@ -150,6 +166,13 @@ export function BillingPane() {
               <span className="text-amber-500">
                 {formatCredits(expiring)} expire on {expiryDate}
               </span>
+            ) : expired > 0 && expiredOn ? (
+              <span>
+                {formatCredits(expired)} credits expired{" "}
+                {expiredWithPlan
+                  ? `when your plan ended on ${expiredOn}`
+                  : `on ${expiredOn}`}
+              </span>
             ) : (
               <span>Bought credits stay valid for three months</span>
             )}
@@ -178,6 +201,7 @@ export function BillingPane() {
                 {periodEndOn && (
                   <span className="text-xs text-muted-foreground">
                     {periodVerb} {periodEndOn}
+                    {cancelledOn && <> · you cancelled on {cancelledOn}</>}
                   </span>
                 )}
               </span>
