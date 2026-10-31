@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Facebook, Instagram, Linkedin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FOOTER_BRAND_MARK_CLASS, MARKETING_BRAND_LINKS } from "@/components/landing/marketingBrandLinks";
+import { SupportLink } from "@/components/support/SupportLink";
 
 const socialLinks = [
   { label: "LinkedIn", href: "https://www.linkedin.com/company/aetea-studio/", Icon: Linkedin },
@@ -107,6 +108,11 @@ export function Footer() {
             © {new Date().getFullYear()} AETEA
           </p>
         </div>
+        <nav aria-label="Legal" className="flex flex-wrap justify-center gap-5 mt-8 text-xs text-muted-foreground">
+          <Link className="hover:text-foreground underline" to="/privacy">Privacy Policy</Link>
+          <Link className="hover:text-foreground underline" to="/terms">Terms & Conditions</Link>
+          <SupportLink className="hover:text-foreground">Contact</SupportLink>
+        </nav>
       </div>
     </footer>
   );

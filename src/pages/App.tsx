@@ -12,6 +12,7 @@ import { TierPicker } from "@/components/app/ChatInput";
 import { OutOfCredits } from "@/components/app/billing/OutOfCredits";
 import { CampaignCostNote } from "@/components/app/billing/CampaignCostNote";
 import { reportSendFailure } from "@/services/sendFailure";
+import { BRIEF_EXTENSIONS, BRIEF_FILE_ACCEPT, BRIEF_TYPE_LABEL, partitionChatFiles, summarizeFileErrors } from "@/lib/chatFileValidation";
 import { cn } from "@/lib/utils";
 
 export default function App() {
@@ -24,13 +25,27 @@ export default function App() {
   const [isStartingBrainstorm, setIsStartingBrainstorm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const { createProject, isSubmitting, showLoadingScreen, steps, error, reset } = useCreateProject();
+  const { createProject, isSubmitting, showLoadingScreen, steps, error, chatId: buildingChatId, reset } = useCreateProject();
+
+  const takeBriefFiles = (incoming: File[]) => {
+    const { accepted, errors } = partitionChatFiles(incoming, BRIEF_EXTENSIONS);
+    if (errors.length > 0) {
+      toast({
+        title: "Some files were skipped",
+        description: summarizeFileErrors(errors),
+        variant: "destructive",
+      });
+    }
+    if (accepted.length > 0) {
+      setFiles((prev) => [...prev, ...accepted]);
+      if (error) reset();
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      const newFiles = Array.from(e.target.files);
-      setFiles((prev) => [...prev, ...newFiles]);
-      if (error) reset(); // Clear error when files are uploaded
+      takeBriefFiles(Array.from(e.target.files));
+      e.target.value = "";
     }
   };
 
@@ -60,17 +75,7 @@ export default function App() {
     e.stopPropagation();
     setIsDragging(false);
 
-    const droppedFiles = Array.from(e.dataTransfer.files);
-    // Filter for accepted file types
-    const acceptedFiles = droppedFiles.filter(file => {
-      const extension = file.name.split('.').pop()?.toLowerCase();
-      return ['pdf', 'doc', 'docx', 'ppt', 'pptx'].includes(extension || '');
-    });
-
-    if (acceptedFiles.length > 0) {
-      setFiles((prev) => [...prev, ...acceptedFiles]);
-      if (error) reset(); // Clear error when files are uploaded
-    }
+    takeBriefFiles(Array.from(e.dataTransfer.files));
   };
 
   // This page starts billable work — a brainstorm turn, and the campaign build,
@@ -137,7 +142,7 @@ export default function App() {
 
   // Show loading screen when campaign creation started
   if (showLoadingScreen) {
-    return <BriefAnalysisLoading steps={steps} />;
+    return <BriefAnalysisLoading steps={steps} chatId={buildingChatId ?? undefined} onOpenConversation={() => navigate(`/app/chat/${buildingChatId}`)} />;
   }
 
   // Show form when NOT submitting
@@ -162,7 +167,7 @@ export default function App() {
               ref={fileInputRef}
               type="file"
               multiple
-              accept=".pdf,.doc,.docx,.ppt,.pptx"
+              accept={BRIEF_FILE_ACCEPT}
               onChange={handleFileChange}
               className="hidden"
             />
@@ -187,7 +192,7 @@ export default function App() {
                 Drop files here or click to upload
               </p>
               <p className="text-xs text-muted-foreground">
-                PDF, Word, or PowerPoint files
+                {BRIEF_TYPE_LABEL}
               </p>
             </div>
           </div>
@@ -227,16 +232,62 @@ export default function App() {
             </div>
           </div>
 
-          {/* Text Brief */}
-          <Textarea
-            placeholder="Describe your campaign goals, ideas, target audience, deliverables, timeline, or any other relevant details..."
-            value={briefText}
-            onChange={(e) => {
-              setBriefText(e.target.value);
-              if (error) reset();
-            }}
-            className="min-h-[150px] bg-background/50 border-border/50 resize-none"
-          />
+          {/* Text brief, shaped like the composer everywhere else in the app:
+              one surface holding the text and the controls that act on it,
+              rather than a bordered box with its options floating underneath.
+              The upload panel above is deliberately left as it is. */}
+          <div className="space-y-2 rounded-2xl border border-border bg-card/60 p-2 transition-colors focus-within:border-primary/50 focus-within:bg-card">
+            <Textarea
+              placeholder="Describe your campaign goals, ideas, target audience, deliverables, timeline, or any other relevant details..."
+              value={briefText}
+              onChange={(e) => {
+                setBriefText(e.target.value);
+                if (error) reset();
+              }}
+              className="min-h-[130px] w-full resize-none border-0 bg-transparent px-1 py-1.5 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+            />
+
+            <div className="flex flex-wrap items-center gap-2">
+              <TierPicker
+                tier={tier}
+                onChange={setTier}
+                disabled={isSubmitting || showLoadingScreen || isStartingBrainstorm}
+              />
+              <div className="flex-1 min-w-[8px]" />
+              {/* Two ways to begin, not two equal ones: a campaign build is the
+                  page's purpose and the expensive one, so it leads and
+                  brainstorming sits beside it as the lighter option. */}
+              <Button
+                onClick={handleStartBrainstorming}
+                disabled={isSubmitting || showLoadingScreen || isStartingBrainstorm}
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 rounded-lg"
+              >
+                {isStartingBrainstorm ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Lightbulb className="h-3.5 w-3.5" />
+                )}
+                {isStartingBrainstorm ? "Opening…" : "Brainstorm"}
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                disabled={isSubmitting || showLoadingScreen}
+                size="sm"
+                className="h-8 gap-1.5 rounded-lg"
+              >
+                {isSubmitting ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5" />
+                )}
+                {isSubmitting ? "Processing…" : "Campaign"}
+              </Button>
+            </div>
+          </div>
+
+          <CampaignCostNote tier={tier} />
 
           {/* Progress */}
           {error && (
@@ -253,47 +304,6 @@ export default function App() {
             />
           )}
 
-          {/* How much intelligence, and what a build usually costs. This page
-              can start a campaign build, so both belong here rather than only
-              inside a conversation. */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <TierPicker
-              tier={tier}
-              onChange={setTier}
-              disabled={isSubmitting || showLoadingScreen || isStartingBrainstorm}
-            />
-            <CampaignCostNote tier={tier} />
-          </div>
-
-          {/* Submit Buttons */}
-          <div className="flex gap-3">
-            <Button
-              onClick={handleStartBrainstorming}
-              disabled={isSubmitting || showLoadingScreen || isStartingBrainstorm}
-              className="flex-1"
-              size="lg"
-            >
-              {isStartingBrainstorm ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Lightbulb className="h-4 w-4 mr-2" />
-              )}
-              {isStartingBrainstorm ? "Opening..." : "Brainstorm"}
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={isSubmitting || showLoadingScreen}
-              className="flex-1"
-              size="lg"
-            >
-              {isSubmitting ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Sparkles className="h-4 w-4 mr-2" />
-              )}
-              {isSubmitting ? "Processing..." : "Campaign"}
-            </Button>
-          </div>
         </div>
       </div>
     </div>

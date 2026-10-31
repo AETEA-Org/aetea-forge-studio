@@ -13,6 +13,31 @@
  */
 import { API_BASE_URL } from "@/services/config";
 import { backendHeaders } from "@/services/authHeaders";
+import { queryClient } from "@/services/queryClient";
+
+/** Every query key under which a billing figure is cached. */
+const BILLING_KEY = ["billing"];
+
+/**
+ * Forget the cached billing figures, so the next look is a fresh read.
+ *
+ * Call this whenever something has just moved the ledger — a purchase, or a
+ * turn that spent credits. The balance in the app chrome is otherwise a
+ * sixty-second poll, which is long enough after a job costing several hundred
+ * credits to read as a figure connected to nothing rather than a figure that
+ * is late.
+ *
+ * The key is the whole `billing` prefix, so the balance, the plan and the
+ * usage history cannot disagree with each other. Only queries something is
+ * currently showing are refetched now; the rest are marked stale and read
+ * again when their screen is next opened.
+ *
+ * Deliberately not a hook: the one place that knows a turn has ended is the
+ * run's stream reader, which is not a component.
+ */
+export function refreshBilling(): void {
+  queryClient.invalidateQueries({ queryKey: BILLING_KEY });
+}
 
 function buildUrl(path: string): string {
   return new URL(path, API_BASE_URL).toString();
@@ -59,6 +84,18 @@ export interface PlanSummary {
   billing_period: string | null;
   status: string | null;
   current_period_end: string | null;
+  /**
+   * When the customer asked to cancel — not when access stops. A plan
+   * cancelled on 30 September can keep running to 29 October. Null means not
+   * cancelled, or cancelled before we started recording it.
+   */
+  canceled_at: string | null;
+  /**
+   * True when this plan will not renew. `status` stays "active" for the whole
+   * month between a cancellation and the period ending, so this is the only
+   * field that can be trusted to choose between "Renews" and "Ends".
+   */
+  cancel_at_period_end: boolean;
   expected_costs: ExpectedCost[];
 }
 
@@ -67,6 +104,12 @@ export interface BalanceSummary {
   /** How many of those credits expire next, and when. */
   expiring_next: number;
   next_expiry_at: string | null;
+  /**
+   * The credits most recently lost, and the day they went. Here so a balance
+   * of zero can explain itself rather than looking like a fault.
+   */
+  expired_credits: number;
+  expired_at: string | null;
 }
 
 /** One thing the customer asked for, not one provider call. */

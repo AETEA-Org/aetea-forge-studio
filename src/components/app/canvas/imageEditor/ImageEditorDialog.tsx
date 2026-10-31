@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { editAsset } from "@/services/api";
-import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
 import { EditorCanvasArea } from "./EditorCanvasArea";
 import { EditorPropertiesPanel } from "./EditorPropertiesPanel";
 import { EditorToolRail } from "./EditorToolRail";
@@ -22,6 +22,7 @@ export function ImageEditorDialog({
   campaignId,
   canvasKey,
 }: ImageEditorDialogProps) {
+  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [saveAsOpen, setSaveAsOpen] = useState(false);
@@ -68,10 +69,14 @@ export function ImageEditorDialog({
         mimeType,
       });
       invalidateCaches(result);
-      toast.success("Image saved");
+      toast({ title: "Image saved", variant: "success" });
       onOpenChange(false);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Save failed");
+      toast({
+        title: "Couldn't save that image",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "destructive",
+      });
     } finally {
       setSaving(false);
     }
@@ -83,12 +88,13 @@ export function ImageEditorDialog({
     onOpenChange,
     saveFormat,
     mimeType,
+    toast,
   ]);
 
   const handleSaveAs = useCallback(async () => {
     const name = saveAsName.trim();
     if (!name) {
-      toast.error("Enter a file name");
+      toast({ title: "Enter a file name", variant: "destructive" });
       return;
     }
     const ext = saveFormat === "jpeg" ? ".jpg" : ".png";
@@ -105,14 +111,19 @@ export function ImageEditorDialog({
         mimeType,
       });
       invalidateCaches(result);
-      toast.success(
-        result.deliverable_id
+      toast({
+        title: result.deliverable_id
           ? "Saved as new canvas card"
-          : "Saved as new asset"
-      );
+          : "Saved as new asset",
+        variant: "success",
+      });
       onOpenChange(false);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Save As failed");
+      toast({
+        title: "Couldn't save a copy",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "destructive",
+      });
     } finally {
       setSaving(false);
     }
@@ -125,6 +136,7 @@ export function ImageEditorDialog({
     onOpenChange,
     saveFormat,
     mimeType,
+    toast,
   ]);
 
   // Keyboard shortcuts

@@ -1,9 +1,8 @@
-import { useEffect, useRef, useMemo, useState, useCallback, useLayoutEffect } from "react";
-import { ChevronDown, Pencil } from "lucide-react";
+import { Fragment, useEffect, useRef, useMemo, useState, useCallback, useLayoutEffect } from "react";
+import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { Markdown } from "@/components/ui/markdown";
-import { formatDistanceFromUTC } from "@/lib/dateUtils";
+import { MessageActions } from "@/components/app/MessageActions";
 import type { Asset, ChatMessage, ChatRenderableAsset } from "@/types/api";
 import {
   ChatMessageAssets,
@@ -29,81 +28,21 @@ interface ChatMessagesProps {
   showEmptyState?: boolean;
   /** When true, skip inline asset thumbnails (canvas chat — objects appear as cards). */
   suppressInlineAssets?: boolean;
-  /** Rewrite one of your own messages and answer it again. Omit to hide the
-   *  affordance — the canvas chat has no room for it. */
-  onEditMessage?: (messageId: string, text: string) => void | Promise<void>;
+  /**
+   * Rewind to one of your own messages: hand it back to the composer, where
+   * everything after it is replaced when you send.
+   *
+   * It goes through the composer rather than an editor inside the bubble
+   * because a rewound turn needs what the composer holds — the task, the
+   * branch, the cards picked as references, the generation settings. Omit to
+   * hide the affordance.
+   */
+  onRewind?: (message: ChatMessage) => void;
+  /** The message the composer is currently rewinding to, if any. Everything
+   *  from it down is shown as about to be replaced. */
+  rewindingFromId?: string | null;
   /** Which surface this conversation is on, so attachments are sized for it. */
   surface?: ChatAssetSurface;
-}
-
-/**
- * A message being rewritten, in the place the message was.
- *
- * Editing replaces everything said after it, so this is deliberately explicit
- * rather than an inline-contenteditable trick: you can see what you are about
- * to send, and you can back out.
- */
-function MessageEditor({
-  initial,
-  onSave,
-  onCancel,
-}: {
-  initial: string;
-  onSave: (text: string) => void;
-  onCancel: () => void;
-}) {
-  const [text, setText] = useState(initial);
-  const ref = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    el.focus();
-    el.setSelectionRange(el.value.length, el.value.length);
-    el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 320)}px`;
-  }, []);
-
-  const changed = text.trim() && text.trim() !== initial.trim();
-
-  return (
-    <div className="flex flex-col items-end gap-2">
-      <div className="w-[min(80%,100%)] min-w-0 rounded-lg border border-primary/40 bg-background p-2">
-        <textarea
-          ref={ref}
-          value={text}
-          onChange={(e) => {
-            setText(e.target.value);
-            e.target.style.height = "auto";
-            e.target.style.height = `${Math.min(e.target.scrollHeight, 320)}px`;
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              e.preventDefault();
-              onCancel();
-            }
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              if (changed) onSave(text.trim());
-            }
-          }}
-          rows={1}
-          className="w-full resize-none bg-transparent text-sm leading-relaxed outline-none"
-        />
-        <div className="mt-2 flex items-center justify-end gap-2">
-          <Button size="sm" variant="ghost" onClick={onCancel}>
-            Cancel
-          </Button>
-          <Button size="sm" disabled={!changed} onClick={() => onSave(text.trim())}>
-            Send
-          </Button>
-        </div>
-      </div>
-      <span className="px-1 text-xs text-muted-foreground">
-        Sending replaces everything after this message.
-      </span>
-    </div>
-  );
 }
 
 export function ChatMessages({
@@ -115,14 +54,22 @@ export function ChatMessages({
   updateMessage,
   showEmptyState = true,
   suppressInlineAssets = false,
-  onEditMessage,
+  onRewind,
+  rewindingFromId = null,
   surface = "wide",
 }: ChatMessagesProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const trailingSpaceRef = useRef<HTMLDivElement>(null);
+  const readingTopRef = useRef(0);
+  /** Whether the end of the conversation is what is being read, and so whether
+   *  a reply that grows should keep itself on screen. */
+  const followBottomRef = useRef(true);
+  const viewportHeightRef = useRef(0);
+  const contentHeightRef = useRef(0);
   const prevMessageCountRef = useRef<number>(0);
   const prevFirstMessageIdRef = useRef<string | null>(null);
   const [showJumpToBottom, setShowJumpToBottom] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
 
   const updateJumpVisibility = useCallback(() => {
     const el = scrollRef.current;
@@ -130,6 +77,74 @@ export function ChatMessages({
     const hasOverflow = el.scrollHeight > el.clientHeight + 2;
     setShowJumpToBottom(hasOverflow && !isNearBottom(el));
   }, []);
+
+  const scrollToBottom = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    if (trailingSpaceRef.current) trailingSpaceRef.current.style.height = "0px";
+    el.scrollTop = el.scrollHeight;
+    readingTopRef.current = el.scrollTop;
+    viewportHeightRef.current = el.clientHeight;
+    followBottomRef.current = true;
+    setShowJumpToBottom(false);
+  }, []);
+
+  // The single writer of `scrollTop` for everything that is not a gesture:
+  // every content change, every resize. It does one of two jobs depending on
+  // where the reader is — stay at the end, or hold the position they chose.
+  // Both live here because two mechanisms writing `scrollTop` is what made
+  // following a streaming reply impossible before: the old code pinned the old
+  // offset on every token, so anything scrolling to the bottom from outside
+  // was immediately undone.
+  const preserveReadingPosition = useCallback(() => {
+    const el = scrollRef.current;
+    const content = contentRef.current;
+    const trailing = trailingSpaceRef.current;
+    if (!el || !content || !trailing) return;
+    const contentHeight = content.offsetHeight;
+    // Reading the end of the conversation: there is no position to preserve,
+    // and a reply still being written has to bring the view down with it.
+    if (followBottomRef.current) {
+      contentHeightRef.current = contentHeight;
+      scrollToBottom();
+      return;
+    }
+    // Holding the position they chose. A taller viewport normally clamps
+    // scrollTop near the end of the history, so leave only the trailing space
+    // needed to keep the same text at the top — and a reflow at a wider width,
+    // loaded fonts or shortened history must not leave the conversation
+    // scrolled into empty space.
+    if (contentHeight < contentHeightRef.current) {
+      readingTopRef.current = Math.min(readingTopRef.current, Math.max(0, contentHeight - el.clientHeight));
+    }
+    contentHeightRef.current = contentHeight;
+    trailing.style.height = `${Math.max(0, Math.ceil(readingTopRef.current + el.clientHeight - contentHeight))}px`;
+    el.scrollTop = readingTopRef.current;
+    viewportHeightRef.current = el.clientHeight;
+    updateJumpVisibility();
+  }, [scrollToBottom, updateJumpVisibility]);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    // Ignore native clamping caused by a resize, before ResizeObserver restores it.
+    if (el.clientHeight === viewportHeightRef.current) {
+      readingTopRef.current = el.scrollTop;
+      // Scrolling up is how you stop a streaming reply dragging the view down;
+      // coming back to the end is how you start it again. Pinning the position
+      // would fight the gesture, so only one of the two ever runs.
+      followBottomRef.current = isNearBottom(el);
+      if (!followBottomRef.current) preserveReadingPosition();
+    }
+    updateJumpVisibility();
+  }, [preserveReadingPosition, updateJumpVisibility]);
+
+  /** Where the rewind cut falls, and how much sits below it. -1 when idle. */
+  const rewindIndex = useMemo(() => {
+    if (!rewindingFromId) return -1;
+    return messages.findIndex((m) => m.message_id === rewindingFromId);
+  }, [messages, rewindingFromId]);
+  const doomedCount = rewindIndex === -1 ? 0 : messages.length - rewindIndex;
 
   const assetById = useMemo(() => {
     const m = new Map<string, Asset>();
@@ -147,14 +162,14 @@ export function ChatMessages({
     return out;
   };
 
-  const scrollToBottom = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    el.scrollTop = el.scrollHeight;
-    setShowJumpToBottom(false);
-  }, []);
-
-  /** Only auto-scroll on first history paint or when switching chats — not while streaming. */
+  /**
+   * Jump to the end on first history paint, when switching chats, and when you
+   * send — sending is itself a return to the end of the conversation.
+   *
+   * Following a reply while it streams is `preserveReadingPosition`'s job: it
+   * sticks to the end only while you are already there, so scrolling up to
+   * re-read something is not undone by the next token.
+   */
   useEffect(() => {
     if (!scrollRef.current) return;
 
@@ -165,29 +180,46 @@ export function ChatMessages({
     const chatSwitched = firstMessageId !== null && firstMessageId !== prevFirstMessageIdRef.current;
 
     const isInitialLoad = prevMessageCount === 0 && currentMessageCount > 0 && !isStreaming && !updateMessage;
+    // An optimistic `temp-` row is the only thing that means *you* just sent
+    // something. Testing `role === "user"` instead caught the end of a turn as
+    // well: stopping clears the optimistic message and refetches, and a normal
+    // finish refetches before clearing it, so in both cases the list grows and
+    // briefly ends with a user message that nobody sent — which would have
+    // yanked a reader who had scrolled up back to the bottom at exactly the
+    // moment they were reading. Same convention as the rewind affordance below.
+    const sentOwnMessage =
+      currentMessageCount > prevMessageCount &&
+      messages[currentMessageCount - 1].message_id.startsWith("temp-");
 
-    const shouldAutoScroll = isInitialLoad || chatSwitched;
-
-    if (shouldAutoScroll) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-      setShowJumpToBottom(false);
+    if (isInitialLoad || chatSwitched || sentOwnMessage) {
+      scrollToBottom();
     }
 
     prevMessageCountRef.current = currentMessageCount;
     prevFirstMessageIdRef.current = firstMessageId;
-  }, [messages, isStreaming, updateMessage]);
+  }, [messages, isStreaming, updateMessage, scrollToBottom]);
 
-  /** Re-evaluate jump button when content grows (e.g. streaming) without a scroll event. */
+  /** Content grew (e.g. streaming) with no scroll event: hold the reading
+   *  position, or stay at the end if that is where the reader is. */
   useLayoutEffect(() => {
-    updateJumpVisibility();
+    preserveReadingPosition();
   }, [
     messages,
     streamingContent,
     updateMessage,
     isStreaming,
     streamingAssets,
-    updateJumpVisibility,
+    preserveReadingPosition,
   ]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(preserveReadingPosition);
+    observer.observe(el);
+    if (contentRef.current) observer.observe(contentRef.current);
+    return () => observer.disconnect();
+  }, [preserveReadingPosition]);
 
   const truncatedUpdateMessage = (() => {
     if (!updateMessage) return null;
@@ -197,97 +229,92 @@ export function ChatMessages({
   })();
 
   return (
-    <div className="relative flex-1 h-full min-h-0 flex flex-col">
+    <div className="relative flex-1 min-h-[72px] flex flex-col">
+      {/* overscroll-contain: a wheel that runs out of history stays in this
+          pane instead of being handed to the page behind it, which used to
+          drag the whole chat — header and composer included — up the screen. */}
       <div
-        className="flex-1 h-full overflow-y-auto overflow-x-hidden custom-scrollbar"
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain chat-scrollbar"
         ref={scrollRef}
-        onScroll={updateJumpVisibility}
+        onScroll={handleScroll}
       >
-      <div className="p-4 space-y-4 min-w-0">
-        {messages.map((message) => {
+      <div ref={contentRef} className="p-4 space-y-4 min-w-0">
+        {messages.map((message, index) => {
           const msgAssets = resolveMessageAssets(message);
           const hasText = Boolean(message.content?.trim());
           const showAssets = !suppressInlineAssets && msgAssets.length > 0;
           if (!showAssets && !hasText) return null;
-          const canEdit =
-            Boolean(onEditMessage) &&
+          const canRewind =
+            Boolean(onRewind) &&
             message.role === "user" &&
             hasText &&
             !isStreaming &&
             !message.message_id.startsWith("temp-");
-          const isEditing = editingId === message.message_id;
-
-          if (isEditing) {
-            return (
-              <MessageEditor
-                key={message.message_id}
-                initial={message.content}
-                onCancel={() => setEditingId(null)}
-                onSave={async (text) => {
-                  setEditingId(null);
-                  await onEditMessage?.(message.message_id, text);
-                }}
-              />
-            );
-          }
+          const isRewindAnchor = rewindingFromId === message.message_id;
+          const doomed = rewindIndex !== -1 && index >= rewindIndex;
 
           return (
-            <div
-              key={message.message_id}
-              className={cn(
-                "group flex flex-col gap-1",
-                message.role === "user" ? "items-end" : "items-start"
-              )}
-            >
+            <Fragment key={message.message_id}>
+              {/* Outside the dimmed message, not inside it: this line explains
+                  the dimming, so fading it with the content it describes is
+                  exactly the wrong way round. */}
+              {isRewindAnchor ? (
+                <div className="flex w-full items-center gap-2">
+                  <span className="h-px flex-1 bg-primary/40" aria-hidden="true" />
+                  <span className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-wider text-primary">
+                    {doomedCount === 1
+                      ? "1 message will be replaced"
+                      : `${doomedCount} messages will be replaced`}
+                  </span>
+                  <span className="h-px flex-1 bg-primary/40" aria-hidden="true" />
+                </div>
+              ) : null}
               <div
                 className={cn(
-                  "max-w-[min(80%,100%)] min-w-0 rounded-lg px-4 py-2.5 break-words space-y-3 overflow-hidden",
-                  message.role === "user"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-foreground"
+                  "message-row flex flex-col gap-1 transition-opacity",
+                  message.role === "user" ? "items-end" : "items-start",
+                  // Dimmed, not removed: you can still read what you are about
+                  // to replace, and nothing is deleted until you press send.
+                  doomed && "opacity-[0.34]"
                 )}
-                style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}
               >
-                {showAssets ? (
-                  <ChatMessageAssets
-                    assets={msgAssets}
-                    surface={surface}
-                    className={message.role === "user" ? "[&_button]:border-primary-foreground/20" : undefined}
-                  />
-                ) : null}
-                {hasText ? (
-                  <Markdown
-                    className={cn(
-                      "text-sm leading-relaxed break-words",
-                      message.role === "user" && "text-primary-foreground [&_a]:text-primary-foreground"
-                    )}
-                  >
-                    {message.content}
-                  </Markdown>
-                ) : null}
+                <div
+                  className={cn(
+                    "max-w-[min(80%,100%)] min-w-0 rounded-lg px-4 py-2.5 break-words space-y-3 overflow-hidden",
+                    message.role === "user"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-foreground"
+                  )}
+                  style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}
+                >
+                  {showAssets ? (
+                    <ChatMessageAssets
+                      assets={msgAssets}
+                      surface={surface}
+                      className={message.role === "user" ? "[&_button]:border-primary-foreground/20" : undefined}
+                    />
+                  ) : null}
+                  {hasText ? (
+                    <Markdown
+                      className={cn(
+                        "text-sm leading-relaxed break-words",
+                        message.role === "user" && "text-primary-foreground [&_a]:text-primary-foreground"
+                      )}
+                    >
+                      {message.content}
+                    </Markdown>
+                  ) : null}
+                </div>
+                <MessageActions
+                  content={message.content}
+                  timestamp={message.timestamp}
+                  canRewind={canRewind}
+                  onRewind={onRewind ? () => onRewind(message) : undefined}
+                  isRewinding={isRewindAnchor}
+                  surface={surface}
+                />
               </div>
-              <div className="flex items-center gap-1 px-1">
-                {canEdit ? (
-                  <button
-                    type="button"
-                    onClick={() => setEditingId(message.message_id)}
-                    aria-label="Edit message"
-                    title="Edit"
-                    className={cn(
-                      "rounded p-1 text-muted-foreground opacity-0 transition-opacity",
-                      "hover:bg-muted hover:text-foreground",
-                      "group-hover:opacity-100 focus-visible:opacity-100",
-                      "focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                    )}
-                  >
-                    <Pencil className="h-3 w-3" />
-                  </button>
-                ) : null}
-                <span className="text-xs text-muted-foreground">
-                  {formatDistanceFromUTC(message.timestamp, { addSuffix: true })}
-                </span>
-              </div>
-            </div>
+            </Fragment>
           );
         })}
 
@@ -341,6 +368,7 @@ export function ChatMessages({
             </div>
           )}
       </div>
+      <div ref={trailingSpaceRef} aria-hidden="true" />
       </div>
 
       {showJumpToBottom && (

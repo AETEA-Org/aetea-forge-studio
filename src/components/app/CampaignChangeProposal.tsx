@@ -12,9 +12,8 @@ interface CampaignChangeProposalProps {
 /**
  * A change AETEA wants to make to the campaign, waiting on the user.
  *
- * The lines come from the server, not from the reply text: the card shows what
- * the stored change would actually do, so approving cannot mean agreeing to
- * something other than what was read. Declining changes nothing at all — that
+ * The summary comes from the saved proposal, not transient reply text, so it
+ * stays with the decision after a reload. Declining changes nothing at all — that
  * is the guarantee the whole flow exists for, so the button says so plainly
  * rather than hiding behind "Cancel".
  */
@@ -46,16 +45,6 @@ export function CampaignChangeProposal({
       </div>
 
       <p className="mb-3 text-sm text-muted-foreground">{proposal.summary}</p>
-
-      {proposal.change_lines.length > 0 && (
-        <ul className="mb-3 space-y-1 rounded-lg bg-background/60 p-3 text-xs text-muted-foreground">
-          {proposal.change_lines.map((line, index) => (
-            <li key={index} className="whitespace-pre-wrap break-words font-mono">
-              {line}
-            </li>
-          ))}
-        </ul>
-      )}
 
       <div className="flex items-center gap-2">
         <Button size="sm" disabled={busy !== null} onClick={decide("approve", onApprove)}>
