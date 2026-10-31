@@ -175,7 +175,7 @@ export function BillingPane() {
                 {formatCredits(expiring)} expire on {expiryDate}
               </span>
             ) : (
-              <span>Bought credits stay valid for three months</span>
+              <span>Bought credits stay valid for one month</span>
             )}
           </div>
 
