@@ -19,6 +19,13 @@ const socialLinks = [
   },
 ];
 
+const advisorySocialUrls: Record<string, string> = {
+  LinkedIn: import.meta.env.VITE_ADVISORY_SOCIAL_LINKEDIN,
+  Instagram: import.meta.env.VITE_ADVISORY_SOCIAL_INSTAGRAM,
+  Facebook: import.meta.env.VITE_ADVISORY_SOCIAL_FACEBOOK,
+  X: import.meta.env.VITE_ADVISORY_SOCIAL_X,
+};
+
 function BrandLink({
   link,
   active,
@@ -46,13 +53,13 @@ function BrandLink({
   );
 }
 
-function SocialLinks() {
+function SocialLinks({ advisory = false }: { advisory?: boolean }) {
   return (
     <div className="flex flex-wrap items-center justify-center gap-4">
       {socialLinks.map(({ label, href, Icon }) => (
         <a
           key={label}
-          href={href}
+          href={advisory ? advisorySocialUrls[label] : href}
           target="_blank"
           rel="noopener noreferrer"
           aria-label={label}
@@ -65,7 +72,7 @@ function SocialLinks() {
   );
 }
 
-export function Footer() {
+export function Footer({ advisory = false }: { advisory?: boolean }) {
   const { pathname } = useLocation();
   const activeLink = MARKETING_BRAND_LINKS.find((link) => link.to === pathname) ?? MARKETING_BRAND_LINKS[0];
   const inactiveLinks = MARKETING_BRAND_LINKS.filter((link) => link.to !== activeLink.to);
@@ -81,7 +88,7 @@ export function Footer() {
           </nav>
 
           <div className="justify-self-center">
-            <SocialLinks />
+            <SocialLinks advisory={advisory} />
           </div>
 
           <p className="justify-self-end text-sm text-muted-foreground">
@@ -102,7 +109,7 @@ export function Footer() {
             ))}
           </nav>
 
-          <SocialLinks />
+          <SocialLinks advisory={advisory} />
 
           <p className="text-center text-sm text-muted-foreground">
             © {new Date().getFullYear()} AETEA

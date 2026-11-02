@@ -32,7 +32,7 @@ export default function Advisory() {
         <AdvisoryBookCta />
         <AdvisoryAbout />
       </main>
-      <Footer />
+      <Footer advisory />
     </div>
   );
 }
