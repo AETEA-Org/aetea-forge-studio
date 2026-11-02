@@ -452,16 +452,6 @@ export const PRICING_FAQS: PricingFaqItem[] = [
       "AETEA shows credit consumption in real time while your work is being generated, and your usage stays visible in your account afterwards.",
   },
   {
-    question: "Does AETEA ask before it spends credits?",
-    answer:
-      "No. Brainstorm and Campaign Build credits are deducted in real time as the work is generated, and there is no separate credit-approval step. Images are charged when generation starts, and video by the generated second at the resolution and audio option you chose.",
-  },
-  {
-    question: "Are OpenAI text tokens charged separately?",
-    answer:
-      "No. AETEA translates the underlying text-generation cost into AETEA credits automatically. You only see your AETEA credits being used in real time during Brainstorm and Campaign Build — there is no separate input-token or output-token bill.",
-  },
-  {
     question: "Do unused monthly credits roll over?",
     answer:
       "No. Each month's credits are valid from your purchase or renewal date until the next renewal date, and unused credits expire at renewal. AETEA always spends the ones expiring soonest first.",
@@ -482,12 +472,12 @@ export const PRICING_FAQS: PricingFaqItem[] = [
       "Active subscribers can add credits at any time from Settings, without changing plan. Each top-up is valid for one month from its purchase date, or until the subscription ends if that comes first, and top-up credits do not roll over. If you find you need them often, a larger plan gives you more for the money.",
   },
   {
-    question: "Can I buy top-ups on the Start plan?",
+    question: "Can I buy top-ups with Start?",
     answer:
       "No. Top-ups are available only to active subscribers. Start is a one-time 72-hour introduction; move to Spark, Sprint or Spire to add credits.",
   },
   {
-    question: "Does AETEA Start renew automatically?",
+    question: "Does Start renew automatically?",
     answer:
       "No. Start is a one-time, 72-hour introduction. It does not renew or convert into a subscription.",
   },
@@ -519,8 +509,8 @@ export const PRICING_FAQS: PricingFaqItem[] = [
 ];
 
 export const PACKAGE_VARIANTS_NOTE =
-  "The same AETEA capabilities are available across Start, Spark, Sprint, and Spire, subject to feature availability and the credits in your balance. Explore ideas and briefs; work through research, strategy, and copy; develop ideas, campaign foundations and deliverables plans; and generate images and video where your available credits and access permit. Credits are used as the work is generated, and consumption is visible in real time.\n\n" +
-  "You choose by usage volume. Start is a 72-hour introduction with 800 credits; Spark, Sprint, and Spire provide progressively larger monthly allocations. Larger requests and media generation can require more credits than Start provides. AETEA subscriptions do not include The 80 Ones Advisory.";
+  "The same AETEA capabilities are available across Start, Spark, Sprint, and Spire, subject to feature availability and the credits in your balance. Explore ideas and briefs; work through research, strategy, and copy; develop ideas, campaign foundations and deliverables; and generate images and videos. Credits are used as the work is generated, and consumption is visible in real time.\n\n" +
+  "You choose by usage volume. Start is a 72-hour introduction with 800 credits; Spark, Sprint, and Spire provide progressively larger monthly allocations. Larger requests and media generation can require more credits. AETEA subscriptions do not include The 80 Ones Advisory.";
 
 export const ADDONS_FOOTNOTE =
   "Top-ups require an active subscription, expire one month after purchase or when the subscription ends, whichever comes first, and do not roll over. Start cannot purchase top-ups.";

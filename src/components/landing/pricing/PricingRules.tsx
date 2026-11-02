@@ -10,7 +10,7 @@ type PricingRulesProps = {
 
 export function PricingRules({ rules }: PricingRulesProps) {
   return (
-    <section className="relative">
+    <section className="relative mt-6">
       <div className="container px-6 lg:px-12">
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_1.35fr] lg:items-start">
           <div className="max-w-2xl">

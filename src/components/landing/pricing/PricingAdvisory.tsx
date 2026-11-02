@@ -3,7 +3,7 @@ import { PRICING_BODY, PRICING_SECTION_TITLE } from "./pricingStyles";
 
 export function PricingAdvisory() {
   return (
-    <section aria-labelledby="pricing-advisory-title" className="relative">
+    <section aria-labelledby="pricing-advisory-title" className="relative mt-6">
       <div className="container px-6 lg:px-12">
         <div className="mx-auto max-w-4xl text-center">
           <div className="mb-6 flex items-center justify-center gap-3">

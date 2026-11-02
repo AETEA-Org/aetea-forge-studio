@@ -9,7 +9,6 @@ import { PricingAddons } from "@/components/landing/pricing/PricingAddons";
 import { PricingRules } from "@/components/landing/pricing/PricingRules";
 import { PricingFaq } from "@/components/landing/pricing/PricingFaq";
 import { PricingAdvisory } from "@/components/landing/pricing/PricingAdvisory";
-import { PricingTerms } from "@/components/landing/pricing/PricingTerms";
 import {
   ADDONS_FOOTNOTE,
   CREDIT_ACTIONS,
@@ -106,7 +105,6 @@ export default function Pricing() {
         <PricingRules rules={CREDIT_RULES} />
         <PricingAdvisory />
         <PricingFaq items={PRICING_FAQS} />
-        <PricingTerms />
       </main>
       <Footer />
     </div>
