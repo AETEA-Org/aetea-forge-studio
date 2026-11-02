@@ -171,7 +171,7 @@ export function PricingTiers({ plans, onChoose, pendingPlanId }: PricingTierProp
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
 
   return (
-    <section className="relative pb-8 pt-4 md:pb-12 md:pt-0">
+    <section className="relative">
       <div className="mx-auto w-full max-w-[1100px] px-6 xl:px-0">
         <BillingPeriodSwitcher
           value={billingPeriod}

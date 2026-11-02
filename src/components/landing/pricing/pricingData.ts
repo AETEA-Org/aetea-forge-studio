@@ -110,11 +110,6 @@ export function creditsFor(providerCostUsd: number): number {
   );
 }
 
-/** One credit is one cent, so the customer price is the credits as dollars. */
-function dollars(credits: number): string {
-  return `$${(credits / 100).toFixed(2)}`;
-}
-
 /**
  * Provider cost per finished item or per second, and the credits published
  * against it. The pairs sit together so the check below has both.
@@ -354,51 +349,49 @@ export function getPlanPrice(
 export const CREDIT_ACTIONS: PricingTableRow[] = [
   {
     action: "Brainstorm",
-    cost: "By the work it takes",
-    meaning: "Thinking an idea, a challenge or a brief through with AETEA.",
+    cost: "Varies by work",
+    meaning: "Explore an idea, challenge, or brief.",
   },
   {
     action: "Campaign Build",
-    cost: "By the work it takes",
+    cost: "Varies by work",
     meaning:
-      "Brief dissection, research, strategy, creative foundations and a deliverables plan. Any images or video you choose to generate are charged separately.",
+      "Brief dissection, research, strategy, creative foundations, and a deliverables or task plan. Media additional.",
   },
   {
     action: "Image — 1K or 2K",
-    cost: `${PUBLISHED.image.credits}`,
-    meaning: `One finished image. ${dollars(PUBLISHED.image.credits)}.`,
+    cost: `${PUBLISHED.image.credits} per image`,
+    meaning: "One generated image.",
   },
   {
     action: "Image — 4K",
-    cost: `${PUBLISHED.image4k.credits}`,
-    meaning: `Sharper detail, flexible crops and print. ${dollars(
-      PUBLISHED.image4k.credits,
-    )}.`,
+    cost: `${PUBLISHED.image4k.credits} per image`,
+    meaning: "Higher-resolution image.",
   },
   {
     action: "Video — 720p, no audio",
     cost: `${PUBLISHED.video720.credits} per second`,
-    meaning: "Charged by the length of the finished clip.",
+    meaning: "Video without generated audio.",
   },
   {
     action: "Video — 720p, native audio",
     cost: `${PUBLISHED.video720Audio.credits} per second`,
-    meaning: "Sound generated with the picture, in the same pass.",
+    meaning: "Video with generated audio.",
   },
   {
     action: "Video — 1080p, no audio",
     cost: `${PUBLISHED.video1080.credits} per second`,
-    meaning: "Full HD, silent.",
+    meaning: "Full HD without generated audio.",
   },
   {
     action: "Video — 1080p, native audio",
     cost: `${PUBLISHED.video1080Audio.credits} per second`,
-    meaning: "Full HD with sound.",
+    meaning: "Full HD with generated audio.",
   },
   {
     action: "Video — 4K, when supported",
     cost: `${PUBLISHED.video4k.credits} per second`,
-    meaning: "The highest quality AETEA produces, where the model offers it.",
+    meaning: "Available only where supported.",
   },
 ];
 
@@ -408,7 +401,7 @@ export const CREDIT_ACTIONS: PricingTableRow[] = [
  * stops to ask them for approval.
  */
 export const VARIABLE_ACTIONS_NOTE =
-  "Brainstorm and Campaign Build are charged by the work they take, so the cost varies with the size of the job. AETEA deducts credits in real time as the work is generated and your live credit consumption stays visible, with no separate approval step before it starts. Longer finished videos are assembled from generated clips and charged for the total generated seconds.";
+  "Brainstorm and Campaign Build are charged for the work performed. AETEA deducts credits in real time, and the amount used remains visible. There is no separate credit-approval step. Images and video are charged separately from campaign development. Longer finished videos can be assembled from generated clips and are charged for all generated seconds.";
 
 // ---------------------------------------------------------------------------
 // Top-ups
@@ -435,12 +428,11 @@ export const PRICING_ADDONS: PricingAddon[] = TOPUP_QUICK_DOLLARS.map(
 );
 
 export const CREDIT_RULES: string[] = [
-  "Monthly credits run from your purchase or renewal date to the next renewal date, and do not carry over.",
-  "Annual plans release credits on each monthly anniversary of the purchase date. Each allocation expires when the next one is released.",
-  "Start credits are available for the 72-hour window.",
-  "Top-ups are for active subscribers, and each expires one month from purchase or when the subscription ends, whichever comes first.",
-  "AETEA always uses the credits that expire soonest.",
-  "Credits are not cash, are not transferable and cannot be redeemed.",
+  "Monthly allocations expire at the next monthly renewal and do not roll over.",
+  "Annual subscriptions release one allocation on each monthly anniversary of purchase; unused credits from the previous allocation expire and do not roll over.",
+  "Start credits last 72 hours from payment and do not renew.",
+  "Top-ups can be purchased and used only with an active subscription and expire after one month or on subscription termination, whichever is earlier.",
+  "Credits measure work performed. They are not cash or transferable value. Mandatory consumer rights always prevail over stated credit-expiry rules.",
 ];
 
 export const PRICING_FAQS: PricingFaqItem[] = [
@@ -531,4 +523,4 @@ export const PACKAGE_VARIANTS_NOTE =
   "You choose by usage volume. Start is a 72-hour introduction with 800 credits; Spark, Sprint, and Spire provide progressively larger monthly allocations. Larger requests and media generation can require more credits than Start provides. AETEA subscriptions do not include The 80 Ones Advisory.";
 
 export const ADDONS_FOOTNOTE =
-  "Available to active subscribers, from $5. Each top-up is valid for one month from its purchase date, or until the subscription ends if that comes first, and does not roll over.";
+  "Top-ups require an active subscription, expire one month after purchase or when the subscription ends, whichever comes first, and do not roll over. Start cannot purchase top-ups.";

@@ -11,13 +11,10 @@ type PricingFaqProps = {
 
 export function PricingFaq({ items }: PricingFaqProps) {
   return (
-    <section className="relative py-16 md:pb-28 md:pt-24">
+    <section className="relative">
       <div className="container px-6 lg:px-12">
-        <div className="mb-10 max-w-2xl">
-          <div className="mb-4 h-1.5 w-40 bg-white/40 sm:w-64" />
-          <h2 className={`${PRICING_SECTION_TITLE} text-foreground`}>
-            FAQ&apos;s
-          </h2>
+        <div className="mb-10 max-w-2xl border-l-2 border-foreground/20 pl-4 sm:pl-6 lg:pl-8">
+            <h2 className={`${PRICING_SECTION_TITLE} text-foreground`}>FAQs</h2>
         </div>
 
         <div className="mx-auto max-w-5xl grid grid-cols-1 gap-x-12 gap-y-8 lg:grid-cols-2">

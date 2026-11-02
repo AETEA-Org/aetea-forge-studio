@@ -10,7 +10,7 @@ export const ADVISORY_LINKS = {
 export const ADVISORY_HERO = {
   title: "The 80 Ones Advisory",
   wisdomTagline: "Wisdom at play",
-  tagline: "For consequential uncertainty.",
+  tagline: "For consequential uncertainty",
   subscriptionNote:
     "AETEA is intelligence at work, available by subscription.",
   distinction:

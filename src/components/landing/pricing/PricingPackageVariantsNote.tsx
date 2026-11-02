@@ -8,7 +8,7 @@ export function PricingPackageVariantsNote({
   note,
 }: PricingPackageVariantsNoteProps) {
   return (
-    <section className="w-full py-4 md:py-6" aria-labelledby="pricing-what-you-receive">
+    <section className="mb-6 mt-2 w-full" aria-labelledby="pricing-what-you-receive">
       <div className="container px-6 lg:px-12">
         <div className="mx-auto max-w-4xl text-center">
           <h2 id="pricing-what-you-receive" className={`mb-6 ${PRICING_SECTION_TITLE} text-foreground`}>

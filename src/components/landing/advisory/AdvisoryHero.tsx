@@ -1,5 +1,6 @@
 import { ADVISORY_HERO } from "./advisoryData";
 import { AdvisoryBookButton } from "./AdvisoryBookButton";
+import { ADVISORY_EYEBROW } from "./advisoryStyles";
 
 export function AdvisoryHero() {
   return (
@@ -33,21 +34,21 @@ export function AdvisoryHero() {
             className="flex w-full max-w-xl items-center gap-2 opacity-0 animate-fade-in sm:gap-4 lg:gap-5"
             style={{ animationDelay: "0.3s" }}
           >
-            <div className="h-px min-w-0 flex-1 bg-foreground/30" />
-            <p className="max-w-[72vw] flex-none text-center text-sm font-normal leading-tight text-foreground/75 sm:text-base lg:text-xl">
+            <div className="h-px min-w-0 flex-1 bg-border" />
+            <p className={`max-w-[72vw] flex-none text-center ${ADVISORY_EYEBROW}`}>
               {ADVISORY_HERO.tagline}
             </p>
-            <div className="h-px min-w-0 flex-1 bg-foreground/30" />
+            <div className="h-px min-w-0 flex-1 bg-border" />
           </div>
 
           <div
             className="mx-auto mt-8 w-full max-w-[830px] text-left opacity-0 animate-fade-in sm:mt-9 lg:mt-8 lg:columns-2 lg:gap-10"
             style={{ animationDelay: "0.4s" }}
           >
-            <p className="mb-4 break-inside-avoid text-sm leading-relaxed text-foreground/65 sm:text-[0.95rem] lg:text-sm lg:leading-[1.4]">{ADVISORY_HERO.subscriptionNote}</p>
-            <p className="mb-4 text-sm leading-relaxed text-foreground/65 sm:text-[0.95rem] lg:text-sm lg:leading-[1.4]">{ADVISORY_HERO.distinction}</p>
-            <p className="mb-4 text-sm leading-relaxed text-foreground/65 sm:text-[0.95rem] lg:text-sm lg:leading-[1.4]">{ADVISORY_HERO.uncertainty}</p>
-            <p className="mb-0 break-inside-avoid text-sm leading-relaxed text-foreground/65 sm:text-[0.95rem] lg:text-sm lg:leading-[1.4]">{ADVISORY_HERO.closing}</p>
+            <p className="mb-4 break-inside-avoid text-[0.95rem] leading-relaxed text-foreground/65 sm:text-base lg:text-lg lg:leading-[1.4]">{ADVISORY_HERO.subscriptionNote}</p>
+            <p className="mb-4 text-[0.95rem] leading-relaxed text-foreground/65 sm:text-base lg:text-lg lg:leading-[1.4]">{ADVISORY_HERO.distinction}</p>
+            <p className="mb-4 text-[0.95rem] leading-relaxed text-foreground/65 sm:text-base lg:text-lg lg:leading-[1.4]">{ADVISORY_HERO.uncertainty}</p>
+            <p className="mb-0 break-inside-avoid text-[0.95rem] leading-relaxed text-foreground/65 sm:text-base lg:text-lg lg:leading-[1.4]">{ADVISORY_HERO.closing}</p>
           </div>
 
           <div
