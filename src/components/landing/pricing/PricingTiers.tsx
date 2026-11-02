@@ -42,7 +42,7 @@ function PricingPlanCard({
         <img
           src="/pricing/aetea-wordmark.png"
           alt="AETEA"
-          className="mb-2 h-[78px] w-auto object-contain sm:h-[72px]"
+          className="mb-2 h-[78px] w-auto object-contain opacity-30 sm:h-[72px]"
         />
       </div>
 
@@ -73,15 +73,20 @@ function PricingPlanCard({
 
         <div className="relative mb-1.5 flex items-center justify-center gap-1.5">
           <span className="leading-none">
-            <span className="align-top text-2xl font-normal italic">
+            <span className="relative left-[4px] align-top text-2xl font-normal italic">
               {activePrice.price.startsWith("$") ? "$" : ""}
             </span>
-            <span className="font-price text-[3.2rem] italic sm:text-[3rem]">
+            <span
+              className={cn(
+                "font-price text-[3.2rem] italic sm:text-[3rem]",
+                plan.id !== "start" && "relative -left-[2px]",
+              )}
+            >
               {activePrice.price.replace(/^\$/, "")}
             </span>
           </span>
           <div className="relative -translate-y-px whitespace-nowrap">
-            <div className="text-base font-bold italic leading-[0.72] text-white">
+            <div className="text-base font-bold italic leading-[calc(0.72em+2px)] text-white">
               {unitLines.map((line) => (
                 <div key={line}>{line}</div>
               ))}
@@ -96,31 +101,7 @@ function PricingPlanCard({
           ) : null}
         </div>
 
-        <div className="mb-2.5 h-px w-full bg-white/35" />
-
-        <div className="mb-4 flex-1 space-y-2 text-left text-[11px] leading-relaxed">
-          <p>
-            <span className="font-bold">Best for: </span>
-            {plan.bestFor}
-          </p>
-          <div>
-            <p className="mb-1 font-bold">What you receive</p>
-            <ul className="space-y-0.5">
-              {plan.receives.map((item) => (
-                <li key={item} className="flex gap-2">
-                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-white" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <p className="mb-0.5 font-bold">Example use of the credits</p>
-            <p className="text-white/90">{plan.exampleCredits}</p>
-          </div>
-        </div>
-
-        <div className="mt-auto flex justify-center">
+        <div className="mt-auto flex justify-center pt-2.5">
           <Button
             type="button"
             onClick={() => onChoose(plan, billingPeriod)}
@@ -160,8 +141,8 @@ function BillingPeriodSwitcher({
     >
       {(
         [
-          { id: "annual", label: "Annual" },
           { id: "monthly", label: "Monthly" },
+          { id: "annual", label: "Annual" },
         ] as const
       ).map((option) => {
         const selected = value === option.id;
@@ -187,10 +168,10 @@ function BillingPeriodSwitcher({
 }
 
 export function PricingTiers({ plans, onChoose, pendingPlanId }: PricingTierProps) {
-  const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("annual");
+  const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
 
   return (
-    <section className="relative pb-16 pt-4 md:pb-24 md:pt-0">
+    <section className="relative pb-8 pt-4 md:pb-12 md:pt-0">
       <div className="mx-auto w-full max-w-[1100px] px-6 xl:px-0">
         <BillingPeriodSwitcher
           value={billingPeriod}

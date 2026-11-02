@@ -16,7 +16,7 @@ export function PricingCreditsTable({
   variableNote,
 }: PricingCreditsTableProps) {
   return (
-    <section className="relative py-16 md:py-24">
+    <section className="relative pb-16 pt-8 md:pb-24 md:pt-12">
       <div className="container px-6 lg:px-12">
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_1.35fr] lg:items-start">
           <div className="max-w-2xl">

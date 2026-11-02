@@ -226,7 +226,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     name: "Sprint",
     accent: "#037f12",
     tagline:
-      "Built for independent creators who need room to move from brief to build",
+      "For regular campaigns and growing creative demands",
     monthly: {
       price: "$89",
       priceUnit: "per month",
@@ -527,8 +527,8 @@ export const PRICING_FAQS: PricingFaqItem[] = [
 ];
 
 export const PACKAGE_VARIANTS_NOTE =
-  "*All prices quoted are in USD.\n" +
-  "**Annual billing gives twelve months for the price of ten, a 16.7% saving. Annual subscriptions are paid in advance, and credits are released on each monthly anniversary of the purchase date rather than all at once.";
+  "The same AETEA capabilities are available across Start, Spark, Sprint, and Spire, subject to feature availability and the credits in your balance. Explore ideas and briefs; work through research, strategy, and copy; develop ideas, campaign foundations and deliverables plans; and generate images and video where your available credits and access permit. Credits are used as the work is generated, and consumption is visible in real time.\n\n" +
+  "You choose by usage volume. Start is a 72-hour introduction with 800 credits; Spark, Sprint, and Spire provide progressively larger monthly allocations. Larger requests and media generation can require more credits than Start provides. AETEA subscriptions do not include The 80 Ones Advisory.";
 
 export const ADDONS_FOOTNOTE =
   "Available to active subscribers, from $5. Each top-up is valid for one month from its purchase date, or until the subscription ends if that comes first, and does not roll over.";
