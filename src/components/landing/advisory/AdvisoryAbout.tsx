@@ -23,7 +23,7 @@ export function AdvisoryAbout() {
             <div className="mx-auto aspect-square w-full max-w-[min(380px,78vw)] overflow-hidden rounded-full">
               <img
                 src="/advisory/ash-tal.jpg"
-                alt="Ash and Tal, founders of AETEA"
+                alt="Ash Tal, founders of AETEA"
                 className="h-full w-full object-cover object-[42%_top]"
               />
             </div>

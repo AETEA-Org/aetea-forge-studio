@@ -26,18 +26,16 @@ export function PricingCreditsTable({
               </p>
               <div aria-hidden="true" className="h-px min-w-0 flex-1 bg-border" />
             </div>
-            <h2 className={`${PRICING_SECTION_TITLE} text-foreground`}>
-              What things cost.
-            </h2>
+            <h2 className={`${PRICING_SECTION_TITLE} text-foreground`}>What things cost</h2>
             {variableNote && (
-              <p className={`mt-5 max-w-xl ${PRICING_BODY} text-muted-foreground`}>
-                {variableNote}
-              </p>
+              <div className={`mt-5 max-w-xl space-y-4 ${PRICING_BODY} text-muted-foreground`}>
+                {variableNote.split("\n\n").map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+              </div>
             )}
           </div>
 
           <div className="xl:mt-2 overflow-hidden rounded-2xl border border-white/10 bg-[#1a1a1a]">
-            <div className="hidden grid-cols-[minmax(0,1.1fr)_minmax(0,0.7fr)_minmax(0,1.6fr)] gap-4 border-b border-black/60 px-5 py-4 text-center text-sm font-normal text-white/70 md:grid md:px-8">
+            <div className="hidden grid-cols-[minmax(0,1.1fr)_minmax(0,0.7fr)_minmax(0,1.6fr)] gap-4 border-b border-black/60 px-5 py-4 text-center text-sm font-bold text-white/70 md:grid md:px-8">
               <span>Action</span>
               <span>Credits</span>
               <span>Meaning</span>
@@ -54,19 +52,19 @@ export function PricingCreditsTable({
                 >
                   <div className="grid grid-cols-1 gap-2 px-5 py-5 text-center text-sm text-white md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.7fr)_minmax(0,1.6fr)] md:items-center md:gap-4 md:px-8">
                     <p className="font-normal">
-                      <span className="mr-2 text-xs uppercase tracking-wider text-white/40 md:hidden">
+                      <span className="mr-2 text-xs font-bold uppercase tracking-wider text-white/40 md:hidden">
                         Action
                       </span>
                       {row.action}
                     </p>
                     <p className="font-normal text-white/95">
-                      <span className="mr-2 text-xs uppercase tracking-wider text-white/40 md:hidden">
+                      <span className="mr-2 text-xs font-bold uppercase tracking-wider text-white/40 md:hidden">
                         Credits
                       </span>
                       {row.cost}
                     </p>
                     <p className="text-white/85">
-                      <span className="mr-2 text-xs uppercase tracking-wider text-white/40 md:hidden">
+                      <span className="mr-2 text-xs font-bold uppercase tracking-wider text-white/40 md:hidden">
                         Meaning
                       </span>
                       {row.meaning}

@@ -192,7 +192,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     name: "Spark",
     accent: "#6c14ff",
     tagline:
-      "A flexible starting plan for learning, thinking and lighter creative work",
+      "Base plan for research, strategy, and lighter creative work",
     monthly: {
       price: "$29",
       priceUnit: "per month",
@@ -202,7 +202,7 @@ export const PRICING_PLANS: PricingPlan[] = [
       price: "$290",
       priceUnit: "per year",
       priceUnitStacked: true,
-      savingsNote: "save $58 | 16.7% annual saving",
+      savingsNote: "Save $58 | 16.7% annual saving",
     },
     specs: ["2,900 credits every month"],
     bestFor: "Students, early creators and users exploring AETEA regularly.",
@@ -221,7 +221,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     name: "Sprint",
     accent: "#037f12",
     tagline:
-      "For regular campaigns and growing creative demands",
+      "For regular campaigns and a growing volume of research, strategy, and creative work",
     monthly: {
       price: "$89",
       priceUnit: "per month",
@@ -231,7 +231,7 @@ export const PRICING_PLANS: PricingPlan[] = [
       price: "$890",
       priceUnit: "per year",
       priceUnitStacked: true,
-      savingsNote: "save $178 | 16.7% annual saving",
+      savingsNote: "Save $178 | 16.7% annual saving",
     },
     specs: ["8,900 credits every month"],
     bestFor:
@@ -250,17 +250,17 @@ export const PRICING_PLANS: PricingPlan[] = [
     id: "spire",
     name: "Spire",
     accent: "#007eff",
-    tagline: "Higher creative capacity for sustained, multi-campaign work",
+    tagline: "Higher capacity for delivering sustained, multi-campaign work",
     monthly: {
       price: "$199",
       priceUnit: "per month",
       priceUnitStacked: true,
     },
     annual: {
-      price: "$1,990",
+      price: "$1990",
       priceUnit: "per year",
       priceUnitStacked: true,
-      savingsNote: "save $398 | 16.7% annual saving",
+      savingsNote: "Save $398 | 16.7% annual saving",
     },
     specs: ["19,900 credits every month"],
     bestFor:
@@ -350,48 +350,48 @@ export const CREDIT_ACTIONS: PricingTableRow[] = [
   {
     action: "Brainstorm",
     cost: "Varies by work",
-    meaning: "Explore an idea, challenge, or brief.",
+    meaning: "Explore an idea, challenge, or brief",
   },
   {
     action: "Campaign Build",
     cost: "Varies by work",
     meaning:
-      "Brief dissection, research, strategy, creative foundations, and a deliverables or task plan. Media additional.",
+      "Brief dissection, research, strategy, creative foundations, and a deliverables or task plan (media additional)",
   },
   {
     action: "Image — 1K or 2K",
     cost: `${PUBLISHED.image.credits} per image`,
-    meaning: "One generated image.",
+    meaning: "One generated image",
   },
   {
     action: "Image — 4K",
     cost: `${PUBLISHED.image4k.credits} per image`,
-    meaning: "Higher-resolution image.",
+    meaning: "Higher-resolution image",
   },
   {
     action: "Video — 720p, no audio",
     cost: `${PUBLISHED.video720.credits} per second`,
-    meaning: "Video without generated audio.",
+    meaning: "Video without generated audio",
   },
   {
     action: "Video — 720p, native audio",
     cost: `${PUBLISHED.video720Audio.credits} per second`,
-    meaning: "Video with generated audio.",
+    meaning: "Video with generated audio",
   },
   {
     action: "Video — 1080p, no audio",
     cost: `${PUBLISHED.video1080.credits} per second`,
-    meaning: "Full HD without generated audio.",
+    meaning: "Full HD without generated audio",
   },
   {
     action: "Video — 1080p, native audio",
     cost: `${PUBLISHED.video1080Audio.credits} per second`,
-    meaning: "Full HD with generated audio.",
+    meaning: "Full HD with generated audio",
   },
   {
-    action: "Video — 4K, when supported",
+    action: "Video — 4K, native audio",
     cost: `${PUBLISHED.video4k.credits} per second`,
-    meaning: "Available only where supported.",
+    meaning: "Available only where supported",
   },
 ];
 
@@ -401,7 +401,7 @@ export const CREDIT_ACTIONS: PricingTableRow[] = [
  * stops to ask them for approval.
  */
 export const VARIABLE_ACTIONS_NOTE =
-  "Brainstorm and Campaign Build are charged for the work performed. AETEA deducts credits in real time, and the amount used remains visible. There is no separate credit-approval step. Images and video are charged separately from campaign development. Longer finished videos can be assembled from generated clips and are charged for all generated seconds.";
+  "Credits are used as the work is generated, and consumption is visible in your account. There is no separate credit-approval step.\n\nBrainstorm and Campaign Build use credits based on the work performed. Image generation is charged per image, based on resolution. Video generation is charged per generated second, with rates varying by resolution and whether native audio is included. Videos assembled from generated clips are charged for all generated seconds.";
 
 // ---------------------------------------------------------------------------
 // Top-ups
@@ -414,7 +414,7 @@ export const TOPUP_CREDITS_PER_DOLLAR = 100;
 
 export const PRICING_ADDONS: PricingAddon[] = TOPUP_QUICK_DOLLARS.map(
   (amount) => ({
-    name: `${(amount * TOPUP_CREDITS_PER_DOLLAR).toLocaleString()} credits`,
+    name: (amount * TOPUP_CREDITS_PER_DOLLAR).toLocaleString(),
     price: `$${amount}`,
     bestFor:
       amount <= 5
@@ -428,89 +428,86 @@ export const PRICING_ADDONS: PricingAddon[] = TOPUP_QUICK_DOLLARS.map(
 );
 
 export const CREDIT_RULES: string[] = [
-  "Monthly allocations expire at the next monthly renewal and do not roll over.",
+  "For monthly subscriptions, unused credits expire at the next renewal and do not roll over.",
   "Annual subscriptions release one allocation on each monthly anniversary of purchase; unused credits from the previous allocation expire and do not roll over.",
-  "Start credits last 72 hours from payment and do not renew.",
-  "Top-ups can be purchased and used only with an active subscription and expire after one month or on subscription termination, whichever is earlier.",
-  "Credits measure work performed. They are not cash or transferable value. Mandatory consumer rights always prevail over stated credit-expiry rules.",
+  "Start credits last 72 hours from payment and do not renew. Add-ons are not available in Start.",
+  "Add-ons are available only with an active subscription. They expire 30 days after purchase or at the end of the paid subscription period, whichever comes first, and do not roll over.",
+  "Credits measure work performed and have a stated expiry. They are not cash or transferable value."
 ];
 
 export const PRICING_FAQS: PricingFaqItem[] = [
   {
-    question: "What is an AETEA credit?",
-    answer:
-      "A credit is the unit AETEA uses for chargeable work. One credit is one cent, so $1 is 100 credits.",
+    "question": "What is an AETEA credit?",
+    "answer": "A credit is AETEA's unit for measuring chargeable work. At standard pricing, $1 purchases 100 credits. Credits are non-transferable and have no cash value."
   },
   {
-    question: "What uses credits?",
-    answer:
-      "The work AETEA does for you: answering, researching, writing, building a campaign, and generating images and video. Moving around the app — opening, saving, reviewing and organising your work — does not.",
+    "question": "What uses credits?",
+    "answer": "The work AETEA does for you: answering, researching, writing, building a campaign, and generating images and video. Opening, saving, reviewing, and organizing your work does not."
   },
   {
-    question: "How can I track what I spend?",
-    answer:
-      "AETEA shows credit consumption in real time while your work is being generated, and your usage stays visible in your account afterwards.",
+    "question": "How can I track what I spend?",
+    "answer": "AETEA shows credit consumption while your work is being generated, and your usage stays visible in your account afterwards."
   },
   {
-    question: "Do unused monthly credits roll over?",
-    answer:
-      "No. Each month's credits are valid from your purchase or renewal date until the next renewal date, and unused credits expire at renewal. AETEA always spends the ones expiring soonest first.",
+    "question": "Do unused monthly credits roll over?",
+    "answer": "No. Unused credits expire when the next monthly allocation is released. AETEA uses the credits expiring soonest first."
   },
   {
-    question: "Do annual subscribers receive all credits at once?",
-    answer:
-      "No. Annual subscribers pay in advance and receive one monthly allocation on each monthly anniversary of the purchase date. Each allocation expires when the next one is released and does not roll over.",
+    "question": "Do annual subscribers receive all credits at once?",
+    "answer": "No. Annual subscribers pay upfront for 10 months and receive 12 monthly allocations: the first at purchase and one on each subsequent monthly anniversary. Each allocation expires when the next one is released."
   },
   {
-    question: "What happens if I run out mid-way?",
-    answer:
-      "AETEA stops cleanly and keeps everything produced up to that point. Top up and carry on from where you were.",
+    "question": "What happens if I run out mid-way?",
+    "answer": "AETEA stops and saves the work generated up to that point. Subscribers can top up and continue. Start users must move to Spark, Sprint, or Spire to continue."
   },
   {
-    question: "What happens when I need more credits?",
-    answer:
-      "Active subscribers can add credits at any time from Settings, without changing plan. Each top-up is valid for one month from its purchase date, or until the subscription ends if that comes first, and top-up credits do not roll over. If you find you need them often, a larger plan gives you more for the money.",
+    "question": "Can I buy add-ons with Start?",
+    "answer": "No. Add-ons are available only to Spark, Sprint, and Spire subscribers."
   },
   {
-    question: "Can I buy top-ups with Start?",
-    answer:
-      "No. Top-ups are available only to active subscribers. Start is a one-time 72-hour introduction; move to Spark, Sprint or Spire to add credits.",
+    "question": "What happens when I need more credits?",
+    "answer": "Active subscribers can add credits at any time from Settings without changing plans. If you regularly need more credits, consider moving to a larger plan."
   },
   {
-    question: "Does Start renew automatically?",
-    answer:
-      "No. Start is a one-time, 72-hour introduction. It does not renew or convert into a subscription.",
+    "question": "Does Start renew automatically?",
+    "answer": "No. Start is a one-time, 72-hour introduction. It does not renew or convert into a subscription."
   },
   {
-    question: "When does the 72-hour Start window begin?",
-    answer:
-      "At payment. The 72 hours run from the moment you buy it, so start when you have time to use it, and the 800 credits expire when the window ends.",
+    "question": "When does the 72-hour Start window begin?",
+    "answer": "At payment. The 72-hour window begins when you purchase Start, and unused credits expire when it ends."
   },
   {
-    question: "What happens to my work after Start ends?",
-    answer:
-      "Your work stays saved. Move to Spark, Sprint or Spire to keep building on it.",
+    "question": "What happens to my work after Start ends?",
+    "answer": "Your work stays saved. Move to Spark, Sprint or Spire to keep building on it."
   },
   {
-    question: "Can I make a video longer than 15 seconds?",
-    answer:
-      "Yes. AETEA can combine shorter generated clips into a finished video of up to 60 seconds, charged for the total generated seconds.",
+    "question": "Can I make a video longer than 15 seconds?",
+    "answer": "Yes. AETEA can combine shorter generated clips into a finished video of up to 60 seconds, charged for the total generated seconds."
   },
   {
-    question: "Are all prices in US dollars?",
-    answer:
-      "Yes. Applicable sales taxes are shown at checkout based on your location, and any other mandatory charge is disclosed before purchase. Your payment method may also apply currency-conversion charges.",
+    "question": "Are all prices in US dollars?",
+    "answer": "Yes. Applicable sales taxes are shown at checkout based on your location, and any other mandatory charge is disclosed before purchase. Your payment method may also apply currency-conversion charges."
   },
   {
-    question: "Are there discounts for bigger purchases?",
-    answer:
-      "Discounts are not based on how much you use or can afford. The one discount is loyalty-based: annual subscriptions are twelve months for the price of ten.",
+    "question": "Are there discounts for bigger purchases?",
+    "answer": "No volume discounts apply. Annual subscriptions get 12 months for the price of 10."
   },
+  {
+    "question": "Can I see how many credits Brainstorm or Campaign Build will use before starting?",
+    "answer": "No. Neither provides an advance estimate, a task-level spending limit, or a credit-use warning. Consumption is visible as the work is generated."
+  },
+  {
+    "question": "Am I charged if a generation fails or is interrupted?",
+    "answer": "If AETEA's service provider charges for the generation, the corresponding credits are deducted. If the provider does not charge, no credits are deducted."
+  },
+  {
+    "question": "What happens if I cancel my subscription?",
+    "answer": "Cancellation does not end the paid period early. You can continue generating work until your credits run out or your paid subscription period ends, whichever comes first. Your work remains saved after the subscription ends."
+  }
 ];
 
 export const PACKAGE_VARIANTS_NOTE =
-  "The same AETEA capabilities are available across Start, Spark, Sprint, and Spire, subject to feature availability and the credits in your balance. Explore ideas and briefs; work through research, strategy, and copy; develop ideas, campaign foundations and deliverables; and generate images and videos. Credits are used as the work is generated, and consumption is visible in real time.\n\n" +
-  "You choose by usage volume. Start is a 72-hour introduction with 800 credits; Spark, Sprint, and Spire provide progressively larger monthly allocations. Larger requests and media generation can require more credits. AETEA subscriptions do not include The 80 Ones Advisory.";
+  "The same AETEA capabilities are available across Start, Spark, Sprint, and Spire, subject to feature availability and the credits in your balance. Explore ideas and briefs; work through research, strategy, and copy; develop campaign foundations and deliverables; and generate images and videos.";
 
 export const ADDONS_FOOTNOTE =
-  "Top-ups require an active subscription, expire one month after purchase or when the subscription ends, whichever comes first, and do not roll over. Start cannot purchase top-ups.";
+  "Add-ons are available only with an active Spark, Sprint, or Spire subscription. See credit rules for details.";

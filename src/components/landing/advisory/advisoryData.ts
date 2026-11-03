@@ -15,8 +15,10 @@ export const ADVISORY_HERO = {
     "AETEA is intelligence at work, available by subscription.",
   distinction:
     "The 80 Ones Advisory is distinct: a direct engagement with Ash Tal, founders of AETEA, for decision-makers facing choices when the underlying issue, viable path, or consequences are not yet understood.",
-  uncertainty:
-    "Consequential uncertainty rarely arrives neatly labelled. It may appear as an intention without form, an unclear offer or position, an unresolved launch or market move, or a team caught between strategy and execution. It may sit in the business, product, audience, purpose, brand, creative, execution, or organizational behaviour—or across several at once.",
+  uncertainty: [
+    "Consequential uncertainty rarely arrives neatly labelled. It may appear as an intention without form, an unclear offer or position, an unresolved launch or market move, a decision with public consequences, or a team caught between strategy and execution.",
+    "It may sit in the business, product, audience, purpose, brand, creative, execution, or organizational behaviour. It may also concern the shaping of ideas, public policy, institutional direction, resource allocation, security, public safety, or public trust. Often, it crosses several at once.",
+  ],
   closing:
     "The Advisory begins by examining the whole and locating where judgment is required.",
 } as const;
@@ -35,7 +37,7 @@ export const ADVISORY_PHILOSOPHY = {
 export const ADVISORY_CLARIFIES = {
   title: "What Advisory clarifies",
   lead:
-    "Clients know their business from within. Advisory brings the vantage point from which the situation can be seen differently. It provides direction and clarity around:",
+    "Clients know their situation from within. Advisory brings the vantage point from which the situation can be seen differently. It provides direction and clarity around:",
   items: [
     "the real problem;",
     "what requires action and what does not;",
@@ -50,7 +52,7 @@ export const ADVISORY_HOW_WE_WORK = {
   title: "How Ash Tal work",
   intro: [
     "Ash Tal are engaged for their attention, taste, judgment, diagnosis, direction, perspective, and lived experience.",
-    "They ask, listen, challenge, and dissect layers. They separate signal from noise, urgency from importance, truth from opinion, activity from progress, and what must be done from what merely wants to justify its existence.",
+    "They ask, listen, challenge, and dissect layers. They separate urgency from importance, facts from opinion, activity from progress, and what must be done from what merely wants to justify its existence.",
   ],
   quote: [
     "We do nothing for you except enable you to do right by yourself. We do not staff teams, manage your employees, or serve as a route into employment.",
@@ -61,8 +63,10 @@ export const ADVISORY_HOW_WE_WORK = {
 export const ADVISORY_AUDIENCE = {
   title: "Who Advisory is and isn’t for",
   primary: "The Advisory is for decision-makers.",
-  alsoRelevant:
-    "Most often, they are founders of startups or scaleups. They may also be CEOs, senior executives, CMOs, brand heads, or hold comparable responsibility within agencies, purpose-led organizations and institutions, including those working in sustainability, circularity or impact.",
+  alsoRelevant: [
+    "Most often, they are founders of startups or scaleups. They may also be CEOs, senior executives, CMOs, brand heads, or others with comparable responsibility in agencies, purpose-led organizations, or other institutions, including those working in sustainability, circularity, or impact.",
+    "Beyond business, the Advisory is for leaders of philanthropic and public policy organizations, as well as members of the intelligentsia. It is also for parliamentarians, political leaders, and decision-makers in the civil service, intelligence services, armed forces, and law enforcement.",
+  ],
   posture:
     "Relevance depends less on title or organisation than posture: the ability to tolerate truth without becoming defensive, practise self-diagnosis, value candid judgment over performative agreement, and act on what becomes clear.",
 } as const;
@@ -76,7 +80,7 @@ export const ADVISORY_BOUNDARIES = {
   subscription:
     "The Advisory remains distinct from the AETEA subscription; neither requires the other.",
   followThrough:
-    "What follows may be carried by AETEA, the client’s team, specialists, freelancers, agencies, or others suited to the work. Human judgment determines the way forward.",
+    "What follows may be carried by the client, their own teams, AETEA, or others suited to the work. Human judgment determines the way forward.",
 } as const;
 
 export const ADVISORY_BOOK_CTA = {

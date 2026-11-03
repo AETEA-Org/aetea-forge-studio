@@ -47,7 +47,9 @@ export function AdvisoryHero() {
           >
             <p className="mb-4 break-inside-avoid text-[0.95rem] leading-relaxed text-foreground/65 sm:text-base lg:text-lg lg:leading-[1.4]">{ADVISORY_HERO.subscriptionNote}</p>
             <p className="mb-4 text-[0.95rem] leading-relaxed text-foreground/65 sm:text-base lg:text-lg lg:leading-[1.4]">{ADVISORY_HERO.distinction}</p>
-            <p className="mb-4 text-[0.95rem] leading-relaxed text-foreground/65 sm:text-base lg:text-lg lg:leading-[1.4]">{ADVISORY_HERO.uncertainty}</p>
+            {ADVISORY_HERO.uncertainty.map((paragraph) => (
+              <p key={paragraph} className="mb-4 text-[0.95rem] leading-relaxed text-foreground/65 sm:text-base lg:text-lg lg:leading-[1.4]">{paragraph}</p>
+            ))}
             <p className="mb-0 break-inside-avoid text-[0.95rem] leading-relaxed text-foreground/65 sm:text-base lg:text-lg lg:leading-[1.4]">{ADVISORY_HERO.closing}</p>
           </div>
 

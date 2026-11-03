@@ -14,9 +14,9 @@ export function PricingAdvisory() {
             <div aria-hidden="true" className="h-px w-12 shrink-0 bg-border" />
           </div>
           <p className={`mb-8 ${PRICING_BODY}`}>
-            The 80 Ones Advisory is a separate engagement with Ash Tal. Its fee is considered and quoted for the particular Advisory project, following an initial complimentary conversation and assessment of what the engagement requires. An AETEA subscription does not include the Advisory, and an Advisory engagement does not require an AETEA subscription.
+            The Advisory is a separate engagement with Ash Tal. Fees are quoted after a complimentary conversation to establish fit and scope. An AETEA subscription does not include the Advisory, and an Advisory engagement does not require an AETEA subscription.
           </p>
-          <AdvisoryBookButton className="uppercase" />
+          <AdvisoryBookButton />
         </div>
       </div>
     </section>

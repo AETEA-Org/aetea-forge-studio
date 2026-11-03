@@ -10,7 +10,9 @@ export function AdvisoryAudience() {
 
           <div className="mt-8 space-y-5 sm:mt-10 sm:space-y-6">
             <p className={ADVISORY_BODY}>{ADVISORY_AUDIENCE.primary}</p>
-            <p className={ADVISORY_BODY}>{ADVISORY_AUDIENCE.alsoRelevant}</p>
+            {ADVISORY_AUDIENCE.alsoRelevant.map((paragraph) => (
+              <p key={paragraph} className={ADVISORY_BODY}>{paragraph}</p>
+            ))}
             <p className={ADVISORY_BODY}>{ADVISORY_AUDIENCE.posture}</p>
           </div>
         </div>

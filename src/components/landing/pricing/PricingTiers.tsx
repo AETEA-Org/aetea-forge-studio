@@ -95,10 +95,12 @@ function PricingPlanCard({
         </div>
 
         <div className="mb-2 space-y-0.5 text-center text-xs font-bold leading-snug">
-          <p>{plan.specs.join(" | ")}</p>
-          {billingPeriod === "annual" && activePrice.savingsNote ? (
-            <p className="text-white/90">{activePrice.savingsNote}</p>
-          ) : null}
+          <p>
+            {plan.specs.join(" | ")}
+            {billingPeriod === "annual" && activePrice.savingsNote ? (
+              <span className="text-white/90"> | {activePrice.savingsNote}</span>
+            ) : null}
+          </p>
         </div>
 
         <div className="mt-auto flex justify-center pt-2.5">
