@@ -29,7 +29,7 @@ export function AdvisoryAbout() {
             </div>
           </div>
 
-          <div className="mt-10 border-t border-border pt-10 sm:mt-12 sm:pt-12 lg:mt-16 lg:pt-16">
+          <div className="mt-6 border-t border-border pt-10 sm:mt-8 sm:pt-12 lg:mt-12 lg:pt-16">
             <div className="grid gap-10 lg:grid-cols-2 lg:gap-16">
               <div>
                 <h3 className={ADVISORY_TITLE}>{ADVISORY_ABOUT.ash.name}</h3>
@@ -87,9 +87,11 @@ export function AdvisoryAbout() {
           </div>
 
           <div className="mt-12 flex flex-col items-center text-center sm:mt-16">
-            <p className={`max-w-2xl ${ADVISORY_BODY}`}>
-              {ADVISORY_ABOUT.closing}
-            </p>
+            <div className="max-w-2xl space-y-5 sm:space-y-6">
+              {ADVISORY_ABOUT.closing.map((paragraph) => (
+                <p key={paragraph} className={ADVISORY_BODY}>{paragraph}</p>
+              ))}
+            </div>
 
             <div className="mt-8 sm:mt-10">
               <AdvisoryBookButton />

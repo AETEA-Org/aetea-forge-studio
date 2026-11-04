@@ -1,9 +1,9 @@
 import { ADVISORY_CLARIFIES } from "./advisoryData";
-import { ADVISORY_BODY, ADVISORY_CONTAINER, ADVISORY_SECTION, ADVISORY_TITLE } from "./advisoryStyles";
+import { ADVISORY_BODY, ADVISORY_CONTAINER, ADVISORY_SUBSECTION, ADVISORY_TITLE } from "./advisoryStyles";
 
 export function AdvisoryClarifies() {
   return (
-    <section className={ADVISORY_SECTION}>
+    <section className={ADVISORY_SUBSECTION}>
       <div className={ADVISORY_CONTAINER}>
         <div className="mx-auto max-w-4xl">
           <h2 className={ADVISORY_TITLE}>{ADVISORY_CLARIFIES.title}</h2>

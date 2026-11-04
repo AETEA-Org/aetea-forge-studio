@@ -65,7 +65,7 @@ export const ADVISORY_AUDIENCE = {
   primary: "The Advisory is for decision-makers.",
   alsoRelevant: [
     "Most often, they are founders of startups or scaleups. They may also be CEOs, senior executives, CMOs, brand heads, or others with comparable responsibility in agencies, purpose-led organizations, or other institutions, including those working in sustainability, circularity, or impact.",
-    "Beyond business, the Advisory is for leaders of philanthropic and public policy organizations, as well as members of the intelligentsia. It is also for parliamentarians, political leaders, and decision-makers in the civil service, intelligence services, armed forces, and law enforcement.",
+    "Beyond business, the Advisory is for leaders in philanthropy and public policy, members of the intelligentsia, and decision-makers across government, public service, and national security.",
   ],
   posture:
     "Relevance depends less on title or organisation than posture: the ability to tolerate truth without becoming defensive, practise self-diagnosis, value candid judgment over performative agreement, and act on what becomes clear.",
@@ -107,6 +107,9 @@ export const ADVISORY_ABOUT = {
       "His work spans enterprise and go-to-market strategy, commercial growth, brand architecture, marketing effectiveness, corporate communications, and distributed operations. He has led businesses and teams, translating founder and board priorities into product, market, and organizational action.",
     ],
   },
-  closing:
+  closing: [
+    "Beyond their executive careers, Ash Tal have independently studied comparative religion, civilizational history, and psychology to investigate how indoctrination and social pressure shape human thought and behaviour. They combine this inquiry with cultural insights, threat assessment, preventive intelligence, political and economic analysis, and strategic foresight.",
+    "Their counsel to decision-makers has guided pre-emptive decisions concerning security, social conflict, civic integration, lawmaking, and public policy.",
     "Together, they connect what is intended with what must be understood, decided, made, and carried into the world.",
+  ],
 } as const;
