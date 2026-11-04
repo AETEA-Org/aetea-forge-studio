@@ -25,7 +25,7 @@ export function PricingAddons({ addons, footnote }: PricingAddonsProps) {
         </div>
 
         <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#1a1a1a]">
-          <div className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,0.6fr)_minmax(0,1.4fr)] gap-2 border-b border-black/60 px-4 py-4 text-center text-sm font-bold text-white/70 md:gap-4 md:px-8">
+          <div className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,0.6fr)_minmax(0,1.4fr)] gap-2 border-b border-black/60 px-4 py-4 text-center text-sm font-normal text-primary md:gap-4 md:px-8">
             <span>Credits</span>
             <span>Price</span>
             <span>Best for</span>
