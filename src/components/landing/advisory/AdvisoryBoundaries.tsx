@@ -3,7 +3,7 @@ import { ADVISORY_BODY, ADVISORY_CONTAINER, ADVISORY_SUBSECTION, ADVISORY_TITLE 
 
 export function AdvisoryBoundaries() {
   return (
-    <section className={`${ADVISORY_SUBSECTION} pb-0 sm:pb-0 md:pb-0 lg:pb-0 xl:pb-0 grain`}>
+    <section className={`${ADVISORY_SUBSECTION} grain`}>
       <div className={ADVISORY_CONTAINER}>
         <div className="mx-auto max-w-4xl">
           <h2 className={ADVISORY_TITLE}>{ADVISORY_BOUNDARIES.title}</h2>

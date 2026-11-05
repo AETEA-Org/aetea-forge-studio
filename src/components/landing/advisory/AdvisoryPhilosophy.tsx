@@ -3,7 +3,7 @@ import { ADVISORY_BODY, ADVISORY_CONTAINER, ADVISORY_EYEBROW, ADVISORY_SUBSECTIO
 
 export function AdvisoryPhilosophy() {
   return (
-    <section className={`${ADVISORY_SUBSECTION} mt-8 overflow-hidden grain`}>
+    <section className={`${ADVISORY_SUBSECTION} overflow-hidden grain`}>
       <div className={ADVISORY_CONTAINER}>
         <div className="mx-auto max-w-4xl">
           <div className="mb-9 flex items-center gap-3 sm:mb-12">

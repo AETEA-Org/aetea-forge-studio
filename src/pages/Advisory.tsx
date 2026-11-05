@@ -22,7 +22,7 @@ export default function Advisory() {
   return (
     <div className="min-h-screen bg-background dark">
       <Navbar />
-      <main>
+      <main className="flex flex-col gap-8">
         <AdvisoryHero />
         <AdvisoryPhilosophy />
         <AdvisoryClarifies />

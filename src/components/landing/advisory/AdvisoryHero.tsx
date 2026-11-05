@@ -4,12 +4,12 @@ import { ADVISORY_EYEBROW } from "./advisoryStyles";
 
 export function AdvisoryHero() {
   return (
-    <section className="relative min-h-[100svh] overflow-hidden bg-black">
+    <section className="relative overflow-hidden bg-black">
       <div className="absolute inset-0 bg-black" />
       <div className="absolute inset-0 bg-gradient-to-b from-black via-black to-background" />
       <div className="absolute left-1/2 top-24 h-[clamp(220px,38vw,420px)] w-[min(760px,92vw)] -translate-x-1/2 rounded-full bg-primary/10 blur-[clamp(90px,14vw,170px)] sm:top-28" />
 
-      <div className="container relative z-10 flex justify-center px-5 pb-16 pt-24 sm:px-6 sm:pb-20 sm:pt-24 lg:px-12 lg:pb-8 lg:pt-20">
+      <div className="container relative z-10 flex justify-center px-5 pb-6 pt-24 sm:px-6 sm:pb-8 lg:px-12 lg:pb-10 lg:pt-20">
         <div className="flex w-full max-w-[960px] flex-col items-center text-center">
           <div
             className="mb-0 flex w-full justify-center opacity-0 animate-fade-in"

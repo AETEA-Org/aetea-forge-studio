@@ -87,7 +87,7 @@ export function AdvisoryAbout() {
           </div>
 
           <div className="mt-12 flex flex-col items-center text-center sm:mt-16">
-            <div className="max-w-2xl space-y-5 sm:space-y-6">
+            <div className="w-full space-y-5 sm:space-y-6">
               {ADVISORY_ABOUT.closing.map((paragraph) => (
                 <p key={paragraph} className={ADVISORY_BODY}>{paragraph}</p>
               ))}
