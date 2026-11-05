@@ -36,7 +36,7 @@ export function WhoItsFor() {
             </div>
             
             <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight leading-[1.15] text-foreground">
-              For people turning goals, ideas, and briefs into market-facing work.
+              For people turning goals, ideas, and briefs into market-facing work
             </h2>
           </div>
 

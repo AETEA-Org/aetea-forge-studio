@@ -2,8 +2,12 @@ import * as React from "react";
 
 import type { ToastActionElement, ToastProps } from "@/components/ui/toast";
 
-const TOAST_LIMIT = 1;
-const TOAST_REMOVE_DELAY = 1000000;
+// Three, not one: a burst of events used to leave only the last one, so the
+// first thing that went wrong was the thing you never saw.
+const TOAST_LIMIT = 3;
+// Long enough for the exit animation, then the toast leaves state. It was
+// 1,000,000 — about sixteen minutes of dismissed toasts piling up in memory.
+const TOAST_REMOVE_DELAY = 400;
 
 type ToasterToast = ToastProps & {
   id: string;

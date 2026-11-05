@@ -74,7 +74,7 @@ function PhilosophySection() {
 
               <h2 className="mb-8 font-display text-3xl font-bold leading-[1.15] tracking-tight text-foreground sm:text-4xl md:text-5xl">
                 AETEA as your ally,
-                <span className="text-foreground/60"> not your replacement.</span>
+                <span className="text-foreground/60"> not your replacement</span>
               </h2>
 
               <div className="space-y-7">

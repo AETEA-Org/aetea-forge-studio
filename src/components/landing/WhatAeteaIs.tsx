@@ -24,7 +24,7 @@ export function WhatAeteaIs() {
 
           {/* Main statement */}
           <h2 className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] mb-10 text-foreground">
-            An intelligence that thinks with you and delivers with you.
+            An intelligence that thinks with you and delivers with you
           </h2>
 
           {/* Supporting text */}
@@ -38,12 +38,11 @@ export function WhatAeteaIs() {
           </div>
 
           {/* CTA */}
-          <div className="mt-12 flex justify-center md:justify-start">
+          <div className="mt-12 flex justify-center">
             <Link to="/auth">
               <Button 
-                variant="outline"
                 size="lg"
-                className="border-foreground/20 text-foreground hover:bg-foreground/10 hover:border-foreground/40 rounded-full px-8 h-12 group transition-all duration-300"
+                className="bg-foreground text-background hover:bg-foreground/90 rounded-full px-8 h-14 text-base group"
               >
                 Explore AETEA
                 <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />

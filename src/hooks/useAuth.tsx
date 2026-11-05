@@ -1,14 +1,18 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { LegalAcceptance } from "@/services/legal";
+import { registrationRequest, restoreRegistrationSession } from "@/services/registration";
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signUp: (email: string, password: string, username?: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, username: string, acceptance: LegalAcceptance) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signInWithGoogle: (next?: string) => Promise<{ error: Error | null }>;
+  requestPasswordReset: (email: string) => Promise<void>;
+  updatePassword: (password: string) => Promise<void>;
+  signInWithGoogle: (token: string, challenge: string, acceptance?: LegalAcceptance) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -39,48 +43,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, username?: string) => {
-    const redirectUrl = `${window.location.origin}/app`;
-    
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: {
-          username: username,
-        },
-      },
-    });
-    return { error };
+  const signUp = async (email: string, password: string, username: string, acceptance: LegalAcceptance) => {
+    try {
+      const result = await registrationRequest<{ session: { access_token: string; refresh_token: string } | null }>("email", { email, password, username, ...acceptance });
+      await restoreRegistrationSession(result);
+      return { error: null };
+    } catch (error) { return { error: error instanceof Error ? error : new Error("Could not create your account.") }; }
   };
 
-  /**
-   * Sign in with Google, returning to where the user started.
-   *
-   * `next` matters because a purchase begins before sign-in: someone presses a
-   * plan on the pricing page, we stash the choice, and they sign in. This used
-   * to send every Google user to `/app` regardless, so the stashed choice was
-   * never picked up — they arrived in the app with no checkout started, and the
-   * intent sat in session storage until they happened to open the pricing page
-   * again, when a checkout would start on its own.
-   *
-   * Only same-site paths are honoured. A full URL here would turn sign-in into
-   * an open redirect, and the backslash form is rejected too because some
-   * browsers normalise `/\host` to protocol-relative.
-   */
-  const signInWithGoogle = async (next?: string) => {
-    const safe =
-      next && next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/\\')
-        ? next
-        : '/app';
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}${safe}`,
-      },
-    });
-    return { error };
+  const signInWithGoogle = async (token: string, challenge: string, acceptance?: LegalAcceptance) => {
+    const result = await registrationRequest<{ session: { access_token: string; refresh_token: string } | null }>("google", { token, challenge, acceptance });
+    await restoreRegistrationSession(result);
   };
 
   const signIn = async (email: string, password: string) => {
@@ -91,12 +64,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   };
 
+  // Reset is Supabase's own flow, not ours: it owns the one-time token, the
+  // expiry and the "same answer whether or not the account exists" behaviour
+  // that keeps the form from telling a stranger which addresses are real.
+  // Our part is the two screens and the branded email, which is a project-level
+  // template rather than anything sent from here.
+  const requestPasswordReset = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      // Where the link lands. Taken from the running origin rather than a build
+      // variable so a preview deployment sends people back to itself.
+      redirectTo: `${window.location.origin}/auth/reset`,
+    });
+    if (error) throw error;
+  };
+
+  const updatePassword = async (password: string) => {
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) throw error;
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signInWithGoogle, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signInWithGoogle, signOut, requestPasswordReset, updatePassword }}>
       {children}
     </AuthContext.Provider>
   );

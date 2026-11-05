@@ -51,7 +51,7 @@ export function HeroSection() {
             className="text-lg sm:text-xl md:text-2xl text-foreground/70 max-w-2xl leading-relaxed mb-5 opacity-0 animate-fade-in mx-auto"
             style={{ animationDelay: '0.3s' }}
           >
-            From brief to market. From response to what follows.
+            From brief to market. From response to what follows
           </p>
 
           {/* Body */}
@@ -76,7 +76,7 @@ export function HeroSection() {
                 <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Button>
             </Link>
-            <a href="mailto:hello@aetea.ai?subject=Demo%20Request">
+            <a className="hidden" href="mailto:support@aetea.studio?subject=Demo%20Request">
               <Button 
                 size="lg" 
                 variant="outline" 
@@ -90,7 +90,7 @@ export function HeroSection() {
       </div>
 
       {/* Scroll indicator - outside grid div so opacity isn't inherited */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 opacity-0 animate-fade-in" style={{ animationDelay: '0.9s' }}>
+      <div className="absolute bottom-8 inset-x-0 flex justify-center opacity-0 animate-fade-in" style={{ animationDelay: '0.9s' }}>
         <div className="w-6 h-10 rounded-full border border-foreground/20 flex items-start justify-center p-2">
           <div className="w-1 h-2 rounded-full bg-foreground/40 animate-bounce" />
         </div>

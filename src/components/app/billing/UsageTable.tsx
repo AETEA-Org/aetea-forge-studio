@@ -1,17 +1,16 @@
 import { useState } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { UsageEvent } from "@/services/billing";
-import { formatCredits, formatDateTime, tierLabel } from "./format";
+import { formatCredits, tierLabel } from "./format";
 
 const PAGE = 25;
 
 /**
  * What the customer has spent credits on.
  *
- * Two rules hold this together.
+ * Three rules hold this together.
  *
  * **One row per thing they asked for**, not per provider call. A campaign build
  * is one line here even though it was forty calls underneath; the backend does
@@ -22,7 +21,61 @@ const PAGE = 25;
  * human-readable, so no vendor, model or action code can appear even by
  * accident — the failure mode of a local code-to-name map is that a new action
  * shows up as `video.generate`.
+ *
+ * **The day is said once.** A table that repeats the full date on every line
+ * spends its widest column restating something that changed twice. Rows are
+ * grouped under a day heading and carry only a time.
  */
+
+/** "Today" / "Yesterday" / "29 September", for a group heading. */
+function dayLabel(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "Earlier";
+  const start = (d: Date) =>
+    new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const days = Math.round((start(new Date()) - start(date)) / 86_400_000);
+  if (days === 0) return "Today";
+  if (days === 1) return "Yesterday";
+  return date.toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "long",
+    ...(date.getFullYear() === new Date().getFullYear() ? {} : { year: "numeric" }),
+  });
+}
+
+function timeLabel(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleTimeString(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+/**
+ * Tier decides most of why one piece of work cost more than another, so it is
+ * the one thing here worth colouring. These are AETEA's own names — no vendor
+ * or model reaches this file.
+ */
+const TIER_CLASS: Record<string, string> = {
+  "aetea-max": "border-violet-500/30 bg-violet-500/10 text-violet-300",
+  aetea: "border-primary/30 bg-primary/10 text-primary",
+  "aetea-lite": "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
+};
+
+function groupByDay(events: UsageEvent[]): [string, UsageEvent[]][] {
+  const groups: [string, UsageEvent[]][] = [];
+  for (const event of events) {
+    const label = dayLabel(event.created_at);
+    const last = groups[groups.length - 1];
+    // The list arrives newest-first and stays in that order, so a run of rows
+    // sharing a day is always contiguous.
+    if (last && last[0] === label) last[1].push(event);
+    else groups.push([label, [event]]);
+  }
+  return groups;
+}
+
 export function UsageTable({
   events,
   isLoading,
@@ -52,73 +105,70 @@ export function UsageTable({
     );
   }
 
-  const visible = events.slice(0, shown);
+  const groups = groupByDay(events.slice(0, shown));
 
   return (
     <div className="space-y-3">
-      <div className="overflow-hidden rounded-lg border border-border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
-            <tr>
-              <th className="px-4 py-2.5 text-left font-medium">What</th>
-              <th className="hidden px-4 py-2.5 text-left font-medium sm:table-cell">
-                When
-              </th>
-              <th className="px-4 py-2.5 text-right font-medium">Credits</th>
-            </tr>
-          </thead>
-          <tbody>
-            {visible.map((event) => {
-              // Read from the backend's own record of an interrupted turn, not
-              // guessed from `status`. Every row the meter writes carries the
-              // literal "settled", which matched none of the words this once
-              // tested for, so every row in the history claimed to be stopped.
+      <div className="rounded-xl border border-border px-4 pb-2">
+        {groups.map(([day, rows]) => (
+          <div key={day}>
+            <p className="pb-1.5 pt-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              {day}
+            </p>
+            {rows.map((event) => {
+              // The backend's own record of a turn that stopped partway: its
+              // cost was self-counted because a cancelled stream never delivers
+              // its usage chunk. Never inferred from `status`, which is the
+              // literal "settled" on every row ever written.
               const stopped = event.is_estimated === true;
               const tier = tierLabel(event.tier);
               return (
-                <tr
+                <div
                   key={event.id}
-                  className="border-t border-border/60 align-middle"
+                  className="flex items-center gap-3 border-t border-border/50 py-2.5"
                 >
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium">{event.display_name}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm">
+                      {event.display_name}
+                    </span>
+                    <span className="mt-0.5 flex flex-wrap items-center gap-2">
+                      <span className="text-xs tabular-nums text-muted-foreground">
+                        {timeLabel(event.created_at)}
+                      </span>
                       {tier && (
-                        <Badge variant="secondary" className="text-[10px]">
+                        <span
+                          className={cn(
+                            "rounded border px-1.5 text-[10px] font-semibold",
+                            TIER_CLASS[event.tier ?? ""] ??
+                              "border-border text-muted-foreground",
+                          )}
+                        >
                           {tier}
-                        </Badge>
+                        </span>
                       )}
                       {stopped && (
-                        <Badge variant="outline" className="text-[10px]">
-                          Stopped
-                        </Badge>
+                        <span className="rounded border border-amber-500/30 bg-amber-500/10 px-1.5 text-[10px] font-semibold text-amber-400">
+                          Stopped partway
+                        </span>
                       )}
-                    </div>
-                    {stopped && (
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        Stopped partway — charged for what ran.
-                      </p>
-                    )}
-                    <p className="mt-0.5 text-xs text-muted-foreground sm:hidden">
-                      {formatDateTime(event.created_at)}
-                    </p>
-                  </td>
-                  <td className="hidden whitespace-nowrap px-4 py-3 text-muted-foreground sm:table-cell">
-                    {formatDateTime(event.created_at)}
-                  </td>
-                  <td
+                    </span>
+                  </span>
+                  <span
                     className={cn(
-                      "whitespace-nowrap px-4 py-3 text-right font-medium tabular-nums",
+                      "shrink-0 font-price text-base tabular-nums",
                       event.credits_charged === 0 && "text-muted-foreground",
                     )}
                   >
                     {formatCredits(event.credits_charged)}
-                  </td>
-                </tr>
+                    <span className="ml-1 font-sans text-[10px] text-muted-foreground">
+                      cr
+                    </span>
+                  </span>
+                </div>
               );
             })}
-          </tbody>
-        </table>
+          </div>
+        ))}
       </div>
 
       {events.length > shown && (

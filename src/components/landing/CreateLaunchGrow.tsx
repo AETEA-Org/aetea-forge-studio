@@ -5,38 +5,38 @@ const pillars = [
   {
     id: "research",
     title: "Research",
-    tagline: "See what matters.",
+    tagline: "See what matters",
     capabilities: [
       "Industry and market landscape",
       "Audience needs and behaviour",
       "Competitor positions and gaps",
       "Tensions, opportunities, and questions to pursue",
     ],
-    outcome: "A focused view of the context.",
+    outcome: "A focused view of the context",
   },
   {
     id: "strategy",
     title: "Strategy",
-    tagline: "Choose the way forward.",
+    tagline: "Choose the way forward",
     capabilities: [
       "Positioning and narrative",
       "Audience segments, personas, and journeys",
       "Messaging and creative foundation",
       "Channels, rollout, and measurement",
     ],
-    outcome: "Decisions ready to guide the work.",
+    outcome: "Decisions ready to guide the work",
   },
   {
     id: "creative",
     title: "Creative",
-    tagline: "Give the direction form.",
+    tagline: "Give the direction form",
     capabilities: [
       "Campaign key visuals and content concepts",
       "Copy, scripts, and storyboards",
       "Visual, film, audio, print, out-of-home, point-of-sale, PR, event, and digital assets",
       "Deliverables and rollout packs",
     ],
-    outcome: "Work ready to make, test, and use.",
+    outcome: "Work ready to make, test, and use",
   },
 ];
 

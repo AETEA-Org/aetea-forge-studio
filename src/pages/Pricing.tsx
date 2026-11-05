@@ -8,6 +8,7 @@ import { PricingCreditsTable } from "@/components/landing/pricing/PricingCredits
 import { PricingAddons } from "@/components/landing/pricing/PricingAddons";
 import { PricingRules } from "@/components/landing/pricing/PricingRules";
 import { PricingFaq } from "@/components/landing/pricing/PricingFaq";
+import { PricingAdvisory } from "@/components/landing/pricing/PricingAdvisory";
 import {
   ADDONS_FOOTNOTE,
   CREDIT_ACTIONS,
@@ -85,7 +86,7 @@ export default function Pricing() {
   return (
     <div className="min-h-screen bg-background dark">
       <Navbar />
-      <main>
+      <main className="flex flex-col gap-[50px] md:gap-[74px]">
         <PricingHero />
         <PricingTiers
           plans={PRICING_PLANS}
@@ -102,6 +103,7 @@ export default function Pricing() {
 
         <PricingAddons addons={PRICING_ADDONS} footnote={ADDONS_FOOTNOTE} />
         <PricingRules rules={CREDIT_RULES} />
+        <PricingAdvisory />
         <PricingFaq items={PRICING_FAQS} />
       </main>
       <Footer />

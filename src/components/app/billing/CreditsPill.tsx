@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Coins } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useBalance } from "@/hooks/useBilling";
+import { settingsNavigation } from "@/components/app/settingsNavigation";
 import { formatCredits, formatDate } from "./format";
 
 /**
@@ -28,6 +29,7 @@ const LOW_CREDITS = 300;
 
 export function CreditsPill({ className }: { className?: string }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { data, isLoading, isError } = useBalance();
 
   if (isLoading) {
@@ -46,7 +48,7 @@ export function CreditsPill({ className }: { className?: string }) {
   const pill = (
     <button
       type="button"
-      onClick={() => navigate("/app/settings?tab=billing")}
+      onClick={() => navigate(...settingsNavigation(location, "billing"))}
       aria-label={`${formatCredits(credits)} credits. Open billing.`}
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",

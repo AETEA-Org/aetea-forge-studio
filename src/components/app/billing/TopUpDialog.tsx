@@ -71,8 +71,9 @@ export function TopUpDialog({
         <DialogHeader>
           <DialogTitle>Add credits</DialogTitle>
           <DialogDescription>
-            Credits you buy stay valid for three months, and AETEA always spends
-            the ones expiring soonest first.
+            Credits you buy stay valid for one month, or until your plan ends if
+            that comes first, and AETEA always spends the ones expiring soonest
+            first.
           </DialogDescription>
         </DialogHeader>
 

@@ -45,6 +45,42 @@ export function formatDistanceFromUTC(
 }
 
 /**
+ * A very short "time ago": `now`, `2m`, `4h`, `3d`, `2w`, `5mo`, `1y`.
+ *
+ * For surfaces with no room for words. The canvas chat node can be dragged down
+ * to 320px, where "about 2 minutes ago" squeezes the message actions off their
+ * own row — the words have to give way, not the buttons.
+ *
+ * @param utcDateString - ISO 8601 date string in UTC from backend
+ */
+export function formatDistanceCompactFromUTC(utcDateString: string): string {
+  const then = parseUTCDate(utcDateString).getTime();
+  const seconds = Math.max(0, Math.round((Date.now() - then) / 1000));
+  if (seconds < 60) return "now";
+
+  // Floor, not round, and every unit derived from seconds rather than from the
+  // unit above it. Rounding each step off an already-rounded step compounds:
+  // 59.5 minutes became 60, which became "1h". Flooring also matches what
+  // people read into these — "1h" means an hour has passed, not nearly.
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+
+  const hours = Math.floor(seconds / 3600);
+  if (hours < 24) return `${hours}h`;
+
+  const days = Math.floor(seconds / 86400);
+  if (days < 7) return `${days}d`;
+
+  if (days < 30) return `${Math.floor(days / 7)}w`;
+
+  const months = Math.floor(days / 30);
+  // `mo`, not `m`: `m` is already minutes above.
+  if (months < 12) return `${months}mo`;
+
+  return `${Math.floor(days / 365)}y`;
+}
+
+/**
  * Checks if a UTC date string represents today in the user's local timezone.
  * 
  * @param utcDateString - ISO 8601 date string in UTC from backend
