@@ -19,7 +19,7 @@ export function FinalCTA() {
           </h2>
           
           <p className="text-xl text-foreground/70 mb-12 leading-relaxed">
-            Start your first brief and see what AETEA can do for you
+            Start your first brief and see what AETEA can do for you.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -32,7 +32,7 @@ export function FinalCTA() {
                 <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Button>
             </Link>
-            <a href="mailto:support@aetea.studio?subject=Demo%20Request">
+            <a className="hidden" href="mailto:support@aetea.studio?subject=Demo%20Request">
               <Button 
                 size="lg" 
                 variant="outline" 

@@ -12,7 +12,7 @@ const pillars = [
       "Competitor positions and gaps",
       "Tensions, opportunities, and questions to pursue",
     ],
-    outcome: "A focused view of the context.",
+    outcome: "A focused view of the context",
   },
   {
     id: "strategy",
@@ -24,7 +24,7 @@ const pillars = [
       "Messaging and creative foundation",
       "Channels, rollout, and measurement",
     ],
-    outcome: "Decisions ready to guide the work.",
+    outcome: "Decisions ready to guide the work",
   },
   {
     id: "creative",
@@ -36,7 +36,7 @@ const pillars = [
       "Visual, film, audio, print, out-of-home, point-of-sale, PR, event, and digital assets",
       "Deliverables and rollout packs",
     ],
-    outcome: "Work ready to make, test, and use.",
+    outcome: "Work ready to make, test, and use",
   },
 ];
 
@@ -67,7 +67,7 @@ export function CreateLaunchGrow() {
             </h2>
 
             <p className="mt-6 text-lg text-foreground/60">
-              Brainstorm an idea or work through a campaign
+              Brainstorm an idea or work through a campaign.
             </p>
           </div>
 
