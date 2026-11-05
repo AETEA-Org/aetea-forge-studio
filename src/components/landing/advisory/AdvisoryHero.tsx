@@ -54,7 +54,7 @@ export function AdvisoryHero() {
           </div>
 
           <div
-            className="mt-8 flex w-full justify-center opacity-0 animate-fade-in sm:mt-10"
+            className="relative top-6 mt-8 flex w-full justify-center opacity-0 animate-fade-in sm:top-7 sm:mt-10 lg:top-9"
             style={{ animationDelay: "0.6s" }}
           >
             <AdvisoryBookButton />

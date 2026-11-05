@@ -24,7 +24,7 @@ export function WhatAeteaIs() {
 
           {/* Main statement */}
           <h2 className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] mb-10 text-foreground">
-            An intelligence that thinks with you and delivers with you.
+            An intelligence that thinks with you and delivers with you
           </h2>
 
           {/* Supporting text */}

@@ -5,7 +5,7 @@ import { ADVISORY_BODY, ADVISORY_CONTAINER, ADVISORY_EYEBROW, ADVISORY_SECTION, 
 
 export function AdvisoryAbout() {
   return (
-    <section className={ADVISORY_SECTION}>
+    <section className={`${ADVISORY_SECTION} -mt-4`}>
       <div className={ADVISORY_CONTAINER}>
         <div className="mx-auto max-w-5xl">
           <div className="grid items-center gap-9 lg:grid-cols-[1.15fr_0.85fr] lg:gap-16">
@@ -93,7 +93,7 @@ export function AdvisoryAbout() {
               ))}
             </div>
 
-            <div className="mt-8 sm:mt-10">
+            <div className="mt-14 sm:mt-[4.25rem] lg:mt-[4.75rem]">
               <AdvisoryBookButton />
             </div>
           </div>

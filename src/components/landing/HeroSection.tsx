@@ -51,7 +51,7 @@ export function HeroSection() {
             className="text-lg sm:text-xl md:text-2xl text-foreground/70 max-w-2xl leading-relaxed mb-5 opacity-0 animate-fade-in mx-auto"
             style={{ animationDelay: '0.3s' }}
           >
-            From brief to market. From response to what follows.
+            From brief to market. From response to what follows
           </p>
 
           {/* Body */}

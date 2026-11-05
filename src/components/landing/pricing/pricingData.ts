@@ -478,7 +478,7 @@ export const PRICING_FAQS: PricingFaqItem[] = [
   },
   {
     "question": "What happens to my work after Start ends?",
-    "answer": "Your work stays saved. Move to Spark, Sprint or Spire to keep building on it."
+    "answer": "Your work stays saved. Move to Spark, Sprint, or Spire to keep building on it."
   },
   {
     "question": "Can I make a video longer than 15 seconds?",

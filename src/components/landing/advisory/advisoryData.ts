@@ -68,7 +68,7 @@ export const ADVISORY_AUDIENCE = {
     "Beyond business, the Advisory is for leaders in philanthropy and public policy, members of the intelligentsia, and decision-makers across government, public service, and national security.",
   ],
   posture:
-    "Relevance depends less on title or organisation than posture: the ability to tolerate truth without becoming defensive, practise self-diagnosis, value candid judgment over performative agreement, and act on what becomes clear.",
+    "Relevance depends less on title or organization than posture: the ability to tolerate truth without becoming defensive, practise self-diagnosis, value candid judgment over performative agreement, and act on what becomes clear.",
 } as const;
 
 export const ADVISORY_BOUNDARIES = {
@@ -76,7 +76,7 @@ export const ADVISORY_BOUNDARIES = {
   not:
     "The Advisory is not free strategy, speculative creative, packaged answers, labour by volume, staffing, or execution as the core offer.",
   credentials:
-    "Ash Tal do not audition or prove their worth through unpaid work. Credentials establish fit.",
+    "Ash Tal do not audition or prove worth through unpaid work. Credentials establish fit.",
   subscription:
     "The Advisory remains distinct from the AETEA subscription; neither requires the other.",
   followThrough:
@@ -108,8 +108,7 @@ export const ADVISORY_ABOUT = {
     ],
   },
   closing: [
-    "Beyond their executive careers, Ash Tal have independently studied comparative religion, civilizational history, and psychology to investigate how indoctrination and social pressure shape human thought and behaviour. They combine this inquiry with cultural insights, threat assessment, preventive intelligence, political and economic analysis, and strategic foresight.",
-    "Their counsel to decision-makers has guided pre-emptive decisions concerning security, social conflict, civic integration, lawmaking, and public policy.",
+    "Beyond their executive careers, Ash Tal have independently studied comparative religion, civilizational history, and psychology to investigate how indoctrination and social pressure shape human thought and behaviour. They combine this inquiry with cultural insights, threat assessment, preventive intelligence, political and economic analysis, and strategic foresight. Their counsel to decision-makers has guided pre-emptive decisions concerning security, social conflict, civic integration, lawmaking, and public policy.",
     "Together, they connect what is intended with what must be understood, decided, made, and carried into the world.",
   ],
 } as const;

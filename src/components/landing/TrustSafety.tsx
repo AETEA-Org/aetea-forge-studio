@@ -24,7 +24,7 @@ export function TrustSafety() {
           </div>
           
           <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight mb-12 text-foreground">
-            Quality controls built in.
+            Quality controls built in
           </h2>
 
           <div className="inline-flex flex-col items-start text-left">

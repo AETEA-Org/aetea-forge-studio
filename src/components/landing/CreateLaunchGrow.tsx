@@ -5,7 +5,7 @@ const pillars = [
   {
     id: "research",
     title: "Research",
-    tagline: "See what matters.",
+    tagline: "See what matters",
     capabilities: [
       "Industry and market landscape",
       "Audience needs and behaviour",
@@ -17,7 +17,7 @@ const pillars = [
   {
     id: "strategy",
     title: "Strategy",
-    tagline: "Choose the way forward.",
+    tagline: "Choose the way forward",
     capabilities: [
       "Positioning and narrative",
       "Audience segments, personas, and journeys",
@@ -29,7 +29,7 @@ const pillars = [
   {
     id: "creative",
     title: "Creative",
-    tagline: "Give the direction form.",
+    tagline: "Give the direction form",
     capabilities: [
       "Campaign key visuals and content concepts",
       "Copy, scripts, and storyboards",
@@ -67,7 +67,7 @@ export function CreateLaunchGrow() {
             </h2>
 
             <p className="mt-6 text-lg text-foreground/60">
-              Brainstorm an idea or work through a campaign.
+              Brainstorm an idea or work through a campaign
             </p>
           </div>
 

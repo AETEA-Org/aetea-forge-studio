@@ -49,7 +49,7 @@ export function HowItWorks() {
             </div>
             
             <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-foreground">
-              Brief to launch in four steps.
+              Brief to launch in four steps
             </h2>
           </div>
 
