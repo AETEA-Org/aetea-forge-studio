@@ -41,15 +41,15 @@ export function HowItWorks() {
           {/* Section header */}
           <div className="text-center mb-20">
             <div className="flex items-center justify-center gap-3 mb-8">
-              <div className="h-px w-12 bg-gradient-to-r from-transparent to-border" />
+              <div className="h-px w-12 bg-border" />
               <span className="text-xs uppercase tracking-[0.3em] text-foreground/60">
                 Process
               </span>
-              <div className="h-px w-12 bg-gradient-to-l from-transparent to-border" />
+              <div className="h-px w-12 bg-border" />
             </div>
             
             <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-foreground">
-              Brief to launch in four steps.
+              Brief to launch in four steps
             </h2>
           </div>
 

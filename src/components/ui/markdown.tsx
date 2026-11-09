@@ -62,6 +62,23 @@ export function Markdown({ children, className, inline = false }: MarkdownProps)
     em: (props) => (
       <em {...props} className="italic" />
     ),
+    // Headings. Tailwind's Preflight strips the browser's own sizing, so
+    // without these a structured document renders every heading at body size
+    // and reads as one undifferentiated block — which is the whole reason the
+    // author wrote headings. Sized conservatively: this renders inside cards
+    // and chat bubbles, not on a page of its own.
+    h1: (props) => (
+      <h1 {...props} className="mb-2 mt-3 text-base font-semibold text-foreground first:mt-0" />
+    ),
+    h2: (props) => (
+      <h2 {...props} className="mb-1.5 mt-3 text-sm font-semibold text-foreground first:mt-0" />
+    ),
+    h3: (props) => (
+      <h3 {...props} className="mb-1 mt-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground first:mt-0" />
+    ),
+    h4: (props) => (
+      <h4 {...props} className="mb-1 mt-2 text-xs font-semibold text-foreground first:mt-0" />
+    ),
     // Style code
     code: (props) => (
       <code {...props} className="bg-muted px-1 py-0.5 rounded text-sm" />

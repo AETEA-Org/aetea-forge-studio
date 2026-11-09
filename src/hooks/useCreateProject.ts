@@ -124,6 +124,7 @@ export function useCreateProject() {
     showLoadingScreen,
     steps,
     error,
+    chatId,
     reset,
   };
 }

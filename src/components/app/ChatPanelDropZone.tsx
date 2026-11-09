@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from "react";
 import { Paperclip } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { partitionChatFiles } from "@/lib/chatFileValidation";
+import { CHAT_DROP_HINT, partitionChatFiles, summarizeFileErrors } from "@/lib/chatFileValidation";
 import { useToast } from "@/hooks/use-toast";
 
 interface ChatPanelDropZoneProps {
@@ -65,7 +65,7 @@ export function ChatPanelDropZone({
       if (errors.length > 0) {
         toast({
           title: "Some files were skipped",
-          description: errors.slice(0, 3).join(" · ") + (errors.length > 3 ? "…" : ""),
+          description: summarizeFileErrors(errors),
           variant: "destructive",
         });
       }
@@ -102,7 +102,7 @@ export function ChatPanelDropZone({
             </div>
             <p className="text-sm font-medium text-foreground">Drop files to attach</p>
             <p className="text-xs text-muted-foreground leading-snug">
-              PDF, Word, PowerPoint, and images · max 10MB each
+              {CHAT_DROP_HINT}
             </p>
           </div>
         </div>

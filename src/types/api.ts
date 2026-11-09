@@ -415,6 +415,16 @@ export interface CampaignTask {
   description: string;
   status: CampaignTaskStatus;
   deadline: string | null;
+  /**
+   * Null for a deliverable — a tangible final asset the user was promised.
+   * Set for one of the pieces of work needed to produce that asset.
+   *
+   * The API returns every row flat with its parent named, so a reader that
+   * ignores this still sees everything. Optional because a campaign saved
+   * before nesting existed has neither field.
+   */
+  parent_task_id?: string | null;
+  position?: number;
   created_at: string;
   updated_at: string;
 }

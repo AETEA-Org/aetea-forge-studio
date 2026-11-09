@@ -1,5 +1,4 @@
 import * as React from "react";
-import { Link2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
@@ -10,7 +9,7 @@ interface ReferenceIconProps {
 }
 
 /**
- * Checks if a link should be treated as a reference (shows icon instead of text)
+ * Checks if a link should be treated as a reference (shows a numbered chip)
  * References are typically numeric (e.g., [28], [10]) or short codes
  * We want to preserve natural link text like "click here", "read more", etc.
  */
@@ -69,20 +68,19 @@ export function ReferenceIcon({ displayName, url, className }: ReferenceIconProp
         <button
           onClick={handleClick}
           className={cn(
-            "inline-flex items-center justify-center",
-            "h-5 w-5 rounded-full",
-            "bg-muted border border-border",
-            "text-muted-foreground",
-            "hover:bg-muted/80 hover:border-muted-foreground/30",
-            "hover:scale-110",
-            "transition-all duration-150",
+            "inline-grid place-items-center",
+            "h-[15px] min-w-[15px] rounded px-1",
+            "bg-primary/15 text-primary",
+            "font-mono text-[10px] font-semibold leading-none",
+            "hover:bg-primary hover:text-primary-foreground",
+            "transition-colors duration-150",
             "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
-            "align-middle",
+            "align-[1px]",
             className
           )}
           aria-label={`Reference ${displayName}: ${url}`}
         >
-          <Link2 className="h-3 w-3" strokeWidth={2.5} />
+          {displayName.replace(/[[\]]/g, "")}
         </button>
       </TooltipTrigger>
       <TooltipContent

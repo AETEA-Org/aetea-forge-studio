@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Facebook, Instagram, Linkedin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FOOTER_BRAND_MARK_CLASS, MARKETING_BRAND_LINKS } from "@/components/landing/marketingBrandLinks";
+import { SupportLink } from "@/components/support/SupportLink";
 
 const socialLinks = [
   { label: "LinkedIn", href: "https://www.linkedin.com/company/aetea-studio/", Icon: Linkedin },
@@ -17,6 +18,13 @@ const socialLinks = [
     ),
   },
 ];
+
+const advisorySocialUrls: Record<string, string> = {
+  LinkedIn: import.meta.env.VITE_ADVISORY_SOCIAL_LINKEDIN,
+  Instagram: import.meta.env.VITE_ADVISORY_SOCIAL_INSTAGRAM,
+  Facebook: import.meta.env.VITE_ADVISORY_SOCIAL_FACEBOOK,
+  X: import.meta.env.VITE_ADVISORY_SOCIAL_X,
+};
 
 function BrandLink({
   link,
@@ -45,13 +53,13 @@ function BrandLink({
   );
 }
 
-function SocialLinks() {
+function SocialLinks({ advisory = false }: { advisory?: boolean }) {
   return (
     <div className="flex flex-wrap items-center justify-center gap-4">
       {socialLinks.map(({ label, href, Icon }) => (
         <a
           key={label}
-          href={href}
+          href={advisory ? advisorySocialUrls[label] : href}
           target="_blank"
           rel="noopener noreferrer"
           aria-label={label}
@@ -64,7 +72,7 @@ function SocialLinks() {
   );
 }
 
-export function Footer() {
+export function Footer({ advisory = false }: { advisory?: boolean }) {
   const { pathname } = useLocation();
   const activeLink = MARKETING_BRAND_LINKS.find((link) => link.to === pathname) ?? MARKETING_BRAND_LINKS[0];
   const inactiveLinks = MARKETING_BRAND_LINKS.filter((link) => link.to !== activeLink.to);
@@ -80,7 +88,7 @@ export function Footer() {
           </nav>
 
           <div className="justify-self-center">
-            <SocialLinks />
+            <SocialLinks advisory={advisory} />
           </div>
 
           <p className="justify-self-end text-sm text-muted-foreground">
@@ -101,12 +109,17 @@ export function Footer() {
             ))}
           </nav>
 
-          <SocialLinks />
+          <SocialLinks advisory={advisory} />
 
           <p className="text-center text-sm text-muted-foreground">
             © {new Date().getFullYear()} AETEA
           </p>
         </div>
+        <nav aria-label="Legal" className="flex flex-wrap justify-center gap-5 mt-8 text-xs text-muted-foreground">
+          <Link className="hover:text-foreground underline" to="/privacy">Privacy Policy</Link>
+          <Link className="hover:text-foreground underline" to="/terms">Terms & Conditions</Link>
+          <SupportLink className="hover:text-foreground">Contact</SupportLink>
+        </nav>
       </div>
     </footer>
   );

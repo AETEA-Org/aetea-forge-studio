@@ -1,9 +1,9 @@
 import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import { queryClient } from "@/services/queryClient";
 import { ProtectedRoute } from "@/components/app/ProtectedRoute";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AppLayout } from "@/layouts/AppLayout";
@@ -13,14 +13,19 @@ import Landing from "./pages/Landing";
 import Pricing from "./pages/Pricing";
 import Advisory from "./pages/Advisory";
 import Auth from "./pages/Auth";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import { SupportProvider } from "./components/support/SupportContext";
+import { SupportDialog } from "./components/support/SupportDialog";
+import { SupportLauncher } from "./components/support/SupportLauncher";
 import AppPage from "./pages/App";
 import { CampaignShell } from "./layouts/CampaignShell";
 import ChatOrCampaign from "./pages/ChatOrCampaign";
 import DeliverableCanvasPage from "./pages/DeliverableCanvasPage";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
-
-const queryClient = new QueryClient();
+import Policy from "./pages/Policy";
+import { AgreementBoundary } from "@/components/legal/AgreementBoundary";
 
 const App = () => (
   <ErrorBoundary>
@@ -28,13 +33,18 @@ const App = () => (
       <AuthProvider>
         <TooltipProvider>
           <Toaster />
-          <Sonner />
           <BrowserRouter>
+            <SupportProvider>
+            <AgreementBoundary>
             <Routes>
               <Route path="/" element={<Landing />} />
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/advisory" element={<Advisory />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/auth/forgot" element={<ForgotPassword />} />
+              <Route path="/auth/reset" element={<ResetPassword />} />
+              <Route path="/privacy" element={<Policy kind="privacy" />} />
+              <Route path="/terms" element={<Policy kind="terms" />} />
               
               {/* Protected App Routes */}
               <Route
@@ -59,6 +69,11 @@ const App = () => (
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </AgreementBoundary>
+            {/* One panel for every surface; the bubble shows on public pages only. */}
+            <SupportDialog />
+            <SupportLauncher />
+            </SupportProvider>
           </BrowserRouter>
           <Analytics />
           <SpeedInsights />

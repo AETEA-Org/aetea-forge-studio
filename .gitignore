@@ -28,3 +28,6 @@ dist-ssr
 supabase/.temp/
 .vercel
 .env*
+!.env.example
+# Public social-link defaults only; never add service credentials here.
+!.env.production

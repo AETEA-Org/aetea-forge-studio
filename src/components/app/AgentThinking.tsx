@@ -11,17 +11,21 @@ interface AgentThinkingProps {
  *
  * Worth showing — it explains why an answer took a while — but it is not the
  * answer, so it stays out of the way until someone opens it.
+ *
+ * Unchanged in behaviour and wording; it only lost its own border and
+ * background, because it now sits inside the progress panel rather than
+ * beside it, and a bordered box inside a bordered box reads as two things.
  */
 export function AgentThinking({ text }: AgentThinkingProps) {
   const [open, setOpen] = useState(false);
   if (!text.trim()) return null;
 
   return (
-    <div className="rounded-lg border border-border/60 bg-muted/30">
+    <div>
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-muted-foreground hover:text-foreground"
+        className="min-h-9 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-muted-foreground hover:text-foreground"
         aria-expanded={open}
       >
         {open ? (
@@ -35,7 +39,7 @@ export function AgentThinking({ text }: AgentThinkingProps) {
       {open && (
         <p
           className={cn(
-            "max-h-56 overflow-y-auto whitespace-pre-wrap px-3 pb-3",
+            "chat-scrollbar max-h-40 overflow-y-auto whitespace-pre-wrap px-3 pb-3",
             "text-xs leading-relaxed text-muted-foreground"
           )}
         >

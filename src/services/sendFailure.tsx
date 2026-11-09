@@ -1,5 +1,6 @@
 import { ToastAction } from "@/components/ui/toast";
 import { cancelRun, ChatBusyError, OutOfCreditsError } from "@/services/agentRun";
+import { isUnreachable, LEGAL_REQUIRED_MESSAGE } from "@/services/errorDetail";
 
 type ToastFn = (opts: {
   title: string;
@@ -15,13 +16,24 @@ type ToastFn = (opts: {
  * into while a turn is still going, and it was arriving as a red banner
  * carrying the server's internal sentence, chat uuid and all. It gets its own
  * wording and a Stop button, so the answer to "it says something is running" is
- * one click away rather than a hunt for the stop control.
+ * one click away rather than a hunt for the stop control. On a deliverable it
+ * says so, rather than claiming the whole conversation is blocked.
  *
  * Running out of credits is not a failure either. It is the product working as
  * sold, and the answer is a way to buy more — so it gets its own calm wording
  * and a button that goes there. Red-banner treatment would make an ordinary
  * commercial moment look like a fault, and the first thing someone does with a
  * product that looks broken is stop trusting it with their work.
+ *
+ * A request that never reached the server is not a failure of the product
+ * either. Nothing ran and nothing was charged; the laptop slept, or the server
+ * is not up. It was arriving as a red box reading `Failed to fetch`, which is
+ * the browser's own sentence about its own plumbing and tells a marketer
+ * nothing they can act on.
+ *
+ * Nor is being asked to accept the policies. That is a door to walk through,
+ * not a fault, and it already had a readable sentence — under a title that
+ * called it a fault anyway.
  *
  * Anything else keeps the red treatment, because anything else really is wrong.
  */
@@ -30,13 +42,21 @@ export function reportSendFailure(
   opts: {
     toast: ToastFn;
     chatId?: string;
+    /** Which run the Stop button should stop: a deliverable's task id, or the
+     *  conversation when omitted. A deliverable canvas must pass its own, or
+     *  Stop halts the conversation and leaves the busy deliverable running. */
+    scope?: string;
     userEmail?: string;
     onStopped?: () => void;
+    /** Present when the caller can put the refused message straight back on
+     *  the wire after stopping. Only changes the button's wording — the
+     *  caller does the resending from `onStopped`. */
+    onResend?: boolean;
     /** Show the out-of-credits state in place of the answer. */
     onOutOfCredits?: () => void;
   }
 ): void {
-  const { toast, chatId, userEmail, onStopped, onOutOfCredits } = opts;
+  const { toast, chatId, scope, userEmail, onStopped, onResend, onOutOfCredits } = opts;
 
   if (error instanceof OutOfCreditsError) {
     // The surface handles it inline where the answer would have been. Falling
@@ -64,29 +84,65 @@ export function reportSendFailure(
   }
 
   if (error instanceof ChatBusyError) {
+    // The title used to be this string for every busy error, while the
+    // description carried the server's scope-aware sentence about *this
+    // deliverable*. One toast said "your last message" and "this deliverable"
+    // at the same time, which is what screenshot 7 of the October review
+    // shows. The scope is right here; it just was not read.
+    const onDeliverable = !!scope;
     toast({
-      title: "Still working on your last message",
-      description: error.message,
+      title: onDeliverable
+        ? "Still working on this deliverable"
+        : "Still working on your last message",
+      description: onDeliverable
+        ? "Your other deliverables aren't affected. Your message is back in the box."
+        : "Your message is back in the box.",
       action:
         chatId && userEmail ? (
           <ToastAction
-            altText="Stop the current turn"
+            // One action, not three steps. Stopping and then leaving someone
+            // to find the composer and press send again is the same refusal
+            // with extra work attached.
+            altText="Stop what is running and send this instead"
             onClick={() => {
-              cancelRun(chatId)
+              cancelRun(chatId, scope)
                 .then(() => onStopped?.())
                 .catch(() => {});
             }}
           >
-            Stop it
+            {onResend ? "Stop and send" : "Stop it"}
           </ToastAction>
         ) : undefined,
     });
     return;
   }
 
+  if (isUnreachable(error)) {
+    toast({
+      title: "Can't reach AETEA",
+      description:
+        "Nothing was sent, so nothing was lost. Check your connection and try again.",
+    });
+    return;
+  }
+
+  const message =
+    error instanceof Error ? error.message : "Could not send that message";
+
+  if (message === LEGAL_REQUIRED_MESSAGE) {
+    // `detailToMessage` has already raised `aetea:legal-required`, so the
+    // surface that collects acceptance is on its way up. This only has to stop
+    // calling it a fault while it arrives.
+    toast({
+      title: "Review the policies to continue",
+      description: "The terms or privacy policy changed. Accept them and carry on.",
+    });
+    return;
+  }
+
   toast({
     title: "Something went wrong",
-    description: error instanceof Error ? error.message : "Could not send that message",
+    description: message,
     variant: "destructive",
   });
 }

@@ -5,7 +5,7 @@ import { ADVISORY_BODY, ADVISORY_CONTAINER, ADVISORY_EYEBROW, ADVISORY_SECTION, 
 
 export function AdvisoryAbout() {
   return (
-    <section className={ADVISORY_SECTION}>
+    <section className={`${ADVISORY_SECTION} -mt-4`}>
       <div className={ADVISORY_CONTAINER}>
         <div className="mx-auto max-w-5xl">
           <div className="grid items-center gap-9 lg:grid-cols-[1.15fr_0.85fr] lg:gap-16">
@@ -23,13 +23,13 @@ export function AdvisoryAbout() {
             <div className="mx-auto aspect-square w-full max-w-[min(380px,78vw)] overflow-hidden rounded-full">
               <img
                 src="/advisory/ash-tal.jpg"
-                alt="Ash and Tal, founders of AETEA"
+                alt="Ash Tal, founders of AETEA"
                 className="h-full w-full object-cover object-[42%_top]"
               />
             </div>
           </div>
 
-          <div className="mt-10 border-t border-border pt-10 sm:mt-12 sm:pt-12 lg:mt-16 lg:pt-16">
+          <div className="mt-6 border-t border-border pt-10 sm:mt-8 sm:pt-12 lg:mt-12 lg:pt-16">
             <div className="grid gap-10 lg:grid-cols-2 lg:gap-16">
               <div>
                 <h3 className={ADVISORY_TITLE}>{ADVISORY_ABOUT.ash.name}</h3>
@@ -87,11 +87,13 @@ export function AdvisoryAbout() {
           </div>
 
           <div className="mt-12 flex flex-col items-center text-center sm:mt-16">
-            <p className={`max-w-2xl ${ADVISORY_BODY}`}>
-              {ADVISORY_ABOUT.closing}
-            </p>
+            <div className="w-full space-y-5 sm:space-y-6">
+              {ADVISORY_ABOUT.closing.map((paragraph) => (
+                <p key={paragraph} className={ADVISORY_BODY}>{paragraph}</p>
+              ))}
+            </div>
 
-            <div className="mt-8 sm:mt-10">
+            <div className="mt-14 sm:mt-[4.25rem] lg:mt-[4.75rem]">
               <AdvisoryBookButton />
             </div>
           </div>

@@ -9,7 +9,10 @@ export const ADVISORY_EYEBROW =
   "text-[0.68rem] uppercase tracking-[0.24em] text-foreground/60 sm:text-xs sm:tracking-[0.3em]";
 
 export const ADVISORY_SECTION =
-  "relative py-14 sm:py-16 md:py-20 lg:py-24 xl:py-28";
+  "relative pt-6 pb-16 sm:pt-8 sm:pb-[4.75rem] lg:pt-10 lg:pb-[5.25rem]";
+
+export const ADVISORY_SUBSECTION =
+  "relative py-6 sm:py-8 lg:py-10";
 
 export const ADVISORY_CONTAINER =
   "container px-5 sm:px-6 lg:px-12";
