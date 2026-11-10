@@ -404,7 +404,7 @@ export const CREDIT_ACTIONS: PricingTableRow[] = [
  * stops to ask them for approval.
  */
 export const VARIABLE_ACTIONS_NOTE =
-  "Credits are used as the work is generated, and consumption is visible in your account. There is no separate credit-approval step.\n\nBrainstorm and Campaign Build use credits based on the work performed. Image generation is charged per image, based on resolution. Video generation is charged per generated second, with rates varying by resolution and whether native audio is included. Videos assembled from generated clips are charged for all generated seconds.";
+  "Credits are used as the work is generated, and consumption is visible in your account. There is no separate credit-approval step.\n\nBrainstorm and Campaign Build use credits based on the work performed. Image generation is charged per image, based on resolution. Video generation is charged per generated second, with rates varying by resolution and whether native audio is included. Videos assembled from generated clips are charged for all generated seconds. Interrupted or incomplete generations may still use credits.";
 
 // ---------------------------------------------------------------------------
 // Top-ups
@@ -490,18 +490,6 @@ export const PRICING_FAQS: PricingFaqItem[] = [
   {
     "question": "Are all prices in US dollars?",
     "answer": "Yes. Applicable sales taxes are shown at checkout based on your location, and any other mandatory charge is disclosed before purchase. Your payment method may also apply currency-conversion charges."
-  },
-  {
-    "question": "Are there discounts for bigger purchases?",
-    "answer": "No volume discounts apply. Annual subscriptions get 12 months for the price of 10."
-  },
-  {
-    "question": "Can I see how many credits Brainstorm or Campaign Build will use before starting?",
-    "answer": "No. Neither provides an advance estimate, a task-level spending limit, or a credit-use warning. Consumption is visible as the work is generated."
-  },
-  {
-    "question": "Am I charged if a generation fails or is interrupted?",
-    "answer": "If AETEA's service provider charges for the generation, the corresponding credits are deducted. If the provider does not charge, no credits are deducted."
   },
   {
     "question": "What happens if I cancel my subscription?",
