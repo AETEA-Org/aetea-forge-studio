@@ -1,14 +1,4 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
-
+# Default for any build that skips scripts/prerender.mjs: index nothing.
+# The production build overwrites this file with the indexable version.
 User-agent: *
-Allow: /
+Disallow: /

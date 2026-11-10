@@ -1,16 +1,16 @@
 import { Link, useLocation } from "react-router-dom";
 import { Facebook, Instagram, Linkedin } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { FOOTER_BRAND_MARK_CLASS, MARKETING_BRAND_LINKS } from "@/components/landing/marketingBrandLinks";
+import { AETEA_SOCIAL, FOOTER_BRAND_MARK_CLASS, MARKETING_BRAND_LINKS } from "@/components/landing/marketingBrandLinks";
 import { SupportLink } from "@/components/support/SupportLink";
 
 const socialLinks = [
-  { label: "LinkedIn", href: "https://www.linkedin.com/company/aetea-studio/", Icon: Linkedin },
-  { label: "Instagram", href: "https://www.instagram.com/aetea.studio", Icon: Instagram },
-  { label: "Facebook", href: "https://www.facebook.com/profile.php?id=61591948855223", Icon: Facebook },
+  { label: "LinkedIn", href: AETEA_SOCIAL.LinkedIn, Icon: Linkedin },
+  { label: "Instagram", href: AETEA_SOCIAL.Instagram, Icon: Instagram },
+  { label: "Facebook", href: AETEA_SOCIAL.Facebook, Icon: Facebook },
   {
     label: "X",
-    href: "https://x.com/AETEAstudio",
+    href: AETEA_SOCIAL.X,
     Icon: ({ className }: { className?: string }) => (
       <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
         <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />

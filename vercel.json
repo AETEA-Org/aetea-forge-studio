@@ -1,8 +1,45 @@
 {
+  "redirects": [
+    {
+      "source": "/pricing/",
+      "destination": "/pricing",
+      "permanent": true
+    },
+    {
+      "source": "/advisory/",
+      "destination": "/advisory",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
+      "source": "/pricing",
+      "destination": "/pricing.html"
+    },
+    {
+      "source": "/advisory",
+      "destination": "/advisory.html"
+    },
+    {
       "source": "/(.*)",
-      "destination": "/index.html"
+      "destination": "/app.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "missing": [
+        {
+          "type": "host",
+          "value": "aetea.studio"
+        }
+      ],
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
     }
   ]
 }
