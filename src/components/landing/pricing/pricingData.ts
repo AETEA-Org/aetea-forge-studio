@@ -168,13 +168,16 @@ export const PRICING_PLANS: PricingPlan[] = [
     accent: "#04818f",
     tagline: "A low-cost, hands-on introduction to AETEA",
     oneTime: {
-      price: "$8",
+      price: "$12",
       priceUnit: "one time",
       priceUnitStacked: true,
     },
     // No user count: AETEA has no team support, and the old "1 user" / "3 users"
     // lines implied a seat model that does not exist.
-    specs: ["800 credits", "Open for 72 hours", "No renewal"],
+    // The grant is one figure in the catalogue, 2,200 (`credits=2200` on
+    // `start_one_time`), with one expiry. "Bonus" is how the offer is worded,
+    // not a second kind of credit, so the two numbers here must add up to it.
+    specs: ["1,200 credits + 1,000 bonus credits", "Open for 7 days", "No renewal"],
     bestFor:
       "First-time users who want to experience AETEA before choosing a subscription.",
     receives: [
@@ -430,7 +433,7 @@ export const PRICING_ADDONS: PricingAddon[] = TOPUP_QUICK_DOLLARS.map(
 export const CREDIT_RULES: string[] = [
   "For monthly subscriptions, unused credits expire at the next renewal and do not roll over.",
   "Annual subscriptions release one allocation on each monthly anniversary of purchase; unused credits from the previous allocation expire and do not roll over.",
-  "Start credits last 72 hours from payment and do not renew. Add-ons are not available in Start.",
+  "Start credits, including bonus credits, last 7 days from payment and do not renew. Add-ons are not available in Start.",
   "Add-ons are available only with an active subscription. They expire 30 days after purchase or at the end of the paid subscription period, whichever comes first, and do not roll over.",
   "Credits measure work performed and have a stated expiry. They are not cash or transferable value."
 ];
@@ -470,11 +473,11 @@ export const PRICING_FAQS: PricingFaqItem[] = [
   },
   {
     "question": "Does Start renew automatically?",
-    "answer": "No. Start is a one-time, 72-hour introduction. It does not renew or convert into a subscription."
+    "answer": "No. Start is a one-time, 7-day introduction. It does not renew or convert into a subscription."
   },
   {
-    "question": "When does the 72-hour Start window begin?",
-    "answer": "At payment. The 72-hour window begins when you purchase Start, and unused credits expire when it ends."
+    "question": "When does the 7-day Start window begin?",
+    "answer": "At payment. The 7-day window begins when you purchase Start, and unused credits expire when it ends."
   },
   {
     "question": "What happens to my work after Start ends?",
