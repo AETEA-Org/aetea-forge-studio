@@ -23,8 +23,11 @@ function grantFor(planId: string | null | undefined): number | null {
   const plan = PRICING_PLANS.find((candidate) => candidate.id === planId);
   if (!plan) return null;
   const spec = plan.specs.find((line) => /credit/i.test(line));
-  const digits = spec?.replace(/[^0-9]/g, "");
-  return digits ? Number(digits) : null;
+  // Every number on the line, added up: Start reads "1,200 credits + 1,000
+  // bonus credits", and stripping the non-digits from that gives 12,001,000.
+  const numbers = spec?.match(/\d[\d,]*/g);
+  if (!numbers) return null;
+  return numbers.reduce((sum, n) => sum + Number(n.replace(/,/g, "")), 0);
 }
 
 function accentFor(planId: string | null | undefined): string | null {
@@ -227,7 +230,7 @@ export function BillingPane() {
                   {planName}
                   {/* A one-time purchase has no billing period, and this used
                       to read it as monthly because anything that was not
-                      "annual" fell through to it — so an £8 Start pack was
+                      "annual" fell through to it — so a Start pack was
                       labelled "Start · Monthly". Named only when there is one. */}
                   {plan.data?.billing_period === "annual"
                     ? " · Annual"

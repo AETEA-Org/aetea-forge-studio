@@ -31,7 +31,7 @@ import type { PlanId } from "@/services/billing";
  * not signed in and has to handle that. This one can assume a customer.
  *
  * **Every spec line shows, not just the first.** Rendering `specs[0]` alone
- * dropped "Open for 72 hours" and "No renewal" from Start, which are the two
+ * dropped "Open for 7 days" and "No renewal" from Start, which are the two
  * things somebody has to know before buying it. The plan's own accent does the
  * identifying, as a thin cap rather than the pricing page's full card — the
  * wordmark and brush type belong on the page that sells, not in a settings
@@ -193,7 +193,7 @@ export function PlansDialog({
         <DialogHeader>
           <DialogTitle>Choose a plan</DialogTitle>
           {/* Not "credits arrive every month": Start is a one-time purchase that
-              expires in 72 hours, and it sits in this same list. */}
+              expires in 7 days, and it sits in this same list. */}
           <DialogDescription>
             Subscriptions grant credits every month and can be changed or
             cancelled at any time. Start is a one-time purchase.
