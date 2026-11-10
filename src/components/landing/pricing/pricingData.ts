@@ -177,7 +177,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     // The grant is one figure in the catalogue, 2,200 (`credits=2200` on
     // `start_one_time`), with one expiry. "Bonus" is how the offer is worded,
     // not a second kind of credit, so the two numbers here must add up to it.
-    specs: ["1,200 credits + 1,000 bonus credits", "Open for 7 days", "No renewal"],
+    specs: ["1,200 credits + 1,000 bonus credits", "Valid for 7 days", "No renewal"],
     bestFor:
       "First-time users who want to experience AETEA before choosing a subscription.",
     receives: [

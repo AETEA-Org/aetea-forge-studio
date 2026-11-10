@@ -86,10 +86,15 @@ function PricingPlanCard({
             </span>
           </span>
           <div className="relative -translate-y-px whitespace-nowrap">
-            <div className="text-base font-bold italic leading-[calc(0.72em+2px)] text-white">
-              {unitLines.map((line) => (
-                <div key={line}>{line}</div>
-              ))}
+            <div className="text-base font-bold italic leading-[calc(0.72em+3px)] text-white">
+              <div className="relative top-[2px]">
+                {unitLines.map((line) => (
+                  <div key={line}>{line}</div>
+                ))}
+              </div>
+              <div className="mt-1 text-[10px] not-italic leading-none text-white/80">
+                + tax
+              </div>
             </div>
           </div>
         </div>
