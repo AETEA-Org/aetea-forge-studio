@@ -9,8 +9,12 @@ import { AeteaAlly } from "@/components/landing/AeteaAlly";
 import { TrustSafety } from "@/components/landing/TrustSafety";
 import { FinalCTA } from "@/components/landing/FinalCTA";
 import { Footer } from "@/components/landing/Footer";
+import { HOME_PAGE } from "@/seo/pages";
+import { usePageMetadata } from "@/seo/usePageMetadata";
 
 export default function Landing() {
+  usePageMetadata(HOME_PAGE);
+
   return (
     <div className="min-h-screen bg-background dark">
       <Navbar />

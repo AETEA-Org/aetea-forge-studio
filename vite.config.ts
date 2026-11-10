@@ -9,6 +9,14 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8080,
   },
+  define: {
+    // Indexing is decided by the deployment, not by a variable someone can
+    // forget: only Vercel's production target (main -> aetea.studio) may be
+    // indexed. dev.aetea.studio is a Preview deployment, so it never is.
+    "import.meta.env.VITE_SEO_INDEXABLE": JSON.stringify(
+      process.env.VERCEL_ENV === "production" ? "true" : "false",
+    ),
+  },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
     alias: {

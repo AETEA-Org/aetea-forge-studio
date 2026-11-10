@@ -23,6 +23,8 @@ import {
 } from "@/components/landing/pricing/pricingData";
 import { PricingPackageVariantsNote } from "@/components/landing/pricing/PricingPackageVariantsNote";
 import { useAuth } from "@/hooks/useAuth";
+import { PRICING_PAGE } from "@/seo/pages";
+import { usePageMetadata } from "@/seo/usePageMetadata";
 import { useToast } from "@/hooks/use-toast";
 import { startCheckout, type PlanId } from "@/services/billing";
 import {
@@ -31,6 +33,7 @@ import {
 } from "@/services/checkoutIntent";
 
 export default function Pricing() {
+  usePageMetadata(PRICING_PAGE);
   const { user, loading } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();

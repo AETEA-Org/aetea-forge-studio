@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { Footer } from "@/components/landing/Footer";
 import { Navbar } from "@/components/landing/Navbar";
 import { AdvisoryAbout } from "@/components/landing/advisory/AdvisoryAbout";
@@ -9,15 +8,11 @@ import { AdvisoryClarifies } from "@/components/landing/advisory/AdvisoryClarifi
 import { AdvisoryHero } from "@/components/landing/advisory/AdvisoryHero";
 import { AdvisoryHowWeWork } from "@/components/landing/advisory/AdvisoryHowWeWork";
 import { AdvisoryPhilosophy } from "@/components/landing/advisory/AdvisoryPhilosophy";
+import { ADVISORY_PAGE } from "@/seo/pages";
+import { usePageMetadata } from "@/seo/usePageMetadata";
 
 export default function Advisory() {
-  useEffect(() => {
-    const previousTitle = document.title;
-    document.title = "The 80 Ones Advisory · AETEA";
-    return () => {
-      document.title = previousTitle;
-    };
-  }, []);
+  usePageMetadata(ADVISORY_PAGE);
 
   return (
     <div className="min-h-screen bg-background dark">
