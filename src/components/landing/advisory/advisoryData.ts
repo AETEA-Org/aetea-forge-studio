@@ -108,7 +108,7 @@ export const ADVISORY_ABOUT = {
     ],
   },
   closing: [
-    "Beyond their executive careers, Ash Tal have independently studied comparative religion, civilizational history, and psychology to investigate how indoctrination and social pressure shape human thought and behaviour. They combine this inquiry with cultural insights, threat assessment, preventive intelligence, political and economic analysis, and strategic foresight. Their counsel to decision-makers has guided pre-emptive decisions concerning security, social conflict, civic integration, lawmaking, and public policy.",
+    "Beyond their executive careers, Ash Tal have independently studied comparative religion, civilizational history, and psychology to investigate how indoctrination and social pressure shape human thought and behaviour. They combine this inquiry with cultural insights, threat assessment, preventive intelligence, political and economic analysis, and strategic foresight. Their counsel to decision-makers guides pre-emptive decisions concerning security, social conflict, civic integration, lawmaking, and public policy.",
     "Together, they connect what is intended with what must be understood, decided, made, and carried into the world.",
   ],
 } as const;
