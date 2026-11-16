@@ -9,6 +9,21 @@
       "source": "/advisory/",
       "destination": "/advisory",
       "permanent": true
+    },
+    {
+      "source": "/privacy/",
+      "destination": "/privacy",
+      "permanent": true
+    },
+    {
+      "source": "/terms/",
+      "destination": "/terms",
+      "permanent": true
+    },
+    {
+      "source": "/advisory/the-80-ones-wordmark.png",
+      "destination": "/advisory/the-80-ones-advisory-logo.png",
+      "permanent": true
     }
   ],
   "rewrites": [
@@ -19,6 +34,14 @@
     {
       "source": "/advisory",
       "destination": "/advisory.html"
+    },
+    {
+      "source": "/privacy",
+      "destination": "/privacy.html"
+    },
+    {
+      "source": "/terms",
+      "destination": "/terms.html"
     },
     {
       "source": "/(.*)",

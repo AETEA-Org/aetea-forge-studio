@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import heroLogo from "@/assets/aetea-logo-hero.jpeg";
+import heroLogo from "@/assets/aetea-logo.jpeg";
 
 export function HeroSection() {
   return (
@@ -32,7 +32,7 @@ export function HeroSection() {
           >
             <img
               src={heroLogo}
-              alt="AETEA"
+              alt="AETEA logo"
               className="w-full h-auto object-contain"
               style={{ aspectRatio: '1350 / 405' }}
             />

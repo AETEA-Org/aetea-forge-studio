@@ -289,7 +289,7 @@ export const ADVISORY_PAGE: HeadSpec = {
         name: ADVISORY_HERO.title,
         url: absoluteUrl("/advisory"),
         slogan: ADVISORY_HERO.wisdomTagline,
-        logo: absoluteUrl("/advisory/the-80-ones-wordmark.png"),
+        logo: absoluteUrl("/advisory/the-80-ones-advisory-logo.png"),
         founder: [
           {
             "@type": "Person",
@@ -329,8 +329,75 @@ export const ADVISORY_PAGE: HeadSpec = {
   },
 };
 
+// ---------------------------------------------------------------------------
+// Privacy Policy and Terms & Conditions
+// ---------------------------------------------------------------------------
+
+/** What a legal page's metadata needs from its document; all of it is shown on the page. */
+export type LegalDocumentFacts = { title: string; version: string; effective_date: string };
+
+const LEGAL_PAGES_COPY = {
+  privacy: {
+    path: "/privacy",
+    title: "AETEA | Privacy Policy",
+    description: "Learn how AETEA handles and protects personal information and privacy.",
+  },
+  terms: {
+    path: "/terms",
+    title: "AETEA | Terms & Conditions",
+    description:
+      "Read about accounts, subscriptions, credits, payments, and responsibilities when using AETEA.",
+  },
+} as const;
+
+export type LegalKind = keyof typeof LEGAL_PAGES_COPY;
+
 /**
- * Every other route: the app, sign-in and policy pages. The values are the
+ * The head for /privacy or /terms. The legal text itself comes from the
+ * backend (`/legal/documents`), so the version and effective date are added
+ * only once the document is known: at build time from the fetched document,
+ * in the browser from the snapshot or the live fetch. Without it the page still has its title,
+ * description, canonical and social tags.
+ */
+export function legalPageHead(kind: LegalKind, document?: LegalDocumentFacts): HeadSpec {
+  const { path, title, description } = LEGAL_PAGES_COPY[kind];
+  return {
+    title,
+    description,
+    path,
+    siteName: "AETEA",
+    image: AETEA_IMAGE,
+    twitterSite: HOME_PAGE.twitterSite,
+    jsonLd: {
+      "@context": "https://schema.org",
+      "@graph": [
+        organization,
+        website,
+        webPage(path, title, description, {
+          about: { "@id": ORG_ID },
+          publisher: { "@id": ORG_ID },
+          ...(document
+            ? {
+                headline: document.title,
+                version: document.version,
+                dateModified: document.effective_date,
+              }
+            : {}),
+        }),
+      ],
+    },
+  };
+}
+
+/** Prerendered with a snapshot of the live document, listed in the sitemap and llms.txt. */
+export const LEGAL_PAGES = (Object.keys(LEGAL_PAGES_COPY) as LegalKind[]).map((kind) => ({
+  kind,
+  path: LEGAL_PAGES_COPY[kind].path,
+  file: `${kind}.html`,
+}));
+
+/**
+ * Every other route: the app and sign-in pages. The values are the
  * ones `index.html` carried before this module existed, unchanged, and there
  * is no canonical because these routes are not marketing pages.
  */
