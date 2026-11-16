@@ -24,8 +24,8 @@ export interface LegalAcceptance {
 export const documentKey = (doc: Pick<LegalDocument, "kind" | "version" | "content_hash">) =>
   `${doc.kind}:${doc.version}:${doc.content_hash}`;
 
-export async function legalDocuments(): Promise<LegalDocument[]> {
-  const response = await fetch(`${API_BASE_URL}/legal/documents`);
+export async function legalDocuments(signal?: AbortSignal): Promise<LegalDocument[]> {
+  const response = await fetch(`${API_BASE_URL}/legal/documents`, { signal });
   if (!response.ok) throw new Error(await readErrorMessage(response, "Could not load the policies. Please try again."));
   const data = await response.json();
   if (data.documents?.length !== 2) throw new Error("The policies are temporarily unavailable. Please try again.");

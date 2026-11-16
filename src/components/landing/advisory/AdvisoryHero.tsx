@@ -16,8 +16,8 @@ export function AdvisoryHero() {
             style={{ animationDelay: "0.1s" }}
           >
             <img
-              src="/advisory/the-80-ones-wordmark.png"
-              alt={ADVISORY_HERO.title}
+              src="/advisory/the-80-ones-advisory-logo.png"
+              alt="The 80 Ones Advisory logo"
               className="h-auto w-full max-w-[min(960px,96vw)] object-contain"
               style={{ aspectRatio: "2019 / 921" }}
             />
