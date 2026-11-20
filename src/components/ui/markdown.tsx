@@ -88,7 +88,7 @@ export function Markdown({ children, className, inline = false }: MarkdownProps)
   // For inline rendering, render without wrapper and paragraph tags
   if (inline) {
     return (
-      <span className={cn("inline", className)}>
+      <span className={cn("inline break-words", className)} style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
         <ReactMarkdown
           components={{
             ...components,

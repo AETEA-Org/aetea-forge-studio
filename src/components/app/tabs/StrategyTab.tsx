@@ -269,7 +269,7 @@ export function StrategyTab({ campaignId, isModifying }: StrategyTabProps) {
                         type="button"
                         onClick={() => void handleSelectTerritory(territory.id)}
                         disabled={selectTerritoryMutation.isPending}
-                        className={`text-left rounded-lg border p-4 transition-colors ${
+                        className={`flex flex-col justify-start text-left rounded-lg border p-4 transition-colors ${
                           territory.selected
                             ? "border-primary bg-primary/10"
                             : "border-border bg-background/60 hover:border-primary/50"
@@ -300,7 +300,7 @@ export function StrategyTab({ campaignId, isModifying }: StrategyTabProps) {
                                 className="text-xs text-muted-foreground flex gap-1.5"
                               >
                                 <span className="text-primary">•</span>
-                                <span>{execution}</span>
+                                <span className="min-w-0 [overflow-wrap:anywhere]">{execution}</span>
                               </li>
                             ))}
                           </ul>
@@ -330,7 +330,7 @@ export function StrategyTab({ campaignId, isModifying }: StrategyTabProps) {
                                 className="text-xs text-muted-foreground flex gap-1.5"
                               >
                                 <span className="text-primary">•</span>
-                                <span>{value}</span>
+                                <span className="min-w-0 [overflow-wrap:anywhere]">{value}</span>
                               </li>
                             ))}
                           </ul>
