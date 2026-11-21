@@ -397,16 +397,18 @@ export const LEGAL_PAGES = (Object.keys(LEGAL_PAGES_COPY) as LegalKind[]).map((k
 }));
 
 /**
- * Every other route: the app and sign-in pages. The values are the
- * ones `index.html` carried before this module existed, unchanged, and there
- * is no canonical because these routes are not marketing pages.
+ * Every other route: the app and sign-in pages. They carry the Home page's
+ * title, description and share image, so a browser tab or a pasted link inside
+ * the product says what the homepage says.
+ *
+ * No canonical and no structured data: these routes are not marketing pages
+ * and are never indexed.
  */
 export const DEFAULT_PAGE: HeadSpec = {
-  title: "AETEA | All you need. Create → Launch → Grow.",
-  description:
-    "AETEA is your end-to-end creative OS/partner for strategy, creative direction, production, distribution, and growth.",
-  ogTitle: "AETEA | Creative OS for Campaigns & Content",
-  ogDescription: "AETEA is your creative intelligence—everything required to envision, execute, and excel.",
+  title: HOME_TITLE,
+  description: HOME_DESCRIPTION,
+  siteName: "AETEA",
+  image: AETEA_IMAGE,
 };
 
 /** The pages that are prerendered, listed in the sitemap and in llms.txt. */

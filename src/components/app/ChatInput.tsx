@@ -835,6 +835,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   const modeLabel = GENERATION_MODE_META[generationMode].label;
 
   return (
+    <div className="min-w-0 shrink-0">
     <div
       className={cn(
         // One composer surface holding the text and its controls, instead of a
@@ -1448,6 +1449,14 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           })
         }
       />
+    </div>
+
+    {/* The standing reminder that AI output needs checking, the same line other
+        AI products carry. Outside the composer's border, so it reads as a note
+        about the conversation rather than part of the field. */}
+    <p className="pt-1.5 text-center text-[11px] leading-snug text-muted-foreground">
+      AETEA can make mistakes. Check important information.
+    </p>
     </div>
   );
 });

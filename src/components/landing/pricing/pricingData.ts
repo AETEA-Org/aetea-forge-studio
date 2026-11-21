@@ -59,7 +59,6 @@ export type PricingPlan = {
   specs: string[];
   bestFor: string;
   receives: string[];
-  exampleCredits: string;
 };
 
 export type PricingTableRow = {
@@ -187,8 +186,6 @@ export const PRICING_PLANS: PricingPlan[] = [
       "Keep everything you make.",
       "Upgrade without starting the work again.",
     ],
-    exampleCredits:
-      "Room for a campaign build, or a few hours of conversation and research. More extensive work or media production may need a subscription.",
   },
   {
     id: "spark",
@@ -216,8 +213,6 @@ export const PRICING_PLANS: PricingPlan[] = [
       "Light video generation.",
       "One balance that moves across every kind of work.",
     ],
-    exampleCredits:
-      "A campaign build, around 20 images, and everyday conversation through the month.",
   },
   {
     id: "sprint",
@@ -246,8 +241,6 @@ export const PRICING_PLANS: PricingPlan[] = [
       "Meaningful short-form video capacity.",
       "One flexible balance across the full workflow.",
     ],
-    exampleCredits:
-      "Four campaign builds, around 30 images, and twenty seconds of finished video.",
   },
   {
     id: "spire",
@@ -275,8 +268,6 @@ export const PRICING_PLANS: PricingPlan[] = [
       "Room to work without watching the balance.",
       "One flexible balance across the full workflow.",
     ],
-    exampleCredits:
-      "Ten campaign builds, around 80 images, and a minute of finished video.",
   },
 ];
 

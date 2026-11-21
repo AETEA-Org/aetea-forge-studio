@@ -62,12 +62,11 @@ function PlanCard({
   const oneTime = isOneTime(plan);
 
   // Annual savings are worth as much as the specs and are only mentioned on the
-  // price the saving applies to.
+  // price the saving applies to. Shown whole, as the pricing page shows it: a
+  // customer compares the two, and a shortened copy read as a different offer.
   const specs = [...plan.specs];
   if (!oneTime && period === "annual" && price.savingsNote) {
-    // "save $38 | 17% annual saving" reads as two facts; the money is the one
-    // that matters next to a price.
-    specs.push(price.savingsNote.split("|")[0].trim().replace(/^save/i, "Save"));
+    specs.push(price.savingsNote);
   }
 
   return (
@@ -104,7 +103,9 @@ function PlanCard({
 
       <div className="flex items-baseline gap-1.5">
         <span className="font-price text-3xl leading-none">{price.price}</span>
-        <span className="text-xs text-muted-foreground">{price.priceUnit}</span>
+        <span className="text-xs text-muted-foreground">
+          {price.priceUnit} + tax
+        </span>
       </div>
 
       <div className="flex flex-col gap-1.5 border-y border-border/60 py-3">
@@ -123,13 +124,6 @@ function PlanCard({
           </span>
         ))}
       </div>
-
-      <p className="text-xs leading-relaxed text-muted-foreground">
-        <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-foreground/70">
-          Example
-        </span>
-        {plan.exampleCredits}
-      </p>
 
       <Button
         size="sm"
@@ -221,7 +215,7 @@ export function PlansDialog({
           </div>
           {period === "annual" && (
             <span className="text-xs font-semibold text-emerald-500">
-              Save up to 17%
+              12 months for the price of 10, saving 16.7%
             </span>
           )}
         </div>
