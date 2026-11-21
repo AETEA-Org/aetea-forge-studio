@@ -139,7 +139,15 @@ const ToastDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <ToastPrimitives.Description
     ref={ref}
-    className={cn("line-clamp-2 text-xs leading-snug text-muted-foreground", className)}
+    // Not clamped. A toast is often the only explanation of why something
+    // failed, and a two-line clamp cut "Choose a plan first, and you can top up
+    // any time after" down to "Choose a plan first, and you…". The height cap
+    // only stops an unexpectedly long server message from covering the screen;
+    // past it the text scrolls rather than being cut.
+    className={cn(
+      "max-h-40 overflow-y-auto break-words text-xs leading-snug text-muted-foreground",
+      className,
+    )}
     {...props}
   />
 ));
