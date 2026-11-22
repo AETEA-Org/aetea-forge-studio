@@ -1,6 +1,5 @@
 import { ADVISORY_HERO } from "./advisoryData";
 import { AdvisoryBookButton } from "./AdvisoryBookButton";
-import { ADVISORY_EYEBROW } from "./advisoryStyles";
 
 export function AdvisoryHero() {
   return (
@@ -31,11 +30,11 @@ export function AdvisoryHero() {
           </h1>
 
           <div
-            className="grid w-full max-w-xl grid-cols-[minmax(1.5rem,1fr)_auto_minmax(1.5rem,1fr)] items-center gap-2 opacity-0 animate-fade-in sm:gap-4 lg:gap-5"
+            className="grid w-[calc(100%+1rem)] max-w-xl grid-cols-[minmax(0.5rem,1fr)_auto_minmax(0.5rem,1fr)] items-center gap-4 opacity-0 animate-fade-in sm:w-full sm:grid-cols-[minmax(1.5rem,1fr)_auto_minmax(1.5rem,1fr)] lg:gap-5"
             style={{ animationDelay: "0.3s" }}
           >
             <div className="h-px w-full bg-border" />
-            <p className={`max-w-[13rem] text-center [text-wrap:balance] sm:max-w-none ${ADVISORY_EYEBROW}`}>
+            <p className="whitespace-nowrap text-center text-[0.68rem] uppercase tracking-[0.15em] text-foreground/60 sm:text-xs sm:tracking-[0.3em]">
               {ADVISORY_HERO.tagline}
             </p>
             <div className="h-px w-full bg-border" />
