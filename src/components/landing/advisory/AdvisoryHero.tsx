@@ -30,11 +30,11 @@ export function AdvisoryHero() {
           </h1>
 
           <div
-            className="grid w-full max-w-xl grid-cols-[minmax(0.5rem,1fr)_auto_minmax(0.5rem,1fr)] items-center gap-1 opacity-0 animate-fade-in sm:grid-cols-[minmax(1.5rem,1fr)_auto_minmax(1.5rem,1fr)] sm:gap-4 lg:gap-5"
+            className="grid w-full max-w-xl grid-cols-[minmax(0.375rem,1fr)_auto_minmax(0.375rem,1fr)] items-center gap-1 opacity-0 animate-fade-in sm:grid-cols-[minmax(1.5rem,1fr)_auto_minmax(1.5rem,1fr)] sm:gap-4 lg:gap-5"
             style={{ animationDelay: "0.3s" }}
           >
             <div className="h-px w-full bg-border" />
-            <p className="whitespace-nowrap text-center text-[0.68rem] uppercase tracking-[0.18em] text-foreground/60 sm:text-xs sm:tracking-[0.3em]">
+            <p className="whitespace-nowrap pl-[0.18em] text-center text-[0.68rem] uppercase tracking-[0.18em] text-foreground/60 sm:pl-[0.3em] sm:text-xs sm:tracking-[0.3em]">
               {ADVISORY_HERO.tagline}
             </p>
             <div className="h-px w-full bg-border" />
