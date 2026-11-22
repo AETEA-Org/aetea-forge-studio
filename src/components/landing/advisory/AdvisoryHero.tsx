@@ -7,12 +7,12 @@ export function AdvisoryHero() {
     <section className="relative overflow-hidden bg-black">
       <div className="absolute inset-0 bg-black" />
       <div className="absolute inset-0 bg-gradient-to-b from-black via-black to-background" />
-      <div className="absolute left-1/2 top-24 h-[clamp(220px,38vw,420px)] w-[min(760px,92vw)] -translate-x-1/2 rounded-full bg-primary/10 blur-[clamp(90px,14vw,170px)] sm:top-28" />
+      <div className="absolute left-1/2 top-24 h-[clamp(220px,38vw,420px)] w-[min(700px,88vw)] -translate-x-1/2 rounded-full bg-primary/10 blur-[clamp(90px,14vw,170px)] sm:top-28" />
 
-      <div className="container relative z-10 flex justify-center px-5 pb-6 pt-24 sm:px-6 sm:pb-8 lg:px-12 lg:pb-10 lg:pt-20">
+      <div className="container relative flex justify-center px-5 pb-6 pt-24 sm:px-6 sm:pb-8 lg:px-12 lg:pb-10 lg:pt-20">
         <div className="flex w-full max-w-[960px] flex-col items-center text-center">
           <div
-            className="mb-0 flex w-full justify-center opacity-0 animate-fade-in"
+            className="mb-0 flex w-full justify-center opacity-0 mix-blend-screen animate-fade-in"
             style={{ animationDelay: "0.1s" }}
           >
             <img
@@ -31,14 +31,14 @@ export function AdvisoryHero() {
           </h1>
 
           <div
-            className="flex w-full max-w-xl items-center gap-2 opacity-0 animate-fade-in sm:gap-4 lg:gap-5"
+            className="grid w-full max-w-xl grid-cols-[minmax(1.5rem,1fr)_auto_minmax(1.5rem,1fr)] items-center gap-2 opacity-0 animate-fade-in sm:gap-4 lg:gap-5"
             style={{ animationDelay: "0.3s" }}
           >
-            <div className="h-px min-w-0 flex-1 bg-border" />
-            <p className={`max-w-[72vw] flex-none text-center ${ADVISORY_EYEBROW}`}>
+            <div className="h-px w-full bg-border" />
+            <p className={`max-w-[13rem] text-center [text-wrap:balance] sm:max-w-none ${ADVISORY_EYEBROW}`}>
               {ADVISORY_HERO.tagline}
             </p>
-            <div className="h-px min-w-0 flex-1 bg-border" />
+            <div className="h-px w-full bg-border" />
           </div>
 
           <div
