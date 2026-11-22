@@ -236,6 +236,7 @@ export default function App() {
               one surface holding the text and the controls that act on it,
               rather than a bordered box with its options floating underneath.
               The upload panel above is deliberately left as it is. */}
+          <div>
           <div className="space-y-2 rounded-2xl border border-border bg-card/60 p-2 transition-colors focus-within:border-primary/50 focus-within:bg-card">
             <Textarea
               placeholder="Describe your campaign goals, ideas, target audience, deliverables, timeline, or any other relevant details..."
@@ -285,6 +286,13 @@ export default function App() {
                 {isSubmitting ? "Processing…" : "Campaign"}
               </Button>
             </div>
+          </div>
+
+          {/* The same reminder the chat composer carries, so it is in view
+              before the first message as well as during the conversation. */}
+          <p className="pt-1.5 text-center text-[11px] leading-snug text-muted-foreground">
+            AETEA can make mistakes. Check important information.
+          </p>
           </div>
 
           <CampaignCostNote tier={tier} />

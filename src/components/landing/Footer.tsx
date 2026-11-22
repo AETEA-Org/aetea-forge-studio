@@ -55,19 +55,24 @@ function BrandLink({
 
 function SocialLinks({ advisory = false }: { advisory?: boolean }) {
   return (
-    <div className="flex flex-wrap items-center justify-center gap-4">
-      {socialLinks.map(({ label, href, Icon }) => (
-        <a
-          key={label}
-          href={advisory ? advisorySocialUrls[label] : href}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={label}
-          className="text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground"
-        >
-          <Icon className="h-5 w-5" />
-        </a>
-      ))}
+    <div className="mx-auto flex w-fit min-w-max flex-col items-center gap-3 text-center">
+      <p className="text-center text-sm text-muted-foreground">
+        {advisory ? "The 80 Ones Advisory on social" : "AETEA on social"}
+      </p>
+      <div className="flex w-full flex-wrap items-center justify-center gap-4">
+        {socialLinks.map(({ label, href, Icon }) => (
+          <a
+            key={label}
+            href={advisory ? advisorySocialUrls[label] : href}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={label}
+            className="text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground"
+          >
+            <Icon className="h-5 w-5" />
+          </a>
+        ))}
+      </div>
     </div>
   );
 }
