@@ -116,11 +116,8 @@ export function UsageTable({
               {day}
             </p>
             {rows.map((event) => {
-              // The backend's own record of a turn that stopped partway: its
-              // cost was self-counted because a cancelled stream never delivers
-              // its usage chunk. Never inferred from `status`, which is the
-              // literal "settled" on every row ever written.
-              const stopped = event.is_estimated === true;
+              // `is_estimated` is deliberately not shown; see the usage section
+              // of engineering/frontend.md.
               const tier = tierLabel(event.tier);
               return (
                 <div
@@ -144,11 +141,6 @@ export function UsageTable({
                           )}
                         >
                           {tier}
-                        </span>
-                      )}
-                      {stopped && (
-                        <span className="rounded border border-amber-500/30 bg-amber-500/10 px-1.5 text-[10px] font-semibold text-amber-400">
-                          Stopped partway
                         </span>
                       )}
                     </span>

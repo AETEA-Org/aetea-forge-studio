@@ -45,6 +45,7 @@ import {
   type AgentTurnHandlers,
   type ProgressStep,
 } from "@/services/agentRun";
+import { useRunStatusOnReturn } from "@/hooks/useRunStatusOnReturn";
 
 export default function ChatView() {
   const { chatId } = useParams<{ chatId: string }>();
@@ -72,6 +73,10 @@ export default function ChatView() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [connection, setConnection] = useState<RunConnectionState>("idle");
   const [rejoinVersion, setRejoinVersion] = useState(0);
+  // Coming back to a tab re-reads the run, so a failure that a later turn
+  // replaced does not stay on screen (issue #137).
+  const rejoinRun = useCallback(() => setRejoinVersion((v) => v + 1), []);
+  useRunStatusOnReturn(chatId, isStreaming, rejoinRun);
   // Shown where the answer would have been, and cleared as soon as they try
   // again — a stale "out of credits" card after a successful top-up would be
   // worse than not showing one at all.

@@ -120,7 +120,18 @@ export function invalidateForDataChange(
  *
  * `data_changed` during a run keeps its targeted mapping above: those arrive
  * many times per turn, where being precise is worth the maintenance.
+ *
+ * **`cancelRefetch: false`, or the finished reply vanishes (F-003, issue
+ * #137).** This runs in the same tick as the surface's `onComplete`, which has
+ * just started `await refetchQueries(["chat-messages", …])` and clears the
+ * streamed copy once that resolves. React Query's default is to *cancel* a
+ * fetch already in flight and start another; a cancelled refetch resolves
+ * instead of throwing, so the surface cleared the reply over the old list and
+ * the thread sat empty until the second read landed (2.1 s, recorded
+ * 2026-10-30). Leaving an in-flight read alone means the awaited read is the
+ * one that completes, and the duplicate request goes away too. It is fresh:
+ * the backend saves the answer before it sends `complete`.
  */
 export function invalidateForRunEnd(queryClient: QueryClient): void {
-  void queryClient.invalidateQueries();
+  void queryClient.invalidateQueries(undefined, { cancelRefetch: false });
 }

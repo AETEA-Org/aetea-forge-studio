@@ -35,6 +35,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { ChatMessage, ChatRenderableAsset, StreamAssetHint } from "@/types/api";
 import type { CampaignTab } from "./CampaignTabs";
 import type { AutoSendOptions } from "@/contexts/AutoMessageContext";
+import { useRunStatusOnReturn } from "@/hooks/useRunStatusOnReturn";
 
 /**
  * The tab a progress step is rewriting, when it is rewriting one.
@@ -140,6 +141,10 @@ export function AICopilotPanel({
   const [isStreaming, setIsStreaming] = useState(false);
   const [connection, setConnection] = useState<RunConnectionState>("idle");
   const [rejoinVersion, setRejoinVersion] = useState(0);
+  // Coming back to a tab re-reads the run, so a failure that a later turn
+  // replaced does not stay on screen (issue #137).
+  const rejoinRun = useCallback(() => setRejoinVersion((v) => v + 1), []);
+  useRunStatusOnReturn(chatId, isStreaming, rejoinRun);
   // The copilot starts billable turns like any other surface, so it gets the
   // same control — and the same stored value as every other surface, rather than
   // a second copy that resets to Auto on every mount. See `useChatTier`.
