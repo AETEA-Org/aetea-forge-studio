@@ -9,7 +9,7 @@ import { getChat } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 import { useCheckoutReturn } from "@/hooks/useCheckoutReturn";
 import { useProjects } from "@/hooks/useProjects";
-import { useBalance } from "@/hooks/useBilling";
+import { useBalance, usePlan, useUsage } from "@/hooks/useBilling";
 import { WelcomeGuide } from "@/components/app/WelcomeGuide";
 import type { CampaignTab } from "@/components/app/CampaignTabs";
 
@@ -35,12 +35,22 @@ export function AppLayout() {
     import.meta.env.DEV && new URLSearchParams(location.search).get("welcomePreview") === "1";
   const { user } = useAuth();
   const { data: projects, isLoading: projectsLoading, isError: projectsError } = useProjects();
-  const { isLoading: balanceLoading } = useBalance();
+  const { data: balance, isLoading: balanceLoading, isError: balanceError } = useBalance();
+  const { data: plan, isLoading: planLoading, isError: planError } = usePlan();
+  const { data: usage, isLoading: usageLoading, isError: usageError } = useUsage(1);
   const welcomeDismissalKey = useMemo(() => {
     if (!user?.id || !user.last_sign_in_at) return null;
     return `aetea-welcome-dismissed:${user.id}:${user.last_sign_in_at}`;
   }, [user?.id, user?.last_sign_in_at]);
   const hasStartedWork = (projects?.chats?.length ?? 0) > 0;
+  const hasAddedCredits =
+    (balance?.credits ?? 0) > 0 ||
+    (balance?.expired_credits ?? 0) > 0 ||
+    Boolean(plan?.plan_id || plan?.status) ||
+    (usage?.some((event) => event.credits_charged > 0) ?? false);
+  const onboardingLoading = projectsLoading || balanceLoading || planLoading || usageLoading;
+  const onboardingError = projectsError || balanceError || planError || usageError;
+  const hasCompletedOnboarding = hasAddedCredits && hasStartedWork;
 
   useEffect(() => {
     if (!welcomeDismissalKey) {
@@ -56,10 +66,9 @@ export function AppLayout() {
     location.pathname === "/app" &&
     welcomeDismissalReady &&
     !welcomeDismissed &&
-    !projectsLoading &&
-    !balanceLoading &&
-    !projectsError &&
-    !hasStartedWork
+    !onboardingLoading &&
+    !onboardingError &&
+    !hasCompletedOnboarding
   );
 
   const dismissWelcomeGuide = useCallback(() => {
