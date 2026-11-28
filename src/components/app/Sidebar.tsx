@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Plus, Settings, FolderOpen, ChevronLeft, ChevronRight, MessageCircleQuestion } from "lucide-react";
+import { Plus, Settings, FolderOpen, ChevronLeft, ChevronRight, MessageCircleQuestion, ArrowDown } from "lucide-react";
 import { CreditsPill } from "@/components/app/billing/CreditsPill";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -11,9 +11,11 @@ import { settingsNavigation } from "@/components/app/settingsNavigation";
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
+  showOnboardingCue?: boolean;
+  previewOnboarding?: boolean;
 }
 
-export function Sidebar({ collapsed, onToggle }: SidebarProps) {
+export function Sidebar({ collapsed, onToggle, showOnboardingCue = false, previewOnboarding = false }: SidebarProps) {
   const { open: openSupport } = useSupport();
   const location = useLocation();
   const navigate = useNavigate();
@@ -63,9 +65,19 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
       {/* Credits, then Settings. The balance sits directly above the way to
           top it up, so noticing it and acting on it are one movement. */}
-      <div className="border-t border-sidebar-border p-3 pb-0">
-        <div className={cn("mb-2 flex", collapsed ? "justify-center" : "justify-start")}>
-          <CreditsPill />
+      <div className="relative border-t border-sidebar-border p-3 pb-0">
+        {showOnboardingCue && (
+          <ArrowDown
+            aria-hidden="true"
+            strokeWidth={4}
+            className={cn(
+              "pointer-events-none absolute top-0 z-[92] h-11 w-11 animate-bounce text-primary drop-shadow-[0_0_14px_rgba(48,145,255,1)] motion-reduce:animate-none",
+              collapsed ? "left-1/2 -translate-x-1/2" : "left-8",
+            )}
+          />
+        )}
+        <div className={cn("relative mb-2 flex", collapsed ? "justify-center" : "justify-start")}>
+          <CreditsPill preview={previewOnboarding} />
         </div>
       </div>
 

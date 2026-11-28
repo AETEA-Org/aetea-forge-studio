@@ -27,10 +27,15 @@ import { formatCredits, formatDate } from "./format";
 /** Below this, the balance is worth noticing. Roughly one substantial job. */
 const LOW_CREDITS = 300;
 
-export function CreditsPill({ className }: { className?: string }) {
+export function CreditsPill({ className, preview = false }: { className?: string; preview?: boolean }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { data, isLoading, isError } = useBalance();
+  const balance = useBalance(!preview);
+  const data = preview
+    ? { credits: 0, expiring_next: 0, next_expiry_at: null, expired_credits: 0, expired_at: null }
+    : balance.data;
+  const isLoading = !preview && balance.isLoading;
+  const isError = !preview && balance.isError;
 
   if (isLoading) {
     return <Skeleton className={cn("h-7 w-20 rounded-full", className)} />;

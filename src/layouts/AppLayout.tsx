@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
-import { Outlet, useParams } from "react-router-dom";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { Outlet, useLocation, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Sidebar } from "@/components/app/Sidebar";
 import { AICopilotPanel } from "@/components/app/AICopilotPanel";
@@ -8,6 +8,9 @@ import { AutoMessageProvider } from "@/contexts/AutoMessageContext";
 import { getChat } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 import { useCheckoutReturn } from "@/hooks/useCheckoutReturn";
+import { useProjects } from "@/hooks/useProjects";
+import { useBalance } from "@/hooks/useBilling";
+import { WelcomeGuide } from "@/components/app/WelcomeGuide";
 import type { CampaignTab } from "@/components/app/CampaignTabs";
 
 export function AppLayout() {
@@ -18,13 +21,52 @@ export function AppLayout() {
   const [copilotCollapsed, setCopilotCollapsed] = useState(false);
   const [isModifying, setIsModifyingState] = useState(false);
   const [modifyingContext, setModifyingContextState] = useState<string | null>(null);
+  const [welcomeDismissed, setWelcomeDismissed] = useState(true);
+  const [welcomeDismissalReady, setWelcomeDismissalReady] = useState(false);
+  const [welcomePreviewClosed, setWelcomePreviewClosed] = useState(false);
   
   // Shared state for active tab and selected task - lifted for AETEA Copilot context detection
   const [activeTab, setActiveTab] = useState<CampaignTab>('brief');
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   
   const { chatId, taskId } = useParams<{ chatId?: string; taskId?: string }>();
+  const location = useLocation();
+  const welcomePreview =
+    import.meta.env.DEV && new URLSearchParams(location.search).get("welcomePreview") === "1";
   const { user } = useAuth();
+  const { data: projects, isLoading: projectsLoading, isError: projectsError } = useProjects();
+  const { isLoading: balanceLoading } = useBalance();
+  const welcomeDismissalKey = useMemo(() => {
+    if (!user?.id || !user.last_sign_in_at) return null;
+    return `aetea-welcome-dismissed:${user.id}:${user.last_sign_in_at}`;
+  }, [user?.id, user?.last_sign_in_at]);
+  const hasStartedWork = (projects?.chats?.length ?? 0) > 0;
+
+  useEffect(() => {
+    if (!welcomeDismissalKey) {
+      setWelcomeDismissed(true);
+      setWelcomeDismissalReady(false);
+      return;
+    }
+    setWelcomeDismissed(sessionStorage.getItem(welcomeDismissalKey) === "1");
+    setWelcomeDismissalReady(true);
+  }, [welcomeDismissalKey]);
+
+  const showWelcomeGuide = (welcomePreview && !welcomePreviewClosed) || (
+    location.pathname === "/app" &&
+    welcomeDismissalReady &&
+    !welcomeDismissed &&
+    !projectsLoading &&
+    !balanceLoading &&
+    !projectsError &&
+    !hasStartedWork
+  );
+
+  const dismissWelcomeGuide = useCallback(() => {
+    if (welcomePreview) setWelcomePreviewClosed(true);
+    if (welcomeDismissalKey) sessionStorage.setItem(welcomeDismissalKey, "1");
+    setWelcomeDismissed(true);
+  }, [welcomeDismissalKey, welcomePreview]);
   const { data: chatData } = useQuery({
     queryKey: ["chat", chatId, user?.email],
     queryFn: () => getChat(chatId!),
@@ -63,6 +105,8 @@ export function AppLayout() {
           <Sidebar 
             collapsed={sidebarCollapsed} 
             onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} 
+            showOnboardingCue={showWelcomeGuide}
+            previewOnboarding={welcomePreview}
           />
         )}
 
@@ -91,6 +135,7 @@ export function AppLayout() {
             onToggle={() => setCopilotCollapsed(!copilotCollapsed)} 
           />
         )}
+        <WelcomeGuide open={showWelcomeGuide} onClose={dismissWelcomeGuide} />
       </div>
       </AutoMessageProvider>
     </ModificationProvider>

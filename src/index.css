@@ -279,6 +279,23 @@
   border-radius: 4px;
 }
 .chat-scrollbar::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground)); }
+
+/* The first-use guide scrolls only when a phone cannot hold its content. Keep
+ * that scrollbar quiet; tablet and desktop layouts do not show scroll chrome. */
+.welcome-guide-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.12) transparent;
+}
+.welcome-guide-scrollbar::-webkit-scrollbar { width: 1px; }
+.welcome-guide-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.welcome-guide-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.12);
+  border-radius: 999px;
+}
+@media (min-width: 640px) {
+  .welcome-guide-scrollbar { scrollbar-width: none; }
+  .welcome-guide-scrollbar::-webkit-scrollbar { display: none; }
+}
 .canvas-chat-resize-handle { opacity: 1; }
 @media (hover: hover) and (pointer: fine) {
   .canvas-chat-resize-handle { opacity: 0; }
